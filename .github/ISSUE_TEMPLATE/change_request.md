@@ -1,5 +1,3 @@
-# .github/ISSUE_TEMPLATE/change_request.md
-
 ---
 name: Change Request
 about: Propose or modify a change with decision logging and clear acceptance criteria
@@ -47,8 +45,6 @@ assignees: []
 - 
 
 ## Updates / Decision log (append-only; link to the comment that triggered the change)
-> When discussion changes scope/requirements, add an entry here and link the comment or review.
-
 - YYYY-MM-DD — Update summary (triggered by: <link>)
   - Decision:
   - Reasoning:
