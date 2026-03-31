@@ -1,12 +1,10 @@
 # Professional CRM Documentation Bundle
 
-This repository structure provides a professional-grade documentation baseline for a CRM platform. It is organized the way a mature engineering team would typically structure product, architecture, delivery, and operational knowledge inside GitHub.
+This repository structure provides a professional-grade documentation layout baseline for a CRM platform. It is organized the way a mature engineering team would typically structure product, architecture, delivery, and operational knowledge.
 
 ## Purpose
 
-This bundle is intended to answer the question: **where should the information from an `app_spec.txt` live in a professional project?**
-
-Instead of one monolithic text file, the information is split into focused documents:
+Instead of one monolithic application spec text file, the information is split into focused documents:
 
 - Product and business context
 - System and architecture design
@@ -43,10 +41,6 @@ docs/
     monitoring-observability.md
   roadmap/
     future-enhancements.md
-.github/
-  ISSUE_TEMPLATE/
-    feature_request.md
-    architecture_decision.md
 ```
 
 ## Where Team Members Would Look in GitHub
@@ -56,7 +50,6 @@ docs/
 3. `docs/architecture/` for design and implementation guidance
 4. `docs/specs/` for contracts and schemas
 5. `docs/deployment/` and `docs/operations/` for runtime and support
-6. GitHub Issues and Projects for active work, prioritization, and delivery status
 
 ## Intended CRM Scope
 
