@@ -1,0 +1,44 @@
+# markdownlint-cli2 configuration
+# Relaxed rules for basic Markdown consistency without blocking documentation work.
+#
+# File targeting is handled by the npm script and GitHub Actions workflow:
+#   glob: "**/*.md"
+#   ignores: node_modules, dist, .git
+#
+# Disable or relax rules that cause friction during initial documentation rollout
+config:
+  # MD003: heading-style — allow both # and === styles
+  MD003:
+    style: "consistent"
+
+  # MD004: ul-style — enforce consistent unordered list style
+  MD004:
+    style: "consistent"
+
+  # MD013: line-length — relaxed to 120 chars; tables and code excluded
+  MD013:
+    line_length: 120
+    code_blocks: false
+    tables: false
+    headings: false
+    headers: false
+
+  # MD024: no-duplicate-headings — disabled; sections can share heading text
+  MD024: false
+
+  # MD026: no-trailing-punctuation-in-heading — disabled for flexibility
+  MD026: false
+
+  # MD033: no-inline-html — disabled; HTML may be needed for formatting
+  MD033: false
+
+  # MD041: first-line-heading — disabled; README may start with badges
+  MD041: false
+
+  # MD046: code-block-style — enforce consistent code fence style
+  MD046:
+    style: "fenced"
+
+  # MD048: code-fence-style — enforce consistent fence character
+  MD048:
+    style: "backtick"

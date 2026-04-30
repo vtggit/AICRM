@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AICRM - Customer Relationship Management</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar Navigation -->
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">AICRM</h1>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </li>
+                <li class="nav-item" data-page="contacts">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-label">Contacts</span>
+                </li>
+                <li class="nav-item" data-page="leads">
+                    <span class="nav-icon">🎯</span>
+                    <span class="nav-label">Leads</span>
+                </li>
+                <li class="nav-item" data-page="activities">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-label">Activities</span>
+                </li>
+                <li class="nav-item" data-page="templates">
+                    <span class="nav-icon">📝</span>
+                    <span class="nav-label">Templates</span>
+                </li>
+                <li class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Settings</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <span class="version">v0.0.4</span>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button id="menu-toggle" class="menu-toggle" aria-label="Toggle menu">☰</button>
+                    <h2 id="page-title">Dashboard</h2>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <input type="text" id="global-search" placeholder="Search contacts, leads..." aria-label="Global search">
+                        <span class="search-icon">🔍</span>
+                    </div>
+                    <button id="theme-toggle" class="icon-btn" aria-label="Toggle theme">🌙</button>
+                </div>
+            </header>
+
+            <!-- Page Content Container -->
+            <div id="page-container" class="page-container">
+                <!-- Dashboard Page -->
+                <div id="page-dashboard" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-info">
+                                <h3 id="stat-total-contacts">0</h3>
+                                <p>Total Contacts</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🎯</div>
+                            <div class="stat-info">
+                                <h3 id="stat-total-leads">0</h3>
+                                <p>Total Leads</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">✅</div>
+                            <div class="stat-info">
+                                <h3 id="stat-converted-leads">0</h3>
+                                <p>Converted Leads</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📋</div>
+                            <div class="stat-info">
+                                <h3 id="stat-today-activities">0</h3>
+                                <p>Today's Activities</p>
+                            </div>
+                        </div>
+                        <div class="stat-card revenue-card">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-info">
+                                <h3 id="stat-pipeline-value">$0</h3>
+                                <p>Pipeline Value</p>
+                            </div>
+                        </div>
+                        <div class="stat-card revenue-card">
+                            <div class="stat-icon">🏆</div>
+                            <div class="stat-info">
+                                <h3 id="stat-won-revenue">$0</h3>
+                                <p>Won Revenue</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <h3>Recent Activities</h3>
+                            <div id="recent-activities" class="activity-list">
+                                <p class="empty-state">No recent activities</p>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Lead Pipeline</h3>
+                            <div id="lead-pipeline-overview" class="pipeline-overview">
+                                <div class="pipeline-stage">
+                                    <span class="stage-label">New</span>
+                                    <span class="stage-info">
+                                        <span id="pipeline-new" class="stage-count">0</span>
+                                        <span id="pipeline-new-value" class="stage-value"></span>
+                                    </span>
+                                </div>
+                                <div class="pipeline-stage">
+                                    <span class="stage-label">Contacted</span>
+                                    <span class="stage-info">
+                                        <span id="pipeline-contacted" class="stage-count">0</span>
+                                        <span id="pipeline-contacted-value" class="stage-value"></span>
+                                    </span>
+                                </div>
+                                <div class="pipeline-stage">
+                                    <span class="stage-label">Qualified</span>
+                                    <span class="stage-info">
+                                        <span id="pipeline-qualified" class="stage-count">0</span>
+                                        <span id="pipeline-qualified-value" class="stage-value"></span>
+                                    </span>
+                                </div>
+                                <div class="pipeline-stage">
+                                    <span class="stage-label">Proposal</span>
+                                    <span class="stage-info">
+                                        <span id="pipeline-proposal" class="stage-count">0</span>
+                                        <span id="pipeline-proposal-value" class="stage-value"></span>
+                                    </span>
+                                </div>
+                                <div class="pipeline-stage">
+                                    <span class="stage-label">Won</span>
+                                    <span class="stage-info">
+                                        <span id="pipeline-won" class="stage-count">0</span>
+                                        <span id="pipeline-won-value" class="stage-value"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>🤖 Recommended Actions</h3>
+                            <div id="recommended-actions" class="recommendation-list">
+                                <p class="empty-state">No recommendations yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contacts Page -->
+                <div id="page-contacts" class="page">
+                    <div class="page-actions">
+                        <button id="btn-add-contact" class="btn btn-primary">+ Add Contact</button>
+                        <div class="filter-controls">
+                            <button id="btn-export-csv" class="btn btn-secondary" title="Export contacts to CSV">📥 Export CSV</button>
+                            <button id="btn-import-csv" class="btn btn-secondary" title="Import contacts from CSV">📤 Import CSV</button>
+                            <select id="contact-filter-status" class="filter-select">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="vip">VIP</option>
+                            </select>
+                            <select id="contact-sort" class="filter-select">
+                                <option value="name-asc">Name A-Z</option>
+                                <option value="name-desc">Name Z-A</option>
+                                <option value="recent">Most Recent</option>
+                            </select>
+                        </div>
+                    </div>
+                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                    <div id="contacts-list" class="contacts-grid">
+                        <div class="empty-state-card">
+                            <p>No contacts yet. Click "Add Contact" to get started.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leads Page -->
+                <div id="page-leads" class="page">
+                    <div class="page-actions">
+                        <button id="btn-add-lead" class="btn btn-primary">+ Add Lead</button>
+                        <div class="filter-controls">
+                            <button id="btn-export-leads-csv" class="btn btn-secondary" title="Export leads to CSV">📥 Export CSV</button>
+                            <button id="btn-import-leads-csv" class="btn btn-secondary" title="Import leads from CSV">📤 Import CSV</button>
+                            <select id="lead-filter-stage" class="filter-select">
+                                <option value="">All Stages</option>
+                                <option value="new">New</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="qualified">Qualified</option>
+                                <option value="proposal">Proposal</option>
+                                <option value="won">Won</option>
+                                <option value="lost">Lost</option>
+                            </select>
+                            <select id="lead-filter-score" class="filter-select">
+                                <option value="">All Scores</option>
+                                <option value="critical">🔴 Critical (70+)</option>
+                                <option value="hot">🟠 Hot (45-69)</option>
+                                <option value="warm">🟡 Warm (25-44)</option>
+                                <option value="cold">⚪ Cold (0-24)</option>
+                            </select>
+                            <select id="lead-sort" class="filter-select">
+                                <option value="recent">Most Recent</option>
+                                <option value="value-desc">Value High-Low</option>
+                                <option value="value-asc">Value Low-High</option>
+                                <option value="score-desc">Highest Score</option>
+                            </select>
+                        </div>
+                    </div>
+                    <input type="file" id="leads-csv-file-input" accept=".csv" style="display: none;">
+                    <div id="leads-list" class="leads-grid">
+                        <div class="empty-state-card">
+                            <p>No leads yet. Click "Add Lead" to get started.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activities Page -->
+                <div id="page-activities" class="page">
+                    <div class="page-actions">
+                        <button id="btn-add-activity" class="btn btn-primary">+ Add Activity</button>
+                        <div class="filter-controls">
+                            <select id="activity-filter-type" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="call">Call</option>
+                                <option value="email">Email</option>
+                                <option value="meeting">Meeting</option>
+                                <option value="note">Note</option>
+                                <option value="task">Task</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="activities-list" class="activities-timeline">
+                        <div class="empty-state-card">
+                            <p>No activities recorded yet.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Templates Page -->
+                <div id="page-templates" class="page">
+                    <div class="page-actions">
+                        <button id="btn-add-template" class="btn btn-primary">+ Add Template</button>
+                        <div class="filter-controls">
+                            <select id="template-filter-category" class="filter-select">
+                                <option value="">All Categories</option>
+                                <option value="follow-up">Follow-up</option>
+                                <option value="introduction">Introduction</option>
+                                <option value="proposal">Proposal</option>
+                                <option value="thank-you">Thank You</option>
+                                <option value="meeting">Meeting</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="template-variable-help" class="template-variable-help">
+                        <strong>Available Variables:</strong>
+                        <code>{{contact_name}}</code>
+                        <code>{{contact_email}}</code>
+                        <code>{{contact_phone}}</code>
+                        <code>{{contact_company}}</code>
+                        <code>{{lead_name}}</code>
+                        <code>{{lead_company}}</code>
+                        <code>{{lead_value}}</code>
+                    </div>
+                    <div id="templates-list" class="templates-grid">
+                        <div class="empty-state-card">
+                            <p>No templates yet. Click "Add Template" to get started.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="page-settings" class="page">
+                    <div class="settings-container">
+                        <div class="settings-card">
+                            <h3>Data Management</h3>
+                            <p>Export or import your CRM data.</p>
+                            <div class="settings-actions">
+                                <button id="btn-export-data" class="btn btn-secondary">Export Data</button>
+                                <button id="btn-import-data" class="btn btn-secondary">Import Data</button>
+                                <button id="btn-clear-data" class="btn btn-danger">Clear All Data</button>
+                            </div>
+                            <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                        </div>
+                        <div class="settings-card">
+                            <h3>About AICRM</h3>
+                            <p>AICRM is a modern Customer Relationship Management system that helps you manage contacts, leads, and activities.</p>
+                            <ul class="settings-info">
+                                <li><strong>Version:</strong> 1.0.0</li>
+                                <li><strong>Storage:</strong> Local Browser Storage</li>
+                                <li><strong>Features:</strong> Contact Management, Lead Pipeline, Activity Tracking</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Modal Container -->
+        <div id="modal-overlay" class="modal-overlay hidden">
+            <div id="modal-container" class="modal">
+                <div class="modal-header">
+                    <h3 id="modal-title">Modal Title</h3>
+                    <button id="modal-close" class="modal-close-btn" aria-label="Close modal">&times;</button>
+                </div>
+                <div id="modal-body" class="modal-body">
+                    <!-- Dynamic modal content -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

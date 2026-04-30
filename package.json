@@ -1,0 +1,13 @@
+{
+  "name": "aicrm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Customer Relationship Management",
+  "scripts": {
+    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"!node_modules/**\""
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.17.0",
+    "playwright": "^1.59.1"
+  }
+}
