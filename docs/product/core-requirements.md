@@ -43,14 +43,14 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Debounced input (300ms)
 
 ### 6. Data Management (COMPLETED)
-- Export all data as JSON file
-- Import data from JSON file
-- Clear all data with double confirmation
-- Data persistence via localStorage
+- Export Contacts and Leads as CSV files (client-side convenience only)
+- Import Contacts and Leads from CSV files
+- Full data backup and recovery handled at the PostgreSQL level (e.g. `pg_dump`)
+- All business data persisted in PostgreSQL via backend APIs
 
 ### 7. Theme Toggle (COMPLETED)
 - Light and dark theme support
-- Theme preference persisted in localStorage
+- Theme preference persisted in sessionStorage
 - Toggle button in header
 
 ### 8. Responsive Design (COMPLETED)
@@ -85,10 +85,52 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Revenue cards styled with green left border for visual distinction
 - Revenue calculated dynamically on dashboard render (not stored)
 
+### 12. Email Templates (COMPLETED)
+- Create, edit, and delete reusable email templates
+- Template fields: name, category, subject, body
+- Category options: Sales, Support, Follow-up, Onboarding, Newsletter
+- Variable substitution: {{first_name}}, {{last_name}}, {{company}}, {{email}}, {{phone}}
+- Filter by category
+- Toast notifications for save/delete operations
+
+### 13. AI-Powered Lead Recommendations (COMPLETED)
+- Dashboard card showing prioritized lead recommendations
+- Scores active leads using existing lead scoring algorithm (0-100)
+- Detects stale leads (14+ days = urgent, 7-13 days = high priority)
+- Context-aware suggestions based on lead stage
+- Maximum 3 recommendations displayed, sorted by score
+- Click-to-navigate to individual leads
+
+### 14. Keyboard Shortcuts (COMPLETED)
+- Number keys (1-5) navigate to Dashboard, Contacts, Leads, Activities, Templates
+- `/` focuses global search bar
+- `?` opens keyboard shortcuts help modal
+- `Ctrl+N` opens new contact modal
+- `Ctrl+L` opens new lead modal
+- `Ctrl+E` exports current page to CSV
+- `Escape` closes modals
+- Shortcuts disabled while typing in input fields (except `/`, `?`, `Escape`)
+- Keyboard icon button in header opens shortcuts help modal
+
+### 15. Activity Due Date Tracking (COMPLETED)
+- Optional due date field on activity creation/edit forms (date input)
+- Overdue activities highlighted with red left border and red timeline dot
+- Overdue due dates displayed with ⚠️ warning icon and red text
+- Overdue activities automatically sorted to the top of the timeline
+- Overdue count badge displayed on Activities navigation item
+- Dashboard stat card showing total overdue activities count
+- Status filter dropdown with options: All, Overdue, Completed, Active
+- Mark complete button (✅) on each activity card
+- Completed activities displayed with strikethrough text and reduced opacity
+- Completed activities hidden from overdue count and overdue filter
+- Due date tracking persisted in PostgreSQL with activity data
+
 ## Technical Requirements
-- Single Page Application (SPA) architecture
-- localStorage for data persistence
-- No server dependencies
+- Single Page Application (SPA) frontend architecture
+- Backend-owned data: FastAPI + PostgreSQL for all business domains
+- JWT authentication (development shared token or production JWKS)
+- Role-based authorization (admin/user)
+- Audit logging for all domain mutations
 - Modern browser support (ES6+)
 - Semantic HTML with ARIA labels
 - XSS protection via HTML escaping

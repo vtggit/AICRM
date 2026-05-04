@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+psycopg2-binary
+PyJWT[crypto]>=2.0.0
+requests>=2.28.0

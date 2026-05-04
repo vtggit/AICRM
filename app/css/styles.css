@@ -710,6 +710,66 @@ body {
     color: #9ca3af;
 }
 
+/* === Duplicate Detection === */
+.duplicate-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #fef3c7;
+    color: #b45309;
+    margin-right: 0.25rem;
+}
+
+.contact-card-duplicate {
+    border-left: 3px solid #f59e0b;
+}
+
+.duplicate-match-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.duplicate-match-card span {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.duplicate-match-actions {
+    margin-left: auto;
+}
+
+.duplicate-group {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.duplicate-group h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .duplicate-badge {
+    background: rgba(217, 119, 6, 0.2);
+    color: #fbbf24;
+}
+
+[data-theme="dark"] .contact-card-duplicate {
+    border-left-color: #f59e0b;
+}
+
 /* === Lead Card Value === */
 .lead-value {
     font-size: 1.125rem;
@@ -779,6 +839,70 @@ body {
     color: var(--text-secondary);
 }
 
+/* Activity meta row */
+.activity-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.activity-due-date {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.activity-due-date.due-overdue {
+    color: #f44336;
+    font-weight: 600;
+}
+
+/* Overdue activity highlight */
+.timeline-item.activity-overdue {
+    background: rgba(244, 67, 54, 0.05);
+    border-left: 3px solid #f44336;
+    padding-left: 0.75rem;
+}
+
+.timeline-item.activity-overdue .timeline-dot {
+    background: #f44336;
+}
+
+/* Completed activity styling */
+.timeline-item.activity-completed .timeline-content {
+    opacity: 0.6;
+}
+
+.timeline-item.activity-completed .timeline-content p {
+    text-decoration: line-through;
+}
+
+.timeline-item.activity-completed .timeline-dot {
+    background: var(--text-secondary);
+}
+
+/* Nav badge for overdue count */
+.nav-badge {
+    background: #f44336;
+    color: #fff;
+    font-size: 0.625rem;
+    font-weight: 700;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.25rem;
+    margin-left: auto;
+}
+
+/* Mark complete button */
+.btn-mark-complete {
+    font-size: 1rem;
+}
+
 /* === Settings === */
 .settings-container {
     max-width: 640px;
@@ -820,6 +944,19 @@ body {
     padding: 0.375rem 0;
     font-size: 0.875rem;
     color: var(--text-secondary);
+}
+
+.last-backup-info {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius);
+    font-size: 0.813rem;
+    color: var(--text-secondary);
+}
+
+.last-backup-info strong {
+    color: var(--text-primary);
 }
 
 /* === Modal === */
@@ -1344,4 +1481,211 @@ body {
     overflow-y: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
+}
+
+/* === Keyboard Shortcuts === */
+.shortcuts-help {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.shortcut-section {
+    margin-bottom: 24px;
+}
+
+.shortcut-section h4 {
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light, rgba(128, 128, 128, 0.1));
+}
+
+.shortcut-row:last-child {
+    border-bottom: none;
+}
+
+.shortcut-row kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 28px;
+    padding: 2px 8px;
+    font-family: var(--font-family);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+}
+
+.shortcut-row span {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Shortcuts toggle button */
+#shortcuts-toggle {
+    position: relative;
+}
+
+#shortcuts-toggle::after {
+    content: '?';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 14px;
+    text-align: center;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 50%;
+}
+
+/* ==========================================================================
+   Authentication UI
+   ========================================================================== */
+
+/* Auth status indicator in the header */
+.auth-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    transition: background 0.2s;
+}
+
+.auth-status:hover {
+    background: var(--bg-hover);
+}
+
+.auth-indicator {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.auth-username {
+    font-weight: 500;
+    color: var(--text-primary);
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Login modal (simple placeholder for Step 8) */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-box {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.modal-box h3 {
+    margin: 0 0 12px;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.modal-box p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0 0 16px;
+}
+
+.modal-box input[type="text"],
+.modal-box input[type="password"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+}
+
+.modal-box .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.modal-box .modal-actions button {
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.modal-box .modal-actions button.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+.modal-box .modal-error {
+    color: #e74c3c;
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+    min-height: 1.2em;
+}
+
+/* Auth required banner */
+.auth-required-banner {
+    display: none;
+    padding: 12px 20px;
+    background: #fff3cd;
+    border-bottom: 1px solid #ffc107;
+    color: #856404;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.auth-required-banner.active {
+    display: block;
 }

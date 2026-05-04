@@ -24,6 +24,9 @@ docs/
     ├── test-lead-csv.js       # Lead CSV export/import tests
     ├── test-email-templates.js  # Email templates feature tests
     ├── test-ai-recommendations.js  # AI-Powered Lead Recommendations tests
+    ├── test-keyboard-shortcuts.js  # Keyboard shortcuts tests
+    ├── test-backup-restore.js      # Data Backup and Restore tests
+    ├── test-activity-due-date-tracking.js  # Activity Due Date Tracking tests
     └── test-*.js                  # Feature-specific tests
 ```
 
