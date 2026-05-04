@@ -13,8 +13,8 @@ This document describes the current testing approach for AICRM and defines the t
 
 ## Gaps
 
-- No unit test coverage for business logic in `app.js` or `storage.js`.
-- No API-level tests (no backend exists yet).
+- No unit test coverage for business logic in `app.js` or the data-source modules.
+- No API-level tests for the FastAPI backend endpoints.
 - No authentication or authorization tests.
 - No performance or load testing.
 - No accessibility testing automation.
