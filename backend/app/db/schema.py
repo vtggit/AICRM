@@ -1,4 +1,20 @@
-"""Database schema for the AICRM backend."""
+"""Database schema for the AICRM backend.
+
+DEPRECATED: This module is retained as a reference for the current schema
+structure but is NO LONGER the primary mechanism for schema evolution.
+
+Schema changes should now be introduced through Alembic migrations located
+in backend/migrations/versions/.  See backend/README.md for the migration
+workflow.
+
+To create a new migration:
+    cd backend
+    alembic revision --autogenerate -m "description of change"
+
+To apply migrations:
+    cd backend
+    alembic upgrade head
+"""
 
 CREATE_CONTACTS_TABLE = """
 CREATE TABLE IF NOT EXISTS contacts (

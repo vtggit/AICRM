@@ -56,10 +56,7 @@ app.include_router(audit_router)
 
 @app.on_event("startup")
 def on_startup():
-    """Initialize database schema on startup."""
-    from app.db.schema import create_schema
-
-    create_schema()
+    """Log startup — schema migrations are handled by Alembic in start.sh."""
     logger.info("AICRM backend started (version=%s)", APP_VERSION)
 
 

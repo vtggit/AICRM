@@ -1,0 +1,6 @@
+# Docker build artifacts
+Dockerfile
+.dockerignore
+
+# nginx config (copied separately into /etc/nginx/conf.d/)
+nginx.conf

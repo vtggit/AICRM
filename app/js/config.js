@@ -8,32 +8,40 @@
  *   <script>
  *     window.AICRM_CONFIG = { API_BASE_URL: 'http://localhost:9000/api' };
  *   </script>
+ *
+ * Runtime modes:
+ *
+ *   • Local dev (file:// or localhost:8080):
+ *       API calls go to http://localhost:9000/api
+ *
+ *   • Container (docker-compose, nginx reverse proxy):
+ *       API calls go to /api (relative path — nginx proxies to backend)
+ *
+ *   • Manual override:
+ *       Set window.AICRM_CONFIG.API_BASE_URL before this script loads.
  */
 const Config = Object.freeze({
     /**
-     * Base URL for the AICRM backend API (must end with /api).
+     * Base URL for the AICRM backend API.
      *
      * Resolution order:
      *   1. window.AICRM_CONFIG.API_BASE_URL  (manual override)
-     *   2. explicit default below
-     *   3. same-origin fallback  (window.location.origin + '/api')
+     *   2. relative '/api' if served from same origin as backend
+     *   3. explicit default 'http://localhost:9000/api'
      */
     API_BASE_URL: (function () {
         const manual = (typeof window.AICRM_CONFIG !== 'undefined')
             && window.AICRM_CONFIG.API_BASE_URL;
         if (manual) return manual.replace(/\/+$/, '');          // strip trailing slashes
 
-        // Default: assume the backend runs on localhost:9000
-        const defaultUrl = 'http://localhost:9000/api';
-
-        // If we happen to be served from the same origin as the backend,
-        // prefer same-origin so the app also works when served by FastAPI
-        // itself (e.g. behind a reverse proxy or during local dev).
+        // When served from the backend's own origin (e.g. behind a reverse
+        // proxy), use same-origin relative path so no CORS is needed.
         if (window.location.origin === 'http://localhost:9000') {
-            return window.location.origin + '/api';
+            return '/api';
         }
 
-        return defaultUrl;
+        // Default for local dev: backend on localhost:9000
+        return 'http://localhost:9000/api';
     })(),
 
     /** Human-readable environment label (shown in settings, logs, etc.) */

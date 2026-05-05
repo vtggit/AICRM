@@ -43,94 +43,161 @@ Structured logging with per-request correlation IDs (`X-Request-ID`) is in place
 
 ```
 backend/
+├── Dockerfile                # Container build definition
+├── start.sh                  # Startup script (DB wait + migrations)
+├── alembic.ini               # Alembic migration configuration
+├── migrations/               # Versioned database migrations
+│   ├── env.py                # Migration environment (reads env vars)
+│   ├── script.py.mako        # Template for new migrations
+│   └── versions/             # Individual migration files
+│       └── 0001_baseline.py  # Baseline migration (current schema state)
 ├── app/
 │   ├── __init__.py
-│   ├── main.py            # FastAPI application entry point
-│   ├── config.py           # Application and database configuration
-│   ├── auth/               # Authentication and authorization layer
+│   ├── main.py               # FastAPI application entry point
+│   ├── config.py             # Application and database configuration
+│   ├── auth/                 # Authentication and authorization layer
 │   │   ├── __init__.py
-│   │   ├── config.py       # Auth configuration (env-driven)
-│   │   ├── models.py       # AuthUser model
-│   │   ├── security.py     # Token validation helpers
-│   │   ├── dependencies.py # FastAPI route dependencies
-│   │   └── authorization.py # Role-based authorization helpers
-│   ├── db/                 # Database connection and schema
+│   │   ├── config.py         # Auth configuration (env-driven)
+│   │   ├── models.py         # AuthUser model
+│   │   ├── security.py       # Token validation helpers
+│   │   ├── dependencies.py   # FastAPI route dependencies
+│   │   └── authorization.py  # Role-based authorization helpers
+│   ├── db/                   # Database connection and schema
 │   │   ├── __init__.py
-│   │   ├── connection.py   # PostgreSQL connection helper
-│   │   └── schema.py       # Table creation SQL (all domains)
-│   ├── api/                # API route modules
-│   │   ├── health.py       # Health check endpoint
-│   │   ├── auth.py         # Auth endpoints (/me, /config)
-│   │   ├── contacts.py     # Contacts CRUD endpoints
-│   │   ├── leads.py        # Leads CRUD endpoints
-│   │   ├── activities.py   # Activities CRUD endpoints
-│   │   ├── templates.py    # Templates CRUD endpoints
-│   │   ├── settings.py     # Settings endpoints
-│   │   └── audit.py        # Audit log query endpoints
-│   ├── services/           # Business logic layer
-│   │   ├── contacts_service.py
-│   │   ├── leads_service.py
-│   │   ├── activities_service.py
-│   │   ├── templates_service.py
-│   │   ├── settings_service.py
-│   │   └── audit_service.py
-│   ├── repositories/       # Data access layer (all PostgreSQL-backed)
-│   │   ├── contacts_repository.py
-│   │   ├── contacts_postgres_repository.py
-│   │   ├── leads_repository.py
-│   │   ├── leads_postgres_repository.py
-│   │   ├── activities_repository.py
-│   │   ├── activities_postgres_repository.py
-│   │   ├── templates_repository.py
-│   │   ├── templates_postgres_repository.py
-│   │   ├── settings_repository.py
-│   │   ├── settings_postgres_repository.py
-│   │   ├── audit_repository.py
-│   │   └── audit_postgres_repository.py
-│   ├── models/             # Pydantic data models
-│   │   ├── contacts.py
-│   │   ├── leads.py
-│   │   ├── activities.py
-│   │   ├── templates.py
-│   │   ├── settings.py
-│   │   └── audit.py
-│   └── observability/      # Operational observability
+│   │   ├── connection.py     # PostgreSQL connection helper
+│   │   └── schema.py         # DEPRECATED — kept as reference only
+│   ├── api/                  # API route modules
+│   │   ├── health.py         # Health check endpoint
+│   │   ├── auth.py           # Auth endpoints (/me, /config)
+│   │   ├── contacts.py       # Contacts CRUD endpoints
+│   │   ├── leads.py          # Leads CRUD endpoints
+│   │   ├── activities.py     # Activities CRUD endpoints
+│   │   ├── templates.py      # Templates CRUD endpoints
+│   │   ├── settings.py       # Settings endpoints
+│   │   └── audit.py          # Audit log query endpoints
+│   ├── services/             # Business logic layer
+│   ├── repositories/         # Data access layer (all PostgreSQL-backed)
+│   ├── models/               # Pydantic data models
+│   └── observability/        # Operational observability
 │       ├── __init__.py
-│       ├── logging.py      # Structured logging configuration
-│       └── middleware.py   # Request ID middleware
+│       ├── logging.py        # Structured logging configuration
+│       └── middleware.py     # Request ID middleware
 ├── requirements.txt
 └── README.md
 ```
 
-## Prerequisites
+## Running the Backend
 
-- **PostgreSQL** 12+ running locally (or accessible remotely)
+### Option A: Full Stack via Docker Compose (Recommended)
 
-### Running PostgreSQL Locally
-
-The easiest way is via Docker:
+From the repository root:
 
 ```bash
-docker run --name aicrm-postgres \
-  -e POSTGRES_DB=aicrm \
-  -e POSTGRES_USER=aicrm \
-  -e POSTGRES_PASSWORD=aicrm \
-  -p 5432:5432 \
-  -d postgres:15
+cp .env.example .env     # first time only
+docker compose up --build
 ```
 
-Or install PostgreSQL natively and create the database:
+The backend container:
+1. Waits for PostgreSQL to accept connections (`start.sh`)
+2. Runs Alembic migrations (`alembic upgrade head`)
+3. Starts uvicorn on port 9000
+
+Migrations are applied automatically on every container start. The migration
+history is tracked in the `alembic_version` table inside PostgreSQL.
+
+### Option B: Manual (No Docker)
 
 ```bash
-sudo -u postgres psql -c "CREATE USER aicrm WITH PASSWORD 'aicrm';"
-sudo -u postgres psql -c "CREATE DATABASE aicrm OWNER aicrm;"
+cd backend
+pip install -r requirements.txt
+export AUTH_MODE=development
+export AUTH_DEV_TOKEN=dev-secret-token
+
+# Run migrations first
+alembic upgrade head
+
+# Then start the server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 9000
 ```
+
+The server starts at `http://localhost:9000`.
+
+## Database
+
+### Dependency
+
+The backend requires PostgreSQL 12+. In docker-compose mode, the `db` service is started first and the backend waits for it via `start.sh`. In manual mode, start PostgreSQL yourself before running the backend.
+
+### Schema Versioning with Alembic
+
+Schema changes are managed through **Alembic**, a versioned migration tool.
+All schema evolution happens through migration files in `backend/migrations/versions/`.
+
+**Key principles:**
+
+- Schema changes are **versioned, ordered, reviewable, and repeatable**.
+- The baseline migration (`0001_baseline.py`) represents the current schema state at the time this system was introduced.
+- New schema changes are introduced by creating a new migration file — not by editing `schema.py`.
+- Migrations are applied automatically on container startup via `start.sh`.
+- Migration history is tracked in the `alembic_version` table inside PostgreSQL.
+
+### Migration Workflow
+
+**Create a new migration:**
+
+```bash
+cd backend
+alembic revision --autogenerate -m "add_new_column_to_contacts"
+```
+
+This creates a new file in `migrations/versions/` with the detected schema diff.
+Always review the generated migration before applying it.
+
+**Apply pending migrations:**
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+**Check current migration status:**
+
+```bash
+cd backend
+alembic current     # shows the currently applied revision
+alembic history     # shows the full migration chain
+```
+
+**Downgrade one step (use with caution):**
+
+```bash
+cd backend
+alembic downgrade -1
+```
+
+### Startup Order (Containerized)
+
+```
+db (PostgreSQL)
+  → healthcheck passes (pg_isready)
+    → backend (start.sh waits for DB connectivity)
+      → alembic upgrade head (applies pending migrations)
+        → uvicorn starts
+          → API is ready
+```
+
+### Legacy Schema Helper
+
+The file `backend/app/db/schema.py` is retained temporarily as a reference
+for the current schema structure. It is **no longer** the primary mechanism
+for schema evolution. New schema changes should always go through Alembic
+migrations.
 
 ## Configuration
 
-### Database
+All configuration is driven by environment variables with explicit, safe defaults. There are no hidden fallback paths. See `.env.example` at the repository root for the complete list.
 
-Database connection settings can be overridden via environment variables:
+### Database
 
 | Variable       | Default     | Description          |
 |----------------|-------------|----------------------|
@@ -140,6 +207,16 @@ Database connection settings can be overridden via environment variables:
 | `DB_USER`      | `aicrm`     | Database username    |
 | `DB_PASSWORD`  | `aicrm`     | Database password    |
 
+### Application
+
+| Variable      | Default       | Description                          |
+|---------------|---------------|--------------------------------------|
+| `ENVIRONMENT` | `development` | Environment label                    |
+| `DEBUG`       | `true`        | Enable FastAPI debug mode            |
+| `CORS_ORIGINS`| (see below)   | Comma-separated allowed origins      |
+
+Default CORS origins: `http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:8080`
+
 ### Authentication
 
 | Variable             | Default                                              | Description                                      |
@@ -147,6 +224,7 @@ Database connection settings can be overridden via environment variables:
 | `AUTH_ENABLED`       | `true`                                               | Enable/disable auth boundary                     |
 | `AUTH_MODE`          | `development`                                        | `development` or `production` (fail closed for unknown values) |
 | `AUTH_DEV_TOKEN`     | `dev-secret-token`                                   | Shared bearer token for dev mode                 |
+| `AUTH_DEV_ROLES`     | `user`                                               | Comma-separated roles for dev token              |
 | `AUTH_ISSUER`        | `https://dev.example.com/realms/aicrm`               | IdP issuer URL (production mode)                 |
 | `AUTH_CLIENT_ID`     | `aicrm-backend`                                      | Client ID / audience                             |
 | `AUTH_AUDIENCE`      | (same as `AUTH_CLIENT_ID`)                           | JWT audience claim to validate                   |
@@ -183,18 +261,6 @@ Logs are written to stdout in a structured format that includes timestamp, level
 ```
 2024-01-15T10:30:00+0000 INFO   [a1b2c3d4-...] app.auth.security: JWT validation failed — token expired request_id=a1b2c3d4-...
 ```
-
-## Running the Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 9000
-```
-
-The server starts at `http://localhost:9000`.
-
-On startup, the backend automatically creates all required tables (contacts, leads, activities, templates, settings, audit_log) if they do not already exist. No manual schema initialization is required.
 
 ## Available Endpoints
 
@@ -265,6 +331,7 @@ curl -v http://localhost:9000/api/contacts \
 - Verify PostgreSQL is running and accessible at the configured `DB_HOST`/`DB_PORT`.
 - Check credentials: `PGPASSWORD=aicrm psql -h localhost -U aicrm -d aicrm -c "SELECT 1;"`
 - Connection errors are logged at ERROR level with the request ID and exception details.
+- In docker-compose mode, the `start.sh` script automatically retries DB connectivity for up to 60 seconds.
 
 ### Audit write failure
 
@@ -277,3 +344,4 @@ curl -v http://localhost:9000/api/contacts \
 2. Expand role-based access control to cover all domains uniformly.
 3. Metrics collection and alerting (Prometheus/Grafana).
 4. Automated backup and restore tooling for PostgreSQL.
+5. Migration testing strategy (run migrations against a test database in CI).
