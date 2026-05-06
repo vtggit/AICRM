@@ -4,7 +4,6 @@
 # these as a dependency.  Route handlers never touch tokens directly.
 
 import logging
-from typing import Optional
 
 from fastapi import Depends, Header, HTTPException, status
 
@@ -22,7 +21,7 @@ def _req() -> str:
     return f" request_id={rid}" if rid else ""
 
 
-def _extract_bearer_token(authorization: Optional[str] = None) -> Optional[str]:
+def _extract_bearer_token(authorization: str | None = None) -> str | None:
     """
     Pull the raw token string out of an ``Authorization: Bearer <token>``
     header.  Returns ``None`` when the header is absent or malformed.
@@ -38,8 +37,8 @@ def _extract_bearer_token(authorization: Optional[str] = None) -> Optional[str]:
 
 
 def get_current_user(
-    authorization: Optional[str] = Header(default=None),
-) -> Optional[AuthUser]:
+    authorization: str | None = Header(default=None),
+) -> AuthUser | None:
     """
     Optional authentication dependency.
 

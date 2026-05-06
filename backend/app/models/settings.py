@@ -5,7 +5,7 @@ The payload is a JSON blob preserving whatever fields the UI already uses
 (theme, lastBackup, etc.) without inventing a new taxonomy.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -17,14 +17,14 @@ class SettingsUpdate(BaseModel):
     whatever fields it currently manages without backend changes.
     """
 
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class SettingsResponse(BaseModel):
     """Response model for the current settings record."""
 
     id: str
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)
     created_at: str
     updated_at: str
 

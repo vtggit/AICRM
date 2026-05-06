@@ -83,6 +83,18 @@ backend/
 │       ├── logging.py        # Structured logging configuration
 │       └── middleware.py     # Request ID middleware
 ├── requirements.txt
+├── tests/                    # Automated test suite
+│   ├── conftest.py           # Shared fixtures (DB, app, auth tokens)
+│   ├── test_health_api.py    # Health endpoint tests
+│   ├── test_auth_api.py      # Authentication tests
+│   ├── test_authorization.py # Authorization tests
+│   ├── test_contacts_api.py  # Contacts CRUD tests
+│   ├── test_templates_api.py # Templates CRUD tests
+│   ├── test_leads_api.py     # Leads CRUD tests
+│   ├── test_activities_api.py # Activities CRUD tests
+│   ├── test_settings_api.py  # Settings CRUD tests
+│   ├── test_audit_api.py     # Audit logging tests
+│   └── test_migrations.py    # Migration tests
 └── README.md
 ```
 
@@ -338,10 +350,173 @@ curl -v http://localhost:9000/api/contacts \
 - If an audit write fails, the error is logged at ERROR level with entity type, entity ID, action, and the underlying exception.
 - The mutation that triggered the audit write will also fail (the audit is part of the same transaction boundary).
 
+## Testing
+
+### Running the Test Suite
+
+The backend has an automated test suite covering API behavior, authentication,
+authorization, audit logging, and database migrations. There are two ways to
+run the tests.
+
+#### Option 1: Containerized PostgreSQL (Recommended)
+
+The simplest approach uses a containerized PostgreSQL test database. This
+requires only Docker — no host PostgreSQL installation needed.
+
+```bash
+cd backend
+./run_tests.sh              # run all tests
+./run_tests.sh -k test_auth # pass extra pytest args
+```
+
+The script starts an ephemeral PostgreSQL container on port 5433, runs the
+test suite, and tears down the container automatically. It never touches your
+normal development database.
+
+#### Option 2: Local PostgreSQL
+
+If you have PostgreSQL running locally, you can run pytest directly:
+
+```bash
+cd backend
+pip install -r requirements.txt
+pytest tests/ -v
+```
+
+The test suite uses a dedicated test database (`aicrm_test_db`) that is
+created and destroyed automatically per test session. It will **never**
+touch your normal development database.
+
+### Prerequisites
+
+**Option 1 (containerized):** Docker must be installed and accessible.
+
+**Option 2 (local PostgreSQL):**
+- PostgreSQL 12+ running and accessible at the configured `DB_HOST`/`DB_PORT`
+- The configured database user must have permission to create/drop databases
+
+### Test Categories
+
+| Test File | Category | What It Covers |
+|-----------|----------|----------------|
+| `test_health_api.py` | Health | `/api/health` returns success |
+| `test_auth_api.py` | Authentication | Token validation, role normalization, 401 for missing/invalid tokens |
+| `test_authorization.py` | Authorization | 401 for unauthenticated, 403 for non-admin mutations, admin access succeeds |
+| `test_contacts_api.py` | Domain CRUD | Full CRUD on contacts with auth/authz guards |
+| `test_templates_api.py` | Domain CRUD | Full CRUD on templates with auth/authz guards |
+| `test_leads_api.py` | Domain CRUD | Full CRUD on leads with auth/authz guards |
+| `test_activities_api.py` | Domain CRUD | Full CRUD on activities with auth/authz guards |
+| `test_settings_api.py` | Domain CRUD | Read/update settings with auth/authz guards |
+| `test_audit_api.py` | Audit | Audit records written for mutations, actor identity captured, admin-only access |
+| `test_migrations.py` | Migrations | Clean migration apply, core tables exist, schema correctness, downgrade/re-upgrade |
+
+### Test Configuration Assumptions
+
+- Tests run in **development auth mode** (`AUTH_MODE=dev`) for fast, deterministic results.
+- Admin and non-admin users are simulated via development tokens with different roles.
+- Each test starts with a clean database (all application tables are truncated).
+- The test database is isolated from the production database by name.
+
+### CI Integration
+
+Backend CI is automated via GitHub Actions (`.github/workflows/backend-ci.yml`).
+The workflow runs on every push and pull request to `main`/`master`.
+
+**CI test path:**
+
+1. A PostgreSQL 15 service container is started by GitHub Actions
+2. Alembic migrations are applied to verify they work on a clean database
+3. The full pytest suite runs against the PostgreSQL-backed test database
+
+The CI environment uses the same test database name and credentials as the
+local containerized runner, just with a native service container instead of
+Docker Compose:
+
+| Variable | CI Value |
+|----------|---------|
+| `DB_HOST` | `localhost` |
+| `DB_PORT` | `5432` |
+| `DB_NAME` | `aicrm` |
+| `DB_USER` | `aicrm` |
+| `DB_PASSWORD` | `change-me-in-production` |
+| `AUTH_MODE` | `development` |
+| `AUTH_DEV_TOKEN` | `dev-secret-token` |
+
+**Local vs CI comparison:**
+
+| Aspect | Local (`./run_tests.sh`) | CI (GitHub Actions) |
+|--------|--------------------------|---------------------|
+| PostgreSQL | Docker Compose ephemeral container | GitHub Actions service container |
+| Port | 5433 | 5432 |
+| Test DB | `aicrm_test_db` (created by conftest) | `aicrm_test_db` (created by conftest) |
+| Migrations | Applied by conftest + explicit step in CI | Applied explicitly + by conftest |
+| Test command | `pytest tests/ -v --tb=short` | `pytest tests/ -v --tb=short` |
+| Result | Local output | PR check status |
+
+Both paths run the same real DB-backed test suite — CI does not substitute a
+watered-down version. Migration failures and test failures appear as distinct
+CI steps for clear visibility.
+
+## Code Quality
+
+The backend enforces automated quality gates for Python code and shell scripts.
+These run in CI before the test suite and can be executed locally.
+
+### Tools
+
+| Tool | Purpose | Config |
+|------|---------|--------|
+| [black](https://black.readthedocs.io/) | Deterministic Python formatting | `pyproject.toml` |
+| [ruff](https://docs.astral.sh/ruff/) | Fast Python linting (practical rules) | `pyproject.toml` |
+| [shellcheck](https://www.shellcheck.net/) | Shell script static analysis | — |
+
+### Local Commands
+
+Run from the repository root:
+
+```bash
+# Check formatting (fails if any file needs formatting)
+black --check backend/
+
+# Auto-format all backend Python files
+black backend/
+
+# Check linting
+ruff check backend/
+
+# Auto-fix safe lint issues
+ruff check backend/ --fix
+
+# Check shell scripts
+shellcheck backend/run_tests.sh backend/start.sh
+```
+
+### What the Rules Enforce
+
+**black** enforces consistent, deterministic formatting. There are no style
+arguments — if black says the file is wrong, run `black backend/` to fix it.
+
+**ruff** catches practical problems including:
+- Unused imports
+- Undefined names
+- Duplicate imports
+- Obvious code simplifications
+- Common bug patterns
+
+The ruleset is intentionally modest. It focuses on catching real problems
+without generating style noise. See `pyproject.toml` for the active rules.
+
+### CI Integration
+
+The "Quality gates" CI job runs black, ruff, and shellcheck before the
+backend test job. It does not require a database, so it completes quickly
+and fails fast. If a PR introduces a formatting or linting problem, CI will
+reject it before the test suite even starts.
+
 ## Known Gaps and Future Work
 
 1. End-to-end SSO login UX (redirect flow, logout, token refresh).
 2. Expand role-based access control to cover all domains uniformly.
 3. Metrics collection and alerting (Prometheus/Grafana).
 4. Automated backup and restore tooling for PostgreSQL.
-5. Migration testing strategy (run migrations against a test database in CI).
+5. Frontend UI automation (backend coverage is now the priority).

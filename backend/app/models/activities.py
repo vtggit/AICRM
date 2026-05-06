@@ -1,6 +1,6 @@
 """Activity data models for the AICRM backend."""
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,21 +16,23 @@ class ActivityCreate(BaseModel):
 
     type: Literal["call", "email", "meeting", "note", "task"] = Field(...)
     description: str = Field(..., min_length=1, max_length=5000)
-    contact_name: Optional[str] = Field(default=None, max_length=200)
-    occurred_at: Optional[str] = Field(default=None)
-    due_date: Optional[str] = Field(default=None)
+    contact_name: str | None = Field(default=None, max_length=200)
+    occurred_at: str | None = Field(default=None)
+    due_date: str | None = Field(default=None)
     status: Literal["pending", "completed"] = Field(default="pending")
 
 
 class ActivityUpdate(BaseModel):
     """Request model for updating an activity."""
 
-    type: Optional[Literal["call", "email", "meeting", "note", "task"]] = Field(default=None)
-    description: Optional[str] = Field(default=None, min_length=1, max_length=5000)
-    contact_name: Optional[str] = Field(default=None, max_length=200)
-    occurred_at: Optional[str] = Field(default=None)
-    due_date: Optional[str] = Field(default=None)
-    status: Optional[Literal["pending", "completed"]] = Field(default=None)
+    type: Literal["call", "email", "meeting", "note", "task"] | None = Field(
+        default=None
+    )
+    description: str | None = Field(default=None, min_length=1, max_length=5000)
+    contact_name: str | None = Field(default=None, max_length=200)
+    occurred_at: str | None = Field(default=None)
+    due_date: str | None = Field(default=None)
+    status: Literal["pending", "completed"] | None = Field(default=None)
 
 
 class ActivityResponse(BaseModel):
@@ -39,9 +41,9 @@ class ActivityResponse(BaseModel):
     id: str
     type: str
     description: str
-    contact_name: Optional[str] = None
+    contact_name: str | None = None
     occurred_at: str
-    due_date: Optional[str] = None
+    due_date: str | None = None
     status: str = "pending"
     created_at: str
     updated_at: str

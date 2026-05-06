@@ -1,7 +1,6 @@
 """In-memory repository for Activities."""
 
 from datetime import datetime
-from typing import Optional
 
 
 class ActivityRepository:
@@ -13,7 +12,7 @@ class ActivityRepository:
     def list_all(self) -> list[dict]:
         return list(self._store.values())
 
-    def get_by_id(self, activity_id: str) -> Optional[dict]:
+    def get_by_id(self, activity_id: str) -> dict | None:
         return self._store.get(activity_id)
 
     def create(self, data: dict) -> dict:
@@ -33,12 +32,19 @@ class ActivityRepository:
         self._store[activity_id] = record
         return record
 
-    def update(self, activity_id: str, data: dict) -> Optional[dict]:
+    def update(self, activity_id: str, data: dict) -> dict | None:
         record = self._store.get(activity_id)
         if not record:
             return None
 
-        for key in ("type", "description", "contact_name", "occurred_at", "due_date", "status"):
+        for key in (
+            "type",
+            "description",
+            "contact_name",
+            "occurred_at",
+            "due_date",
+            "status",
+        ):
             if key in data:
                 record[key] = data[key]
 
@@ -52,6 +58,7 @@ class ActivityRepository:
 
 def _generate_id() -> str:
     """Generate a simple unique ID."""
-    import time
     import random
+    import time
+
     return f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"

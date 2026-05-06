@@ -1,12 +1,17 @@
 """Template data models for the AICRM backend."""
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 # Allowed category values — mirrored from the UI dropdown
 ALLOWED_CATEGORIES: set[str] = {
-    "follow-up", "introduction", "proposal", "thank-you", "meeting", "other",
+    "follow-up",
+    "introduction",
+    "proposal",
+    "thank-you",
+    "meeting",
+    "other",
 }
 
 
@@ -14,20 +19,25 @@ class TemplateCreate(BaseModel):
     """Request model for creating a template."""
 
     name: str = Field(..., min_length=1, max_length=200)
-    category: Literal["follow-up", "introduction", "proposal", "thank-you",
-                       "meeting", "other"] = Field(default="other")
-    subject: Optional[str] = Field(default=None, max_length=500)
+    category: Literal[
+        "follow-up", "introduction", "proposal", "thank-you", "meeting", "other"
+    ] = Field(default="other")
+    subject: str | None = Field(default=None, max_length=500)
     content: str = Field(..., min_length=1)
 
 
 class TemplateUpdate(BaseModel):
     """Request model for updating a template."""
 
-    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
-    category: Optional[Literal["follow-up", "introduction", "proposal",
-                                "thank-you", "meeting", "other"]] = Field(default=None)
-    subject: Optional[str] = Field(default=None, max_length=500)
-    content: Optional[str] = Field(default=None)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    category: (
+        Literal[
+            "follow-up", "introduction", "proposal", "thank-you", "meeting", "other"
+        ]
+        | None
+    ) = Field(default=None)
+    subject: str | None = Field(default=None, max_length=500)
+    content: str | None = Field(default=None)
 
 
 class TemplateResponse(BaseModel):
@@ -36,8 +46,8 @@ class TemplateResponse(BaseModel):
     id: str
     name: str
     category: str = "other"
-    subject: Optional[str] = None
-    content: Optional[str] = None
+    subject: str | None = None
+    content: str | None = None
     created_at: str
     updated_at: str
 

@@ -4,7 +4,7 @@
 # validated token.  They are intentionally minimal — full RBAC will be
 # added in a later step.
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -13,17 +13,15 @@ class AuthUser(BaseModel):
     """Represents the currently authenticated user derived from token claims."""
 
     sub: str = Field(..., description="Unique user identifier (token subject)")
-    username: Optional[str] = Field(
+    username: str | None = Field(
         default=None, description="Preferred username or display name"
     )
-    email: Optional[str] = Field(default=None)
-    roles: List[str] = Field(
+    email: str | None = Field(default=None)
+    roles: list[str] = Field(
         default_factory=list, description="Normalized application roles"
     )
-    groups: List[str] = Field(
-        default_factory=list, description="Normalized IdP groups"
-    )
-    raw_claims: Dict[str, Any] = Field(
+    groups: list[str] = Field(default_factory=list, description="Normalized IdP groups")
+    raw_claims: dict[str, Any] = Field(
         default_factory=dict, description="Full token claims for future extension"
     )
 

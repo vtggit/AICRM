@@ -21,6 +21,24 @@ services:
       retries: 10
 
   # ------------------------------------------------------------------
+  # PostgreSQL — ephemeral test database (no persistent volume)
+  # ------------------------------------------------------------------
+  test-db:
+    image: postgres:15-alpine
+    container_name: aicrm-test-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  # ------------------------------------------------------------------
   # Backend — FastAPI REST API
   # ------------------------------------------------------------------
   backend:
@@ -78,10 +96,9 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT_HOST:-8080}:80"
-    environment:
-      # nginx does not use env vars at runtime for this config, but we
-      # document the expected API base here for clarity.
-      # The nginx proxy forwards /api/* to the backend container.
+    # nginx does not use env vars at runtime for this config, but we
+    # document the expected API base here for clarity.
+    # The nginx proxy forwards /api/* to the backend container.
     depends_on:
       - backend
 

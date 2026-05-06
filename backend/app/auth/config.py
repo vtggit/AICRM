@@ -5,7 +5,6 @@
 # can be replaced with real IdP metadata later.
 
 import os
-from typing import List
 
 # ---------------------------------------------------------------------------
 # Feature flag — set to "false" to temporarily bypass auth (e.g. for CI).
@@ -36,7 +35,7 @@ AUTH_JWKS_URL: str = os.getenv(
 # Supported signing algorithms (comma-separated env var, default RS256).
 # Common enterprise values: RS256, RS384, RS512, ES256, ES384, PS256.
 _AUTH_ALGORITHMS_RAW: str = os.getenv("AUTH_ALGORITHMS", "RS256")
-AUTH_ALGORITHMS: List[str] = [
+AUTH_ALGORITHMS: list[str] = [
     a.strip() for a in _AUTH_ALGORITHMS_RAW.split(",") if a.strip()
 ]
 
@@ -67,7 +66,7 @@ _AUTH_ROLE_CLAIMS_RAW: str = os.getenv(
     "AUTH_ROLE_CLAIMS",
     "roles,realm_access.roles,resource_access.{client_id}.roles",
 )
-AUTH_ROLE_CLAIMS: List[str] = [
+AUTH_ROLE_CLAIMS: list[str] = [
     c.strip() for c in _AUTH_ROLE_CLAIMS_RAW.split(",") if c.strip()
 ]
 
@@ -75,7 +74,7 @@ _AUTH_GROUP_CLAIMS_RAW: str = os.getenv(
     "AUTH_GROUP_CLAIMS",
     "groups",
 )
-AUTH_GROUP_CLAIMS: List[str] = [
+AUTH_GROUP_CLAIMS: list[str] = [
     c.strip() for c in _AUTH_GROUP_CLAIMS_RAW.split(",") if c.strip()
 ]
 
@@ -92,6 +91,6 @@ AUTH_DEV_TOKEN: str = os.getenv("AUTH_DEV_TOKEN", "dev-secret-token")
 # Comma-separated roles assigned to the dev token (default: "user").
 # Set AUTH_DEV_ROLES="admin,user" to make the dev token act as an admin.
 _AUTH_DEV_ROLES_RAW: str = os.getenv("AUTH_DEV_ROLES", "user")
-AUTH_DEV_ROLES: List[str] = [
+AUTH_DEV_ROLES: list[str] = [
     r.strip() for r in _AUTH_DEV_ROLES_RAW.split(",") if r.strip()
 ]

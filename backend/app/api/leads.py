@@ -27,6 +27,7 @@ def get_service() -> LeadsService:
 #  Routes                                                               #
 # ------------------------------------------------------------------ #
 
+
 @router.get("", response_model=list[LeadResponse])
 def list_leads(
     _user: AuthUser = Depends(require_authenticated_user),

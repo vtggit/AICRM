@@ -17,15 +17,14 @@ structured output that is easier to grep and correlate.
 import logging
 import os
 from contextvars import ContextVar
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Context variable for the current request ID
 # ---------------------------------------------------------------------------
-request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 
-def get_request_id() -> Optional[str]:
+def get_request_id() -> str | None:
     """Return the request ID for the current request context."""
     return request_id_var.get()
 
@@ -43,6 +42,7 @@ def clear_request_id() -> None:
 # ---------------------------------------------------------------------------
 # Custom log record factory that injects request_id
 # ---------------------------------------------------------------------------
+
 
 class _RequestIDLogRecord(logging.LogRecord):
     """Log record that carries the current request ID."""
@@ -68,9 +68,17 @@ LOG_DATE_FORMAT: str = "%Y-%m-%dT%H:%M:%S%z"
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
 
-def _record_factory(name: str, level: int, fn: str, lno: int,
-                    msg: str, args: tuple, exc_info: tuple,
-                    func: str = None, sinfo: str = None) -> logging.LogRecord:
+def _record_factory(
+    name: str,
+    level: int,
+    fn: str,
+    lno: int,
+    msg: str,
+    args: tuple,
+    exc_info: tuple,
+    func: str = None,
+    sinfo: str = None,
+) -> logging.LogRecord:
     """Factory that produces _RequestIDLogRecord instances."""
     return _RequestIDLogRecord(name, level, fn, lno, msg, args, exc_info, func, sinfo)
 

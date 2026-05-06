@@ -9,7 +9,6 @@
 #     def create_contact(...): ...
 
 import logging
-from typing import List
 
 from fastapi import Depends, HTTPException, status
 
@@ -47,7 +46,9 @@ def require_role(required_role: str):
     * 403 — if authenticated but missing the required role
     """
 
-    def _check(current_user: AuthUser = Depends(require_authenticated_user)) -> AuthUser:
+    def _check(
+        current_user: AuthUser = Depends(require_authenticated_user),
+    ) -> AuthUser:
         if required_role not in current_user.roles:
             logger.warning(
                 "authz: forbidden — user %s lacks role '%s' (has %s)%s",
@@ -65,13 +66,15 @@ def require_role(required_role: str):
     return _check
 
 
-def require_any_role(required_roles: List[str]):
+def require_any_role(required_roles: list[str]):
     """
     Return a FastAPI dependency that enforces the caller holds
     at least one of *required_roles*.
     """
 
-    def _check(current_user: AuthUser = Depends(require_authenticated_user)) -> AuthUser:
+    def _check(
+        current_user: AuthUser = Depends(require_authenticated_user),
+    ) -> AuthUser:
         if not any(role in current_user.roles for role in required_roles):
             logger.warning(
                 "authz: forbidden — user %s lacks any of %s (has %s)%s",

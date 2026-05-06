@@ -3,12 +3,11 @@
 import json
 import logging
 from datetime import datetime
-from typing import List
 
 from app.db.connection import get_cursor
 from app.models.audit import AuditEvent, AuditEventResponse
-from app.repositories.audit_repository import AuditRepository
 from app.observability.logging import get_request_id
+from app.repositories.audit_repository import AuditRepository
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +92,7 @@ class AuditPostgresRepository(AuditRepository):
         self,
         entity_type: str | None = None,
         limit: int = 100,
-    ) -> List[AuditEventResponse]:
+    ) -> list[AuditEventResponse]:
         with get_cursor() as cur:
             if entity_type:
                 cur.execute(

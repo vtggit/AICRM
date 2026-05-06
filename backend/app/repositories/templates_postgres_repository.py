@@ -1,10 +1,8 @@
 """PostgreSQL-backed repository for Templates."""
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
-
 import uuid
+from datetime import datetime, timezone
 
 from app.db.connection import get_cursor
 from app.observability.logging import get_request_id
@@ -43,7 +41,7 @@ class TemplatesPostgresRepository:
             rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
-    def get_by_id(self, template_id: str) -> Optional[dict]:
+    def get_by_id(self, template_id: str) -> dict | None:
         with get_cursor() as cur:
             cur.execute("SELECT * FROM templates WHERE id = %s", (template_id,))
             row = cur.fetchone()
@@ -74,13 +72,15 @@ class TemplatesPostgresRepository:
         except Exception as exc:
             logger.error(
                 "templates: failed to create template id=%s — %s%s",
-                template_id, exc, _req(),
+                template_id,
+                exc,
+                _req(),
             )
             raise
 
         return self.get_by_id(template_id)
 
-    def update(self, template_id: str, data: dict) -> Optional[dict]:
+    def update(self, template_id: str, data: dict) -> dict | None:
         updatable = ("name", "category", "subject", "content")
         fields = [k for k in updatable if k in data]
 
@@ -105,7 +105,9 @@ class TemplatesPostgresRepository:
         except Exception as exc:
             logger.error(
                 "templates: failed to update template id=%s — %s%s",
-                template_id, exc, _req(),
+                template_id,
+                exc,
+                _req(),
             )
             raise
 
@@ -119,6 +121,8 @@ class TemplatesPostgresRepository:
         except Exception as exc:
             logger.error(
                 "templates: failed to delete template id=%s — %s%s",
-                template_id, exc, _req(),
+                template_id,
+                exc,
+                _req(),
             )
             raise

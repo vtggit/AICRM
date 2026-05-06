@@ -1,10 +1,8 @@
 """PostgreSQL-backed repository for Leads."""
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
-
 import uuid
+from datetime import datetime, timezone
 
 from app.db.connection import get_cursor
 from app.observability.logging import get_request_id
@@ -43,7 +41,7 @@ class LeadsPostgresRepository:
             rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
-    def get_by_id(self, lead_id: str) -> Optional[dict]:
+    def get_by_id(self, lead_id: str) -> dict | None:
         with get_cursor() as cur:
             cur.execute("SELECT * FROM leads WHERE id = %s", (lead_id,))
             row = cur.fetchone()
@@ -78,14 +76,25 @@ class LeadsPostgresRepository:
         except Exception as exc:
             logger.error(
                 "leads: failed to create lead id=%s — %s%s",
-                lead_id, exc, _req(),
+                lead_id,
+                exc,
+                _req(),
             )
             raise
 
         return self.get_by_id(lead_id)
 
-    def update(self, lead_id: str, data: dict) -> Optional[dict]:
-        updatable = ("name", "company", "email", "phone", "value", "stage", "source", "notes")
+    def update(self, lead_id: str, data: dict) -> dict | None:
+        updatable = (
+            "name",
+            "company",
+            "email",
+            "phone",
+            "value",
+            "stage",
+            "source",
+            "notes",
+        )
         fields = [k for k in updatable if k in data]
 
         if fields:
@@ -109,7 +118,9 @@ class LeadsPostgresRepository:
         except Exception as exc:
             logger.error(
                 "leads: failed to update lead id=%s — %s%s",
-                lead_id, exc, _req(),
+                lead_id,
+                exc,
+                _req(),
             )
             raise
 
@@ -123,6 +134,8 @@ class LeadsPostgresRepository:
         except Exception as exc:
             logger.error(
                 "leads: failed to delete lead id=%s — %s%s",
-                lead_id, exc, _req(),
+                lead_id,
+                exc,
+                _req(),
             )
             raise

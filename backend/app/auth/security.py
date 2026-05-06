@@ -18,7 +18,7 @@
 import logging
 import time
 from functools import lru_cache
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import jwt  # pyjwt
 import requests
@@ -31,8 +31,8 @@ from app.auth.config import (
     AUTH_DEV_TOKEN,
     AUTH_GROUP_CLAIMS,
     AUTH_ISSUER,
-    AUTH_JWKS_URL,
     AUTH_JWKS_CACHE_TTL,
+    AUTH_JWKS_URL,
     AUTH_MODE,
     AUTH_ROLE_CLAIMS,
 )
@@ -47,12 +47,13 @@ def _req() -> str:
     rid = get_request_id()
     return f" request_id={rid}" if rid else ""
 
+
 # ---------------------------------------------------------------------------
 # Public interface — the ONLY function callers should use
 # ---------------------------------------------------------------------------
 
 
-def validate_token(raw_token: str) -> Optional[AuthUser]:
+def validate_token(raw_token: str) -> AuthUser | None:
     """
     Validate *raw_token* and return an ``AuthUser`` on success, or
     ``None`` when the token is missing / expired / malformed.
@@ -85,23 +86,54 @@ def validate_token(raw_token: str) -> Optional[AuthUser]:
 # ---------------------------------------------------------------------------
 
 
-def _validate_token_dev(token: str) -> Optional[AuthUser]:
+def _validate_token_dev(token: str) -> AuthUser | None:
     """
     Accept any non-empty bearer token that matches ``AUTH_DEV_TOKEN``.
 
     In development this lets you test the auth boundary without a real
     IdP.  The token value comes from the ``AUTH_DEV_TOKEN`` environment
     variable (default: ``dev-secret-token``).
+
+    Supports optional role suffix for testing different identities:
+
+        dev-secret-token        → uses AUTH_DEV_ROLES (default: ["user"])
+        dev-secret-token:admin  → ["admin", "user"]
+        dev-secret-token:user   → ["user"]
     """
-    if not token or token != AUTH_DEV_TOKEN:
+    if not token:
+        logger.warning("auth: missing or empty token%s", _req())
+        return None
+
+    # Check for role-suffixed dev token (e.g. "dev-secret-token:admin")
+    base_token = AUTH_DEV_TOKEN
+    if token == base_token:
+        # Exact match — use configured default roles
+        roles = AUTH_DEV_ROLES
+        sub = "dev-user-1"
+        username = "developer"
+    elif token.startswith(base_token + ":"):
+        # Role-suffixed token — extract requested role
+        suffix = token[len(base_token) + 1 :]
+        if suffix == "admin":
+            roles = ["admin", "user"]
+            sub = "dev-admin-1"
+            username = "admin"
+        elif suffix == "user":
+            roles = ["user"]
+            sub = "dev-user-1"
+            username = "developer"
+        else:
+            logger.warning("auth: unknown dev token suffix '%s'%s", suffix, _req())
+            return None
+    else:
         logger.warning("auth: dev token mismatch%s", _req())
         return None
 
     return AuthUser(
-        sub="dev-user-1",
-        username="developer",
-        email="developer@aicrm.local",
-        roles=AUTH_DEV_ROLES,
+        sub=sub,
+        username=username,
+        email=f"{username}@aicrm.local",
+        roles=roles,
         groups=[],
         raw_claims={"mode": "development"},
     )
@@ -112,7 +144,7 @@ def _validate_token_dev(token: str) -> Optional[AuthUser]:
 # ---------------------------------------------------------------------------
 
 
-def _fetch_jwks() -> Dict[str, Any]:
+def _fetch_jwks() -> dict[str, Any]:
     """
     Fetch the JWKS document from the IdP.
 
@@ -128,11 +160,11 @@ def _fetch_jwks() -> Dict[str, Any]:
 # Cache JWKS for AUTH_JWKS_CACHE_TTL seconds.  The cache is keyed on a
 # time-bucket so it automatically expires and refreshes.
 @lru_cache(maxsize=1)
-def _cached_jwks(_bucket: int) -> Dict[str, Any]:
+def _cached_jwks(_bucket: int) -> dict[str, Any]:
     return _fetch_jwks()
 
 
-def _get_jwks() -> Dict[str, Any]:
+def _get_jwks() -> dict[str, Any]:
     """Return cached JWKS, refreshing when the TTL has elapsed."""
     bucket = int(time.time()) // AUTH_JWKS_CACHE_TTL
     try:
@@ -143,7 +175,7 @@ def _get_jwks() -> Dict[str, Any]:
         return _cached_jwks(bucket)
 
 
-def _get_verification_key(jwks: Dict[str, Any], header: Dict[str, Any]) -> Optional[str]:
+def _get_verification_key(jwks: dict[str, Any], header: dict[str, Any]) -> str | None:
     """
     Resolve the correct verification key from the JWKS set.
 
@@ -162,21 +194,21 @@ def _get_verification_key(jwks: Dict[str, Any], header: Dict[str, Any]) -> Optio
     return None
 
 
-def _jwk_to_pem(jwk: Dict[str, Any]) -> Optional[str]:
+def _jwk_to_pem(jwk: dict[str, Any]) -> str | None:
     """
     Convert a single JWK entry to a PEM-encoded public key string.
 
     Supports RSA (kty=RSA) and EC (kty=EC) keys, which cover the
     overwhelming majority of enterprise IdP deployments.
     """
-    from base64 import b64decode, urlsafe_b64decode
+    from base64 import urlsafe_b64decode
 
     kty = jwk.get("kty")
 
     if kty == "RSA":
         try:
-            from cryptography.hazmat.primitives.asymmetric import rsa as rsa_mod
             from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.asymmetric import rsa as rsa_mod
 
             n = int.from_bytes(urlsafe_b64decode(jwk["n"] + "=="), "big")
             e = int.from_bytes(urlsafe_b64decode(jwk["e"] + "=="), "big")
@@ -192,8 +224,8 @@ def _jwk_to_pem(jwk: Dict[str, Any]) -> Optional[str]:
 
     if kty == "EC":
         try:
-            from cryptography.hazmat.primitives.asymmetric import ec
             from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.asymmetric import ec
 
             crv = jwk.get("crv", "P-256")
             curve_map = {
@@ -226,7 +258,7 @@ def _jwk_to_pem(jwk: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _resolve_nested_claim(claims: Dict[str, Any], path: str) -> Any:
+def _resolve_nested_claim(claims: dict[str, Any], path: str) -> Any:
     """
     Resolve a dot-notation claim path against the token payload.
 
@@ -244,7 +276,7 @@ def _resolve_nested_claim(claims: Dict[str, Any], path: str) -> Any:
     return current
 
 
-def _extract_string_list(value: Any) -> List[str]:
+def _extract_string_list(value: Any) -> list[str]:
     """
     Normalise a claim value into a list of strings.
 
@@ -259,13 +291,13 @@ def _extract_string_list(value: Any) -> List[str]:
     return []
 
 
-def _normalize_roles(claims: Dict[str, Any]) -> List[str]:
+def _normalize_roles(claims: dict[str, Any]) -> list[str]:
     """
     Scan the configured role claim paths and collect unique role strings.
 
     Returns a deduplicated, sorted list of normalised roles.
     """
-    roles: List[str] = []
+    roles: list[str] = []
     for claim_path in AUTH_ROLE_CLAIMS:
         raw = _resolve_nested_claim(claims, claim_path)
         if isinstance(raw, dict) and "roles" in raw:
@@ -275,7 +307,7 @@ def _normalize_roles(claims: Dict[str, Any]) -> List[str]:
             roles.extend(_extract_string_list(raw))
     # Deduplicate while preserving order
     seen: set = set()
-    unique: List[str] = []
+    unique: list[str] = []
     for r in roles:
         if r not in seen:
             seen.add(r)
@@ -283,16 +315,16 @@ def _normalize_roles(claims: Dict[str, Any]) -> List[str]:
     return unique
 
 
-def _normalize_groups(claims: Dict[str, Any]) -> List[str]:
+def _normalize_groups(claims: dict[str, Any]) -> list[str]:
     """
     Scan the configured group claim paths and collect unique group strings.
     """
-    groups: List[str] = []
+    groups: list[str] = []
     for claim_path in AUTH_GROUP_CLAIMS:
         raw = _resolve_nested_claim(claims, claim_path)
         groups.extend(_extract_string_list(raw))
     seen: set = set()
-    unique: List[str] = []
+    unique: list[str] = []
     for g in groups:
         if g not in seen:
             seen.add(g)
@@ -300,7 +332,7 @@ def _normalize_groups(claims: Dict[str, Any]) -> List[str]:
     return unique
 
 
-def _validate_token_jwt(raw_token: str) -> Optional[AuthUser]:
+def _validate_token_jwt(raw_token: str) -> AuthUser | None:
     """
     Real JWT validation against the configured IdP.
 
@@ -326,7 +358,7 @@ def _validate_token_jwt(raw_token: str) -> Optional[AuthUser]:
             return None
 
         # Step 3 — decode and verify
-        payload: Dict[str, Any] = jwt.decode(
+        payload: dict[str, Any] = jwt.decode(
             raw_token,
             key,
             algorithms=AUTH_ALGORITHMS,

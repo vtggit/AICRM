@@ -3,7 +3,6 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Optional
 
 from app.db.connection import get_cursor
 from app.observability.logging import get_request_id
@@ -37,7 +36,7 @@ def _row_to_dict(row) -> dict:
 class SettingsPostgresRepository(SettingsRepository):
     """PostgreSQL-backed repository for the single settings record."""
 
-    def get_settings(self) -> Optional[Dict]:
+    def get_settings(self) -> dict | None:
         """Return the current settings record, or a default if not yet created."""
         try:
             with get_cursor() as cur:
@@ -53,7 +52,7 @@ class SettingsPostgresRepository(SettingsRepository):
 
         return _row_to_dict(row)
 
-    def update_settings(self, payload: Dict) -> Optional[Dict]:
+    def update_settings(self, payload: dict) -> dict | None:
         """Merge *payload* into the existing settings record.
 
         Creates the record if it does not yet exist.
@@ -82,13 +81,15 @@ class SettingsPostgresRepository(SettingsRepository):
                 row = cur.fetchone()
         except Exception as exc:
             logger.error(
-                "settings: failed to update settings — %s%s", exc, _req(),
+                "settings: failed to update settings — %s%s",
+                exc,
+                _req(),
             )
             raise
 
         return _row_to_dict(row) if row else None
 
-    def _seed_default(self) -> Dict:
+    def _seed_default(self) -> dict:
         """Create a default empty settings record."""
         now = datetime.now(timezone.utc)
         try:
@@ -100,7 +101,9 @@ class SettingsPostgresRepository(SettingsRepository):
                 )
         except Exception as exc:
             logger.error(
-                "settings: failed to seed default settings — %s%s", exc, _req(),
+                "settings: failed to seed default settings — %s%s",
+                exc,
+                _req(),
             )
             raise
         return {

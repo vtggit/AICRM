@@ -1,7 +1,6 @@
 """In-memory repository for Templates."""
 
 from datetime import datetime
-from typing import Optional
 
 
 class TemplateRepository:
@@ -13,7 +12,7 @@ class TemplateRepository:
     def list_all(self) -> list[dict]:
         return list(self._store.values())
 
-    def get_by_id(self, template_id: str) -> Optional[dict]:
+    def get_by_id(self, template_id: str) -> dict | None:
         return self._store.get(template_id)
 
     def create(self, data: dict) -> dict:
@@ -31,7 +30,7 @@ class TemplateRepository:
         self._store[template_id] = record
         return record
 
-    def update(self, template_id: str, data: dict) -> Optional[dict]:
+    def update(self, template_id: str, data: dict) -> dict | None:
         record = self._store.get(template_id)
         if not record:
             return None
@@ -50,6 +49,7 @@ class TemplateRepository:
 
 def _generate_id() -> str:
     """Generate a simple unique ID."""
-    import time
     import random
+    import time
+
     return f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"

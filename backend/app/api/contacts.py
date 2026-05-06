@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth.authorization import ROLE_ADMIN, require_role
 from app.auth.models import AuthUser
-from app.models.contacts import ContactCreate, ContactUpdate, ContactResponse
+from app.models.contacts import ContactCreate, ContactUpdate
 from app.repositories.audit_postgres_repository import AuditPostgresRepository
 from app.repositories.contacts_postgres_repository import ContactsPostgresRepository
 from app.services.audit_service import AuditService

@@ -6,10 +6,10 @@ from app.auth.authorization import ROLE_ADMIN, require_role
 from app.auth.dependencies import require_authenticated_user
 from app.auth.models import AuthUser
 from app.models.activities import ActivityCreate, ActivityResponse, ActivityUpdate
-from app.repositories.audit_postgres_repository import AuditPostgresRepository
 from app.repositories.activities_postgres_repository import ActivitiesPostgresRepository
-from app.services.audit_service import AuditService
+from app.repositories.audit_postgres_repository import AuditPostgresRepository
 from app.services.activities_service import ActivitiesService
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
 
@@ -26,6 +26,7 @@ def get_service() -> ActivitiesService:
 # ------------------------------------------------------------------ #
 #  Routes                                                               #
 # ------------------------------------------------------------------ #
+
 
 @router.get("", response_model=list[ActivityResponse])
 def list_activities(

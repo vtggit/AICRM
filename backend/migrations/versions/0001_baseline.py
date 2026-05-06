@@ -16,16 +16,18 @@ Tables included:
 Revision ID: 0001_baseline
 Create Date: 2026-05-04
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers, used by Alembic.
 revision: str = "0001_baseline"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -75,7 +77,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             nullable=False,
         ),
-        sa.Column("details_json", sa.JSONB(), nullable=True),
+        sa.Column("details_json", JSONB(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
 
@@ -149,9 +151,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("due_date", sa.Date(), nullable=True),
-        sa.Column(
-            "status", sa.String(50), server_default="pending", nullable=False
-        ),
+        sa.Column("status", sa.String(50), server_default="pending", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -170,9 +170,7 @@ def upgrade() -> None:
     op.create_index(
         "idx_activities_occurred_at", "activities", ["occurred_at"], unique=False
     )
-    op.create_index(
-        "idx_activities_status", "activities", ["status"], unique=False
-    )
+    op.create_index("idx_activities_status", "activities", ["status"], unique=False)
 
     # ------------------------------------------------------------------
     # settings
@@ -182,7 +180,7 @@ def upgrade() -> None:
         sa.Column("id", sa.String(64), server_default="app", nullable=False),
         sa.Column(
             "payload",
-            sa.JSONB(),
+            JSONB(),
             server_default=sa.text("'{}'::jsonb"),
             nullable=False,
         ),

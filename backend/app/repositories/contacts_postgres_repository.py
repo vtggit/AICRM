@@ -1,10 +1,8 @@
 """PostgreSQL-backed repository for Contacts."""
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
-
 import uuid
+from datetime import datetime, timezone
 
 from app.db.connection import get_cursor
 from app.observability.logging import get_request_id
@@ -43,7 +41,7 @@ class ContactsPostgresRepository:
             rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
-    def get_by_id(self, contact_id: str) -> Optional[dict]:
+    def get_by_id(self, contact_id: str) -> dict | None:
         with get_cursor() as cur:
             cur.execute("SELECT * FROM contacts WHERE id = %s", (contact_id,))
             row = cur.fetchone()
@@ -76,13 +74,15 @@ class ContactsPostgresRepository:
         except Exception as exc:
             logger.error(
                 "contacts: failed to create contact id=%s — %s%s",
-                contact_id, exc, _req(),
+                contact_id,
+                exc,
+                _req(),
             )
             raise
 
         return self.get_by_id(contact_id)
 
-    def update(self, contact_id: str, data: dict) -> Optional[dict]:
+    def update(self, contact_id: str, data: dict) -> dict | None:
         # Build dynamic UPDATE so we only touch provided fields
         updatable = ("name", "email", "phone", "company", "status", "notes")
         fields = [k for k in updatable if k in data]
@@ -112,7 +112,9 @@ class ContactsPostgresRepository:
         except Exception as exc:
             logger.error(
                 "contacts: failed to update contact id=%s — %s%s",
-                contact_id, exc, _req(),
+                contact_id,
+                exc,
+                _req(),
             )
             raise
 
@@ -126,6 +128,8 @@ class ContactsPostgresRepository:
         except Exception as exc:
             logger.error(
                 "contacts: failed to delete contact id=%s — %s%s",
-                contact_id, exc, _req(),
+                contact_id,
+                exc,
+                _req(),
             )
             raise

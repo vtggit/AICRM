@@ -7,6 +7,12 @@ dist/
 build/
 .eggs/
 
+# Python tool caches (local only, never commit)
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.tox/
+
 # Virtual environments
 .venv/
 venv/

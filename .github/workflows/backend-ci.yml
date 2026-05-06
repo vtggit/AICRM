@@ -1,0 +1,99 @@
+# Backend CI — quality gates + DB-backed test suite.
+#
+# This workflow enforces:
+#   1. Python formatting (black)
+#   2. Python linting (ruff)
+#   3. Shell script sanity (shellcheck)
+#   4. Migrations apply cleanly against a fresh PostgreSQL database
+#   5. The full backend test suite passes (auth, authz, CRUD, audit, migrations)
+#
+# Quality gates run without a database so they complete quickly and fail fast.
+# The backend test job requires PostgreSQL and runs after checkout.
+
+name: Backend CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  quality:
+    name: Quality gates (format, lint, shellcheck)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install quality tools
+        run: pip install black ruff
+
+      - name: Check Python formatting (black)
+        run: black --check backend/
+
+      - name: Check Python linting (ruff)
+        run: ruff check backend/
+
+      - name: Check shell scripts (shellcheck)
+        run: |
+          shellcheck backend/run_tests.sh backend/start.sh
+
+  backend-tests:
+    name: Backend tests (PostgreSQL)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: aicrm
+          POSTGRES_USER: aicrm
+          POSTGRES_PASSWORD: change-me-in-production
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Verify migrations apply cleanly
+        run: |
+          cd backend
+          DB_HOST=localhost \
+          DB_PORT=5432 \
+          DB_NAME=aicrm \
+          DB_USER=aicrm \
+          DB_PASSWORD=change-me-in-production \
+            python3 -m alembic upgrade head
+
+      - name: Run backend test suite
+        run: |
+          cd backend
+          DB_HOST=localhost \
+          DB_PORT=5432 \
+          DB_NAME=aicrm \
+          DB_USER=aicrm \
+          DB_PASSWORD=change-me-in-production \
+          AUTH_MODE=development \
+          AUTH_DEV_TOKEN=dev-secret-token \
+            python3 -m pytest tests/ -v --tb=short

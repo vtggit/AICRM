@@ -19,15 +19,21 @@ _audit_service = AuditService(_audit_repository)
 _service = SettingsService(_repository, _audit_service)
 
 
-@router.get("/settings", response_model=SettingsResponse,
-            dependencies=[Depends(require_authenticated_user)])
+@router.get(
+    "/settings",
+    response_model=SettingsResponse,
+    dependencies=[Depends(require_authenticated_user)],
+)
 def get_settings():
     """Return the current application settings (authenticated users)."""
     return _service.get_settings()
 
 
-@router.put("/settings", response_model=SettingsResponse,
-            dependencies=[Depends(require_role(ROLE_ADMIN))])
+@router.put(
+    "/settings",
+    response_model=SettingsResponse,
+    dependencies=[Depends(require_role(ROLE_ADMIN))],
+)
 def update_settings(
     payload: SettingsUpdate,
     user: AuthUser = Depends(require_role(ROLE_ADMIN)),

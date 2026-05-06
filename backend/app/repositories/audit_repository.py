@@ -1,7 +1,6 @@
 """Audit repository interface."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
 
 from app.models.audit import AuditEvent, AuditEventResponse
 
@@ -18,5 +17,5 @@ class AuditRepository(ABC):
         self,
         entity_type: str | None = None,
         limit: int = 100,
-    ) -> List[AuditEventResponse]:
+    ) -> list[AuditEventResponse]:
         """Return recent audit events, optionally filtered by entity type."""

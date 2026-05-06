@@ -226,10 +226,105 @@ AICRM/
 - [Monitoring and Observability](docs/applications/aicrm/operations/monitoring-observability.md) — logging, audit, and observability
 - [Standards Conformance](docs/applications/aicrm/compliance/standards-conformance.md) — enterprise standards alignment
 
+## Testing
+
+AICRM has an automated backend test suite covering API behavior, authentication, authorization, audit logging, and database migrations.
+
+```bash
+# Containerized PostgreSQL (recommended — no host DB needed)
+cd backend
+./run_tests.sh
+
+# Or with local PostgreSQL
+cd backend
+pytest tests/ -v
+```
+
+The test suite uses an isolated test database (`aicrm_test_db`) that is created and destroyed per test session. It never touches your normal database.
+
+**What is covered:**
+
+| Category | Test Files | Coverage |
+|----------|-----------|----------|
+| Health | `test_health_api.py` | `/api/health` returns success |
+| Authentication | `test_auth_api.py` | Token validation, role normalization, 401 for invalid tokens |
+| Authorization | `test_authorization.py` | 401/403 guards on all protected routes |
+| Domain CRUD | `test_contacts_api.py`, `test_templates_api.py`, `test_leads_api.py`, `test_activities_api.py`, `test_settings_api.py` | Full CRUD with auth/authz guards |
+| Audit | `test_audit_api.py` | Audit records for mutations, actor identity, admin-only access |
+| Migrations | `test_migrations.py` | Clean migration apply, schema correctness, downgrade/re-upgrade |
+
+**What is not yet covered:**
+
+- Frontend UI automation (backend coverage is the current priority)
+- Performance and load testing
+- Accessibility testing automation
+- End-to-end SSO login flow testing
+
+See [backend/README.md](backend/README.md) for detailed test instructions.
+
+## Code Quality
+
+AICRM enforces automated quality gates in CI and provides the same tools for local development.
+
+**Tools and configuration:**
+
+| Tool | Purpose | Config |
+|------|---------|--------|
+| [black](https://black.readthedocs.io/) | Python formatting (deterministic) | `pyproject.toml` |
+| [ruff](https://docs.astral.sh/ruff/) | Python linting (fast, practical rules) | `pyproject.toml` |
+| [shellcheck](https://www.shellcheck.net/) | Shell script sanity checks | — |
+
+**Run locally before pushing:**
+
+```bash
+# Check formatting (no changes)
+black --check backend/
+
+# Auto-format
+black backend/
+
+# Check linting
+ruff check backend/
+
+# Auto-fix linting where safe
+ruff check backend/ --fix
+
+# Check shell scripts
+shellcheck backend/run_tests.sh backend/start.sh
+```
+
+CI will reject PRs that fail any of these checks, so running them locally saves time.
+
+## Continuous Integration
+
+Backend CI runs automatically on every push and pull request via GitHub Actions.
+
+**Workflow:** [`.github/workflows/backend-ci.yml`](.github/workflows/backend-ci.yml)
+
+**What CI verifies before merge:**
+
+1. **Quality gates** — Python formatting (black), linting (ruff), and shell script checks (shellcheck) run first and fail fast without requiring a database
+2. **Migrations apply cleanly** — Alembic migrations run against a fresh PostgreSQL database
+3. **Full backend test suite passes** — auth, authz, CRUD, audit, and migration tests all run against a real PostgreSQL-backed database
+
+Quality gates run in a separate CI job from the backend tests, so formatting/linting problems are caught quickly without waiting for a database to start.
+
+```
+Push or open PR
+  → GitHub Actions starts automatically
+    → Quality gates run (black, ruff, shellcheck)
+      → PostgreSQL service container launches
+        → Migrations are validated
+          → Backend test suite runs
+            → Pass/fail is visible in the PR check
+```
+
+See [Testing Strategy](docs/applications/aicrm/testing/testing-strategy.md) for the full testing approach.
+
 ## Known Gaps
 
 1. End-to-end SSO login UX (redirect flow, logout, token refresh).
 2. Role-based access control not yet applied uniformly across all domains.
 3. No metrics collection or alerting (Prometheus/Grafana).
 4. No automated backup/restore tooling for PostgreSQL.
-5. Migration testing strategy (run migrations against a test database in CI).
+5. Frontend UI automation (backend test coverage is now established).

@@ -1,7 +1,6 @@
 """In-memory repository for Contacts."""
 
 from datetime import datetime
-from typing import Optional
 
 
 class ContactRepository:
@@ -13,7 +12,7 @@ class ContactRepository:
     def list_all(self) -> list[dict]:
         return list(self._store.values())
 
-    def get_by_id(self, contact_id: str) -> Optional[dict]:
+    def get_by_id(self, contact_id: str) -> dict | None:
         return self._store.get(contact_id)
 
     def create(self, data: dict) -> dict:
@@ -33,7 +32,7 @@ class ContactRepository:
         self._store[contact_id] = record
         return record
 
-    def update(self, contact_id: str, data: dict) -> Optional[dict]:
+    def update(self, contact_id: str, data: dict) -> dict | None:
         record = self._store.get(contact_id)
         if not record:
             return None
@@ -52,6 +51,7 @@ class ContactRepository:
 
 def _generate_id() -> str:
     """Generate a simple unique ID."""
-    import time
     import random
+    import time
+
     return f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"

@@ -54,20 +54,22 @@ class SettingsService:
 
         settings = _ensure_authoritative_shape(result)
 
-        changed_keys = [k for k in payload.payload.keys()]
+        changed_keys = list(payload.payload.keys())
 
-        self.audit_service.write(AuditEvent(
-            entity_type="settings",
-            entity_id=settings["id"],
-            action="updated",
-            actor_sub=actor.sub,
-            actor_username=actor.username,
-            actor_email=actor.email,
-            actor_roles=actor.roles,
-            details={
-                "changed_fields": changed_keys,
-            },
-        ))
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="settings",
+                entity_id=settings["id"],
+                action="updated",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "changed_fields": changed_keys,
+                },
+            )
+        )
 
         return settings
 
@@ -75,6 +77,7 @@ class SettingsService:
 # --------------------------------------------------------------------- #
 #  Validation helpers                                                     #
 # --------------------------------------------------------------------- #
+
 
 def _validate_payload(payload: dict) -> None:
     """Payload must be a non-empty dict."""
@@ -92,6 +95,7 @@ def _normalize_payload(payload: dict) -> None:
 # --------------------------------------------------------------------- #
 #  Response-shape guarantee                                              #
 # --------------------------------------------------------------------- #
+
 
 def _ensure_authoritative_shape(record: dict) -> dict:
     """Guarantee every returned settings dict contains the authoritative

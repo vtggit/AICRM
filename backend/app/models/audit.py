@@ -1,7 +1,7 @@
 """Audit event data models."""
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -13,11 +13,11 @@ class AuditEvent(BaseModel):
     entity_id: str
     action: str
     actor_sub: str
-    actor_username: Optional[str] = None
-    actor_email: Optional[str] = None
-    actor_roles: List[str] = Field(default_factory=list)
+    actor_username: str | None = None
+    actor_email: str | None = None
+    actor_roles: list[str] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class AuditEventResponse(BaseModel):
@@ -28,8 +28,8 @@ class AuditEventResponse(BaseModel):
     entity_id: str
     action: str
     actor_sub: str
-    actor_username: Optional[str] = None
-    actor_email: Optional[str] = None
-    actor_roles: Optional[str] = None
+    actor_username: str | None = None
+    actor_email: str | None = None
+    actor_roles: str | None = None
     timestamp: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)

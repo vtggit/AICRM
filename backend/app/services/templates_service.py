@@ -1,7 +1,5 @@
 """Templates service - business logic layer."""
 
-from typing import Optional
-
 from app.auth.models import AuthUser
 from app.models.audit import AuditEvent
 from app.models.templates import ALLOWED_CATEGORIES, TemplateCreate, TemplateUpdate
@@ -9,8 +7,15 @@ from app.repositories.templates_postgres_repository import TemplatesPostgresRepo
 from app.services.audit_service import AuditService
 
 # Fields that must always be present in a backend-returned template record.
-_AUTHORITATIVE_FIELDS = ("id", "name", "category", "subject", "content",
-                          "created_at", "updated_at")
+_AUTHORITATIVE_FIELDS = (
+    "id",
+    "name",
+    "category",
+    "subject",
+    "content",
+    "created_at",
+    "updated_at",
+)
 
 
 class TemplatesService:
@@ -32,7 +37,7 @@ class TemplatesService:
         rows = self.repository.list_all()
         return [_ensure_authoritative_shape(r) for r in rows]
 
-    def get_template(self, template_id: str) -> Optional[dict]:
+    def get_template(self, template_id: str) -> dict | None:
         row = self.repository.get_by_id(template_id)
         if row is None:
             return None
@@ -45,25 +50,30 @@ class TemplatesService:
         data = payload.model_dump(exclude_unset=True)
         template = _ensure_authoritative_shape(self.repository.create(data))
 
-        self.audit_service.write(AuditEvent(
-            entity_type="template",
-            entity_id=template["id"],
-            action="created",
-            actor_sub=actor.sub,
-            actor_username=actor.username,
-            actor_email=actor.email,
-            actor_roles=actor.roles,
-            details={
-                "name": template["name"],
-                "category": template.get("category"),
-            },
-        ))
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="template",
+                entity_id=template["id"],
+                action="created",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "name": template["name"],
+                    "category": template.get("category"),
+                },
+            )
+        )
 
         return template
 
     def update_template(
-        self, template_id: str, payload: TemplateUpdate, actor: AuthUser,
-    ) -> Optional[dict]:
+        self,
+        template_id: str,
+        payload: TemplateUpdate,
+        actor: AuthUser,
+    ) -> dict | None:
         existing = self.repository.get_by_id(template_id)
         if not existing:
             return None
@@ -80,20 +90,24 @@ class TemplatesService:
 
         template = _ensure_authoritative_shape(result)
 
-        changed_fields = [k for k in data if k in ("name", "category", "subject", "content")]
+        changed_fields = [
+            k for k in data if k in ("name", "category", "subject", "content")
+        ]
 
-        self.audit_service.write(AuditEvent(
-            entity_type="template",
-            entity_id=template_id,
-            action="updated",
-            actor_sub=actor.sub,
-            actor_username=actor.username,
-            actor_email=actor.email,
-            actor_roles=actor.roles,
-            details={
-                "changed_fields": changed_fields,
-            },
-        ))
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="template",
+                entity_id=template_id,
+                action="updated",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "changed_fields": changed_fields,
+                },
+            )
+        )
 
         return template
 
@@ -103,19 +117,21 @@ class TemplatesService:
         if not deleted:
             return False
 
-        self.audit_service.write(AuditEvent(
-            entity_type="template",
-            entity_id=template_id,
-            action="deleted",
-            actor_sub=actor.sub,
-            actor_username=actor.username,
-            actor_email=actor.email,
-            actor_roles=actor.roles,
-            details={
-                "name": existing.get("name") if existing else None,
-                "category": existing.get("category") if existing else None,
-            },
-        ))
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="template",
+                entity_id=template_id,
+                action="deleted",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "name": existing.get("name") if existing else None,
+                    "category": existing.get("category") if existing else None,
+                },
+            )
+        )
 
         return True
 
@@ -123,6 +139,7 @@ class TemplatesService:
 # --------------------------------------------------------------------- #
 #  Validation helpers                                                     #
 # --------------------------------------------------------------------- #
+
 
 def _validate_template_name(name: str) -> None:
     """Name must be a non-empty string after trimming."""
@@ -149,6 +166,7 @@ def _normalize_fields(payload: TemplateCreate | TemplateUpdate) -> None:
 # --------------------------------------------------------------------- #
 #  Response-shape guarantee                                              #
 # --------------------------------------------------------------------- #
+
 
 def _ensure_authoritative_shape(record: dict) -> dict:
     """

@@ -1,6 +1,6 @@
 # Observability package — structured logging and request correlation.
 
-from app.observability.logging import setup_logging, get_request_id
+from app.observability.logging import get_request_id, setup_logging
 from app.observability.middleware import (
     RequestIDMiddleware,
     RequestLoggingMiddleware,

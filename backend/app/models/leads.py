@@ -1,25 +1,33 @@
 """Lead data models for the AICRM backend."""
 
 import re
-from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 # Allowed stage values — mirrored from the UI dropdown
 ALLOWED_STAGES: set[str] = {
-    "new", "contacted", "qualified", "proposal", "won", "lost",
+    "new",
+    "contacted",
+    "qualified",
+    "proposal",
+    "won",
+    "lost",
 }
 
 # Allowed source values — mirrored from the UI dropdown
 ALLOWED_SOURCES: set[str] = {
-    "website", "referral", "social", "cold-call", "event",
+    "website",
+    "referral",
+    "social",
+    "cold-call",
+    "event",
 }
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
-def _validate_email(value: Optional[str]) -> Optional[str]:
+def _validate_email(value: str | None) -> str | None:
     """Raise if email is present but not plausibly formatted."""
     if value is None:
         return None
@@ -28,7 +36,7 @@ def _validate_email(value: Optional[str]) -> Optional[str]:
     return value
 
 
-def _normalize_phone(value: Optional[str]) -> Optional[str]:
+def _normalize_phone(value: str | None) -> str | None:
     """Strip everything except digits, '+', '-', '(', ')', and spaces."""
     if not value:
         return None
@@ -39,51 +47,53 @@ class LeadCreate(BaseModel):
     """Request model for creating a lead."""
 
     name: str = Field(..., min_length=1, max_length=200)
-    company: Optional[str] = Field(default=None, max_length=200)
-    email: Optional[str] = Field(default=None, max_length=300)
-    phone: Optional[str] = Field(default=None, max_length=50)
-    value: Optional[float] = Field(default=None, ge=0)
+    company: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=300)
+    phone: str | None = Field(default=None, max_length=50)
+    value: float | None = Field(default=None, ge=0)
     stage: Literal["new", "contacted", "qualified", "proposal", "won", "lost"] = Field(
         default="new",
     )
-    source: Optional[Literal["website", "referral", "social", "cold-call", "event"]] = (
+    source: Literal["website", "referral", "social", "cold-call", "event"] | None = (
         Field(default=None)
     )
-    notes: Optional[str] = Field(default=None, max_length=5000)
+    notes: str | None = Field(default=None, max_length=5000)
 
     @field_validator("email")
     @classmethod
-    def check_email(cls, v: Optional[str]) -> Optional[str]:
+    def check_email(cls, v: str | None) -> str | None:
         return _validate_email(v)
 
     @field_validator("phone")
     @classmethod
-    def clean_phone(cls, v: Optional[str]) -> Optional[str]:
+    def clean_phone(cls, v: str | None) -> str | None:
         return _normalize_phone(v)
 
 
 class LeadUpdate(BaseModel):
     """Request model for updating a lead."""
 
-    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
-    company: Optional[str] = Field(default=None, max_length=200)
-    email: Optional[str] = Field(default=None, max_length=300)
-    phone: Optional[str] = Field(default=None, max_length=50)
-    value: Optional[float] = Field(default=None, ge=0)
-    stage: Optional[Literal["new", "contacted", "qualified", "proposal",
-                             "won", "lost"]] = Field(default=None)
-    source: Optional[Literal["website", "referral", "social", "cold-call",
-                              "event"]] = Field(default=None)
-    notes: Optional[str] = Field(default=None, max_length=5000)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    company: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=300)
+    phone: str | None = Field(default=None, max_length=50)
+    value: float | None = Field(default=None, ge=0)
+    stage: (
+        Literal["new", "contacted", "qualified", "proposal", "won", "lost"] | None
+    ) = Field(default=None)
+    source: Literal["website", "referral", "social", "cold-call", "event"] | None = (
+        Field(default=None)
+    )
+    notes: str | None = Field(default=None, max_length=5000)
 
     @field_validator("email")
     @classmethod
-    def check_email(cls, v: Optional[str]) -> Optional[str]:
+    def check_email(cls, v: str | None) -> str | None:
         return _validate_email(v)
 
     @field_validator("phone")
     @classmethod
-    def clean_phone(cls, v: Optional[str]) -> Optional[str]:
+    def clean_phone(cls, v: str | None) -> str | None:
         return _normalize_phone(v)
 
 
@@ -92,13 +102,13 @@ class LeadResponse(BaseModel):
 
     id: str
     name: str
-    company: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    value: Optional[float] = None
+    company: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    value: float | None = None
     stage: str = "new"
-    source: Optional[str] = None
-    notes: Optional[str] = None
+    source: str | None = None
+    notes: str | None = None
     created_at: str
     updated_at: str
 

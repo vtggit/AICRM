@@ -1,17 +1,27 @@
 """Activities service - business logic layer."""
 
-from typing import Optional
-
 from app.auth.models import AuthUser
+from app.models.activities import (
+    ALLOWED_STATUSES,
+    ALLOWED_TYPES,
+    ActivityCreate,
+    ActivityUpdate,
+)
 from app.models.audit import AuditEvent
-from app.models.activities import ALLOWED_TYPES, ALLOWED_STATUSES, ActivityCreate, ActivityUpdate
 from app.repositories.activities_postgres_repository import ActivitiesPostgresRepository
 from app.services.audit_service import AuditService
 
 # Fields that must always be present in a backend-returned activity record.
 _AUTHORITATIVE_FIELDS = (
-    "id", "type", "description", "contact_name", "occurred_at",
-    "due_date", "status", "created_at", "updated_at",
+    "id",
+    "type",
+    "description",
+    "contact_name",
+    "occurred_at",
+    "due_date",
+    "status",
+    "created_at",
+    "updated_at",
 )
 
 
@@ -34,7 +44,7 @@ class ActivitiesService:
         rows = self.repository.list_all()
         return [_ensure_authoritative_shape(r) for r in rows]
 
-    def get_activity(self, activity_id: str) -> Optional[dict]:
+    def get_activity(self, activity_id: str) -> dict | None:
         row = self.repository.get_by_id(activity_id)
         if row is None:
             return None
@@ -47,26 +57,31 @@ class ActivitiesService:
         data = payload.model_dump(exclude_unset=True)
         activity = _ensure_authoritative_shape(self.repository.create(data))
 
-        self.audit_service.write(AuditEvent(
-            entity_type="activity",
-            entity_id=activity["id"],
-            action="created",
-            actor_sub=actor.sub,
-            actor_username=actor.username,
-            actor_email=actor.email,
-            actor_roles=actor.roles,
-            details={
-                "type": activity["type"],
-                "description": activity["description"],
-                "status": activity["status"],
-            },
-        ))
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="activity",
+                entity_id=activity["id"],
+                action="created",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "type": activity["type"],
+                    "description": activity["description"],
+                    "status": activity["status"],
+                },
+            )
+        )
 
         return activity
 
     def update_activity(
-        self, activity_id: str, payload: ActivityUpdate, actor: AuthUser,
-    ) -> Optional[dict]:
+        self,
+        activity_id: str,
+        payload: ActivityUpdate,
+        actor: AuthUser,
+    ) -> dict | None:
         existing = self.repository.get_by_id(activity_id)
         if not existing:
             return None
@@ -83,22 +98,34 @@ class ActivitiesService:
 
         activity = _ensure_authoritative_shape(result)
 
-        changed_fields = [k for k in data if k in (
-            "type", "description", "contact_name", "occurred_at", "due_date", "status"
-        )]
+        changed_fields = [
+            k
+            for k in data
+            if k
+            in (
+                "type",
+                "description",
+                "contact_name",
+                "occurred_at",
+                "due_date",
+                "status",
+            )
+        ]
 
-        self.audit_service.write(AuditEvent(
-            entity_type="activity",
-            entity_id=activity_id,
-            action="updated",
-            actor_sub=actor.sub,
-            actor_username=actor.username,
-            actor_email=actor.email,
-            actor_roles=actor.roles,
-            details={
-                "changed_fields": changed_fields,
-            },
-        ))
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="activity",
+                entity_id=activity_id,
+                action="updated",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "changed_fields": changed_fields,
+                },
+            )
+        )
 
         return activity
 
@@ -108,19 +135,21 @@ class ActivitiesService:
         if not deleted:
             return False
 
-        self.audit_service.write(AuditEvent(
-            entity_type="activity",
-            entity_id=activity_id,
-            action="deleted",
-            actor_sub=actor.sub,
-            actor_username=actor.username,
-            actor_email=actor.email,
-            actor_roles=actor.roles,
-            details={
-                "type": existing.get("type") if existing else None,
-                "description": existing.get("description") if existing else None,
-            },
-        ))
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="activity",
+                entity_id=activity_id,
+                action="deleted",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "type": existing.get("type") if existing else None,
+                    "description": existing.get("description") if existing else None,
+                },
+            )
+        )
 
         return True
 
@@ -128,6 +157,7 @@ class ActivitiesService:
 # --------------------------------------------------------------------- #
 #  Validation helpers                                                     #
 # --------------------------------------------------------------------- #
+
 
 def _validate_activity_type(activity_type: str) -> None:
     """Activity type must be one of the allowed values."""
@@ -158,6 +188,7 @@ def _normalize_fields(payload: ActivityCreate | ActivityUpdate) -> None:
 # --------------------------------------------------------------------- #
 #  Response-shape guarantee                                              #
 # --------------------------------------------------------------------- #
+
 
 def _ensure_authoritative_shape(record: dict) -> dict:
     """

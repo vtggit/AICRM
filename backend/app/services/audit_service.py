@@ -1,11 +1,10 @@
 """Audit service - central place for writing audit events."""
 
 import logging
-from typing import Any, Dict, List
 
 from app.models.audit import AuditEvent, AuditEventResponse
-from app.repositories.audit_repository import AuditRepository
 from app.observability.logging import get_request_id
+from app.repositories.audit_repository import AuditRepository
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +40,6 @@ class AuditService:
         self,
         entity_type: str | None = None,
         limit: int = 100,
-    ) -> List[AuditEventResponse]:
+    ) -> list[AuditEventResponse]:
         """Return recent audit events."""
         return self.repository.list_events(entity_type=entity_type, limit=limit)
