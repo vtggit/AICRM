@@ -16,12 +16,12 @@ def _cid():
 
 
 def test_contacts_list_empty(client, admin_headers):
-    """Admin can list contacts; response wraps items in an object."""
+    """Admin can list contacts; response is a raw array."""
     response = client.get("/api/contacts", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert "items" in data
-    assert len(data["items"]) == 0
+    assert isinstance(data, list)
+    assert len(data) == 0
 
 
 def test_contacts_list_unauthenticated_returns_401(client):
@@ -98,7 +98,7 @@ def test_contacts_delete_admin(client, admin_headers):
     # Verify it's gone from the list
     response = client.get("/api/contacts", headers=admin_headers)
     assert response.status_code == 200
-    items = response.json().get("items", [])
+    items = response.json()
     assert not any(c.get("id") == cid for c in items)
 
 
@@ -120,7 +120,7 @@ def test_contacts_create_multiple(client, admin_headers):
     response = client.get("/api/contacts", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert len(data["items"]) == 3
+    assert len(data) == 3
 
 
 def test_contacts_create_non_admin_returns_403(client, user_headers):

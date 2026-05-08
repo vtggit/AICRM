@@ -1,67 +1,50 @@
 /**
- * Activities Data Source — primary data access layer for activities.
+ * Activities Data Source — Primary data access layer for activities.
  *
  * The backend API is the single source of truth for all activity operations.
  * There is no localStorage fallback — when the backend fails, an error is
  * propagated to the UI so the user sees an honest failure.
+ *
+ * Contract consumption:
+ *   • Calls ApiClient domain methods (never fetch() directly)
+ *   • ApiClient validates response shapes and throws ApiError on failure
+ *   • This layer normalizes backend snake_case → frontend camelCase
  */
 const ActivitiesDataSource = {
 
     /**
      * Get activities from the backend.
-     * Throws on failure so the caller can surface an error to the user.
+     * Throws ApiError on failure so the caller can surface an error to the user.
      */
     async getActivities() {
-        const result = await ApiClient.getActivitiesFromApi();
-        if (!result.ok) {
-            throw this._apiError(result);
-        }
-        return (result.data || []).map(a => this._normalizeActivity(a));
+        const activities = await ApiClient.getActivitiesFromApi();
+        return activities.map(a => this._normalizeActivity(a));
     },
 
     /**
      * Create an activity via the backend.
-     * Throws on failure — no local fallback.
+     * Throws ApiError on failure — no local fallback.
      */
     async createActivity(activity) {
-        const result = await ApiClient.createActivityInApi(activity);
-        if (!result.ok) {
-            throw this._apiError(result);
-        }
-        return this._normalizeActivity(result.data);
+        const entity = await ApiClient.createActivityInApi(activity);
+        return this._normalizeActivity(entity);
     },
 
     /**
      * Update an existing activity via the backend.
-     * Throws on failure — no local fallback.
+     * Throws ApiError on failure — no local fallback.
      */
     async updateActivity(id, activity) {
-        const result = await ApiClient.updateActivityInApi(id, activity);
-        if (!result.ok) {
-            throw this._apiError(result);
-        }
-        return this._normalizeActivity(result.data);
+        const entity = await ApiClient.updateActivityInApi(id, activity);
+        return this._normalizeActivity(entity);
     },
 
     /**
      * Delete an activity via the backend.
-     * Throws on failure — no local fallback.
+     * Throws ApiError on failure — no local fallback.
      */
     async deleteActivity(id) {
-        const result = await ApiClient.deleteActivityInApi(id);
-        if (!result.ok) {
-            throw this._apiError(result);
-        }
-        return true;
-    },
-
-    /**
-     * Build an Error from an API failure result, preserving the HTTP status.
-     */
-    _apiError(result) {
-        const err = new Error(result.error || "An unexpected error occurred.");
-        err.status = result.status;
-        return err;
+        await ApiClient.deleteActivityInApi(id);
     },
 
     /**

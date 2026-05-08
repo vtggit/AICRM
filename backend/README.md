@@ -39,6 +39,55 @@ Audit logging records mutations (create, update, delete) across all domains in a
 
 Structured logging with per-request correlation IDs (`X-Request-ID`) is in place for operational observability.
 
+### Versioning
+
+The application version is defined in the **VERSION** file at the repository root.
+The backend reads this file at startup and exposes the version via the health endpoint.
+
+**Where version comes from:**
+
+1. `APP_VERSION` environment variable (highest priority - useful for container deployments)
+2. `VERSION` file at repo root (source of truth)
+3. Hardcoded fallback `0.1.0` (safety net only)
+
+**How version is exposed:**
+
+```bash
+curl http://localhost:9000/api/health
+# Response: {"status": "ok", "app_version": "0.1.0", "service": "aicrm-backend"}
+```
+
+**Build / revision traceability:**
+
+When `GIT_SHA` and/or `BUILD_TIMESTAMP` environment variables are set (e.g. by CI or
+a Docker build step), the health endpoint includes additional traceability fields:
+
+```bash
+curl http://localhost:9000/api/health
+# Response: {"status": "ok", "app_version": "0.1.0", "service": "aicrm-backend",
+#            "git_sha": "abc1234", "build_timestamp": "2025-01-15T10:30:00Z"}
+```
+
+These values are never hardcoded in source. They are injected at build time via
+environment variables so the running instance can be traced back to a specific
+git commit and build time.
+
+**CI validation of release metadata:**
+
+CI runs `scripts/check_release_metadata.py` in a dedicated `release-metadata` job
+that validates:
+
+- `VERSION` file exists and is non-empty
+- `VERSION` format is `MAJOR.MINOR.PATCH`
+- `CHANGELOG.md` exists
+- The current version appears in `CHANGELOG.md` (or an `[Unreleased]` section exists)
+- If `VERSION` changes in a PR, `CHANGELOG.md` must also change
+
+Run the check locally: `python3 scripts/check_release_metadata.py`
+
+See [docs/operations/release-process.md](../docs/operations/release-process.md) for the full
+versioning policy, release workflow, and which steps are automated vs manual.
+
 ## Structure
 
 ```
@@ -83,6 +132,7 @@ backend/
 │       ├── logging.py        # Structured logging configuration
 │       └── middleware.py     # Request ID middleware
 ├── requirements.txt
+├── openapi.json              # Committed API contract artifact
 ├── tests/                    # Automated test suite
 │   ├── conftest.py           # Shared fixtures (DB, app, auth tokens)
 │   ├── test_health_api.py    # Health endpoint tests
@@ -94,7 +144,8 @@ backend/
 │   ├── test_activities_api.py # Activities CRUD tests
 │   ├── test_settings_api.py  # Settings CRUD tests
 │   ├── test_audit_api.py     # Audit logging tests
-│   └── test_migrations.py    # Migration tests
+│   ├── test_migrations.py    # Migration tests
+│   └── test_openapi_contract.py # API contract validation tests
 └── README.md
 ```
 
@@ -422,7 +473,15 @@ touch your normal development database.
 Backend CI is automated via GitHub Actions (`.github/workflows/backend-ci.yml`).
 The workflow runs on every push and pull request to `main`/`master`.
 
-**CI test path:**
+**CI jobs (in order of execution):**
+
+1. **Release metadata** — validates `VERSION` format, changelog consistency, and drift detection (no database required)
+2. **Quality gates** — Python formatting (black), linting (ruff), and shell checks (shellcheck) (no database required)
+3. **Security hygiene** — dependency vulnerability scanning (pip-audit) and secret detection (gitleaks) (no database required)
+4. **API contract** — validates `backend/openapi.json` stays in sync with the live FastAPI schema (requires backend dependencies)
+5. **Backend tests** — full DB-backed test suite
+
+**CI test path (backend-tests job):**
 
 1. A PostgreSQL 15 service container is started by GitHub Actions
 2. Alembic migrations are applied to verify they work on a clean database
@@ -520,3 +579,60 @@ reject it before the test suite even starts.
 3. Metrics collection and alerting (Prometheus/Grafana).
 4. Automated backup and restore tooling for PostgreSQL.
 5. Frontend UI automation (backend coverage is now the priority).
+
+## API Contract Discipline
+
+AICRM treats the backend API as an explicit contract, not just a set of working routes. This section describes the contract discipline introduced in Step 27.
+
+### Why
+
+Backend route changes should be treated as **contract changes**, not casual implementation edits. This does not mean freezing everything forever — it means making changes explicit, reviewable, and less surprising.
+
+### Request/Response Models
+
+All migrated domain endpoints use explicit Pydantic request/response models consistently:
+
+- **Contacts**: `ContactCreate`, `ContactUpdate`, `ContactResponse`
+- **Templates**: `TemplateCreate`, `TemplateUpdate`, `TemplateResponse`
+- **Leads**: `LeadCreate`, `LeadUpdate`, `LeadResponse`
+- **Activities**: `ActivityCreate`, `ActivityUpdate`, `ActivityResponse`
+- **Settings**: `SettingsUpdate`, `SettingsResponse`
+- **Audit**: `AuditEventResponse`
+- **Auth**: `AuthUser`, `MeResponse`, `AuthConfigResponse`
+- **Health**: `HealthResponse`
+
+No ad hoc dict shapes. No inconsistent field presence across similar routes.
+
+### Response Shape Conventions
+
+- **List endpoints** return raw arrays consistently (e.g., `GET /api/contacts` → `[{...}, ...]`).
+- **Detail/mutation endpoints** return the authoritative record object.
+- **Error responses** use FastAPI defaults unless a standard error model is introduced later.
+
+### OpenAPI Schema as Contract Artifact
+
+The OpenAPI schema generated by FastAPI is treated as a meaningful contract artifact:
+
+- **Artifact location**: `backend/openapi.json`
+- **Export script**: `scripts/export_openapi.py`
+- **Regenerate**: `python3 scripts/export_openapi.py`
+
+When you change an endpoint schema, you must regenerate and commit the contract artifact. CI will fail if the committed artifact diverges from the live schema.
+
+### CI Enforcement
+
+The `contract-check` CI job validates that `backend/openapi.json` stays in sync with the live FastAPI application. If a PR changes an endpoint model or route without updating the contract artifact, CI fails with a diff showing the drift.
+
+### Developer Guidance
+
+When making API changes:
+
+1. Update the Pydantic models in `backend/app/models/`
+2. Update route `response_model` declarations in `backend/app/api/`
+3. Regenerate the contract artifact: `python3 scripts/export_openapi.py`
+4. Commit both the code changes and the updated `backend/openapi.json`
+5. Review the diff in `backend/openapi.json` to confirm the API surface change is intentional
+
+### Frontend Alignment
+
+Frontend data-source modules and the API client (`app/js/api.js`) are expected to match the now-explicit API contract. When reviewing frontend changes, the committed OpenAPI schema serves as the reference for expected request/response shapes.

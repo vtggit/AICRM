@@ -9,12 +9,12 @@ Verifies:
 
 
 def test_audit_list_empty_initially(client, admin_headers):
-    """Audit list starts empty and returns items wrapper."""
+    """Audit list starts empty and returns a raw array."""
     response = client.get("/api/audit", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert "items" in data
-    assert isinstance(data["items"], list)
+    assert isinstance(data, list)
+    assert len(data) == 0
 
 
 def test_audit_record_created_on_contact_create(client, admin_headers):
@@ -29,7 +29,7 @@ def test_audit_record_created_on_contact_create(client, admin_headers):
 
     response = client.get("/api/audit", headers=admin_headers)
     assert response.status_code == 200
-    items = response.json()["items"]
+    items = response.json()
     assert len(items) >= 1
     contact_audit = [
         r
@@ -56,7 +56,7 @@ def test_audit_record_created_on_contact_update(client, admin_headers):
         headers=admin_headers,
     )
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     contact_audit = [
         r
         for r in items
@@ -78,7 +78,7 @@ def test_audit_record_created_on_contact_delete(client, admin_headers):
 
     client.delete(f"/api/contacts/{cid}", headers=admin_headers)
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     contact_audit = [
         r
         for r in items
@@ -96,7 +96,7 @@ def test_audit_record_includes_actor_identity(client, admin_headers):
         headers=admin_headers,
     )
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     assert len(items) >= 1
     record = items[-1]
     assert "actor_sub" in record
@@ -114,7 +114,7 @@ def test_audit_record_created_on_template_create(client, admin_headers):
     tid = create_resp.json()["id"]
 
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     template_audit = [
         r
         for r in items
@@ -134,7 +134,7 @@ def test_audit_record_created_on_lead_create(client, admin_headers):
     lid = create_resp.json()["id"]
 
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     lead_audit = [
         r for r in items if r.get("entity_type") == "lead" and r.get("entity_id") == lid
     ]
@@ -152,7 +152,7 @@ def test_audit_record_created_on_activity_create(client, admin_headers):
     aid = create_resp.json()["id"]
 
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     activity_audit = [
         r
         for r in items
@@ -169,7 +169,7 @@ def test_audit_record_created_on_settings_update(client, admin_headers):
         headers=admin_headers,
     )
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     settings_audit = [r for r in items if r.get("entity_type") == "settings"]
     assert len(settings_audit) >= 1
 
@@ -194,7 +194,7 @@ def test_audit_records_have_timestamp(client, admin_headers):
         headers=admin_headers,
     )
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     assert len(items) >= 1
     record = items[-1]
     assert "timestamp" in record
@@ -216,7 +216,7 @@ def test_audit_actor_shows_different_users(client, admin_headers, user_headers):
         headers=admin_headers,
     )
     response = client.get("/api/audit", headers=admin_headers)
-    items = response.json()["items"]
+    items = response.json()
     contact_audit = [
         r
         for r in items

@@ -11,7 +11,33 @@ import os
 # Application identity
 # ---------------------------------------------------------------------------
 APP_NAME: str = "AICRM"
-APP_VERSION: str = "0.1.0"
+
+
+# Read APP_VERSION from environment first (container deployments),
+# then from the canonical VERSION file at repo root, then fall back
+# to a hardcoded default.  The VERSION file is the source of truth.
+def _get_app_version() -> str:
+    env_version = os.getenv("APP_VERSION")
+    if env_version:
+        return env_version
+    # Try to read VERSION from repo root (one level above backend/)
+    version_file = os.path.join(os.path.dirname(__file__), "..", "..", "VERSION")
+    try:
+        with open(version_file) as f:
+            return f.read().strip()
+    except OSError:
+        pass
+    return "0.1.0"
+
+
+APP_VERSION: str = _get_app_version()
+
+# Build / traceability metadata
+# These are injected at build time via environment variables (e.g. in CI or
+# Docker build --build-arg).  They are never hardcoded in source.
+GIT_SHA: str = os.getenv("GIT_SHA", "")
+BUILD_TIMESTAMP: str = os.getenv("BUILD_TIMESTAMP", "")
+
 ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
 DEBUG: bool = os.getenv("DEBUG", "true").lower() in ("true", "1", "yes")
 

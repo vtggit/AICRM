@@ -38,9 +38,23 @@ AICRM is a **fully backend-owned** application. All business domains are managed
 
 The domain migration is complete. All business domains (Contacts, Templates, Leads, Activities, and Settings) are backend-owned with PostgreSQL as the system of record. The frontend communicates exclusively with a REST API for all business data. Future work focuses on SSO, containerization, and observability.
 
+### API Contract Discipline
+
+The backend API is treated as an explicit contract, not just a set of working routes. All domain endpoints use explicit Pydantic request/response models consistently. A committed OpenAPI schema artifact (`backend/openapi.json`) serves as the authoritative contract document. CI validates that the artifact stays in sync with the live application, preventing silent backend/frontend drift.
+
+The frontend consumes the governed API through a centralized, deliberate pattern:
+
+- **`api.js`** is the single contract boundary for all frontend backend interactions. It centralizes HTTP execution, auth header injection, JSON parsing, error classification (auth/validation/network/server), and response-shape validation.
+- **Domain data-source files** (`*-data-source.js`) are thin wrappers that call `ApiClient` methods and normalize entity shapes. They use `ApiError.fromResult()` for consistent error handling and should not call `fetch()` directly.
+- **Response-shape validators** (`assertList`, `assertEntity`, `assertObject`, `assertAuthMe`) make frontend contract assumptions explicit at runtime. Backend drift fails fast with a clear error instead of producing confusing UI bugs.
+- **`auth.js`** consumes `/api/auth/me` through a centralized parser (`assertAuthMe`) with explicit response-shape expectations.
+
+When the backend API contract changes, both the OpenAPI artifact and the frontend API consumption layer should be updated together.
+
 ## Related Enterprise Standards
 
 - Backend platform standard (FastAPI or Node.js)
 - Database standard (PostgreSQL)
 - API design and versioning guidelines
+- API contract governance (OpenAPI schema artifact + CI drift detection)
 - Containerized deployment standard

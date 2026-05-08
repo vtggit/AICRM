@@ -1,14 +1,17 @@
-# Backend CI — quality gates + DB-backed test suite.
+# Backend CI — quality gates + security hygiene + release metadata + DB-backed test suite.
 #
 # This workflow enforces:
-#   1. Python formatting (black)
-#   2. Python linting (ruff)
-#   3. Shell script sanity (shellcheck)
-#   4. Migrations apply cleanly against a fresh PostgreSQL database
-#   5. The full backend test suite passes (auth, authz, CRUD, audit, migrations)
+#   1. Release metadata consistency (version format, changelog, drift detection)
+#   2. Python formatting (black)
+#   3. Python linting (ruff)
+#   4. Shell script sanity (shellcheck)
+#   5. Python dependency vulnerability scanning (pip-audit)
+#   6. Secret-pattern scanning (gitleaks)
+#   7. Migrations apply cleanly against a fresh PostgreSQL database
+#   8. The full backend test suite passes (auth, authz, CRUD, audit, migrations)
 #
-# Quality gates run without a database so they complete quickly and fail fast.
-# The backend test job requires PostgreSQL and runs after checkout.
+# Lightweight checks (release metadata, quality, security) run without a database
+# so they complete quickly and fail fast. The backend test job requires PostgreSQL.
 
 name: Backend CI
 
@@ -19,6 +22,26 @@ on:
     branches: [main, master]
 
 jobs:
+  release-metadata:
+    name: Release metadata (version, changelog, consistency)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check release metadata consistency
+        run: |
+          python3 scripts/check_release_metadata.py \
+            --base-ref ${{ github.event.pull_request.base.sha || '' }}
+
   quality:
     name: Quality gates (format, lint, shellcheck)
     runs-on: ubuntu-latest
@@ -44,6 +67,62 @@ jobs:
       - name: Check shell scripts (shellcheck)
         run: |
           shellcheck backend/run_tests.sh backend/start.sh
+
+  security-hygiene:
+    name: Security hygiene (dependency audit, secret scan)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit Python dependencies (pip-audit)
+        run: |
+          pip-audit -r backend/requirements.txt
+
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/scripts/install.sh | sh -s -- -b /usr/local/bin latest
+
+      - name: Scan for committed secrets (gitleaks)
+        run: |
+          gitleaks detect --source="." --no-git --verbose -c .gitleaks.toml
+
+  contract-check:
+    name: API contract (OpenAPI schema sync)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Verify OpenAPI schema is in sync
+        run: |
+          python3 scripts/export_openapi.py --output /tmp/openapi_check.json
+          if ! diff -q backend/openapi.json /tmp/openapi_check.json > /dev/null 2>&1; then
+            echo "::error::OpenAPI contract artifact is out of sync."
+            echo "::error::Regenerate it with: python3 scripts/export_openapi.py"
+            echo "--- Diff ---"
+            diff -u backend/openapi.json /tmp/openapi_check.json || true
+            exit 1
+          fi
+          echo "OpenAPI contract artifact is in sync."
 
   backend-tests:
     name: Backend tests (PostgreSQL)

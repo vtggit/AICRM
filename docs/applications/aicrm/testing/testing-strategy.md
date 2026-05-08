@@ -31,7 +31,8 @@ backend/tests/
 ├── test_activities_api.py   # Activities CRUD tests
 ├── test_settings_api.py     # Settings CRUD tests
 ├── test_audit_api.py        # Audit logging tests
-└── test_migrations.py       # Migration tests
+├── test_migrations.py       # Migration tests
+└── test_openapi_contract.py # API contract validation tests
 ```
 
 **Coverage by Category:**
@@ -48,6 +49,7 @@ backend/tests/
 | Settings CRUD | `test_settings_api.py` | Read/update; payload merging; admin-only mutations |
 | Audit | `test_audit_api.py` | Audit records written for all mutations; actor identity captured; admin-only access to audit log; timestamps present |
 | Migrations | `test_migrations.py` | Clean migration apply; core tables exist; schema correctness; downgrade/re-upgrade cycle |
+| API Contract | `test_openapi_contract.py` | OpenAPI schema generation succeeds; critical paths are registered; response schemas exist; committed artifact matches live schema |
 
 **Running Tests:**
 
@@ -75,21 +77,34 @@ Backend CI runs automatically via GitHub Actions
 **CI execution path:**
 
 1. **Quality gates** — Python formatting (black), linting (ruff), and shell script checks (shellcheck) run first in a dedicated job. This job requires no database and fails fast.
-2. **Backend tests** — A PostgreSQL 15 service container is provisioned by GitHub Actions.
-3. Alembic migrations are applied to a clean database to verify migration correctness.
-4. The full pytest suite runs against the PostgreSQL-backed test database, exercising auth, authz, CRUD, audit, and migration tests.
+2. **Security hygiene** — Python dependency vulnerability scanning (pip-audit) and secret-pattern scanning (gitleaks) run in a separate job. This job also requires no database and fails fast if vulnerable dependencies or committed secrets are detected.
+3. **API contract** — The committed OpenAPI schema artifact (`backend/openapi.json`) is compared against the schema generated from the live FastAPI application. If they differ, CI fails. This protects against silent backend/frontend API drift.
+4. **Backend tests** — A PostgreSQL 15 service container is provisioned by GitHub Actions.
+5. Alembic migrations are applied to a clean database to verify migration correctness.
+6. The full pytest suite runs against the PostgreSQL-backed test database, exercising auth, authz, CRUD, audit, migration, and contract tests.
 
-CI enforces code quality gates in addition to runtime correctness. If a PR
-introduces formatting problems, unused imports, or shell script issues, CI
+CI enforces code quality gates, security hygiene checks, and runtime correctness. If a PR
+introduces formatting problems, vulnerable dependencies, committed secrets, or shell script issues, CI
 rejects it before the test suite even starts.
 
 CI uses the same real DB-backed test suite as the local runner — it does not
-substitute a watered-down path. Quality gate failures, migration failures, and
+substitute a watered-down path. Quality gate failures, security hygiene failures, migration failures, and
 test failures are all reported as distinct CI steps so the root cause is
 immediately visible.
 
 The test database (`aicrm_test_db`) is created and destroyed by the
 session-scoped conftest fixture, the same way it works locally.
+
+### Frontend Contract Validation
+
+The frontend follows a deliberate contract-consumption pattern that makes API shape assumptions explicit and centralized:
+
+- **`ApiError` class** normalizes all API failures into a consistent error shape with `status`, `type` (auth/validation/network/server), and `message`. This is tested implicitly through the data-source modules.
+- **Response-shape validators** (`assertList`, `assertEntity`, `assertObject`, `assertAuthMe`) in `api.js` provide runtime guards that fail fast when backend response shapes drift from frontend expectations.
+- **Domain data-source files** use `ApiError.fromResult()` for error handling instead of ad hoc parsing, reducing the surface area for contract-related bugs.
+- **`auth.js`** uses `ApiClient.assertAuthMe()` to parse `/api/auth/me` responses with explicit shape expectations.
+
+Frontend contract changes should be validated alongside backend changes: when the OpenAPI artifact is updated, the frontend API consumption layer should be verified to ensure response parsing still works correctly.
 
 ### E2E Tests (Frontend)
 

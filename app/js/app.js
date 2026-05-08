@@ -87,8 +87,15 @@ const App = {
     bindVersion() {
         const sidebarEl = document.getElementById('app-version-sidebar');
         const settingsEl = document.getElementById('app-version-settings');
-        if (sidebarEl) sidebarEl.textContent = `v${APP_VERSION}`;
-        if (settingsEl) settingsEl.textContent = APP_VERSION;
+        // APP_VERSION is now a Promise (fetched from backend at runtime).
+        // Show initial placeholder, then update once resolved.
+        if (sidebarEl) sidebarEl.textContent = `v${APP_VERSION_INITIAL}`;
+        if (settingsEl) settingsEl.textContent = APP_VERSION_INITIAL;
+
+        APP_VERSION.then(version => {
+            if (sidebarEl) sidebarEl.textContent = `v${version}`;
+            if (settingsEl) settingsEl.textContent = version;
+        });
     },
 
     // === Authentication ===
@@ -1973,10 +1980,11 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
     async createBackup() {
         try {
             const settings = await SettingsDataSource.getSettings();
+            const version = await APP_VERSION;
             const backup = {
                 metadata: {
                     appName: 'AICRM',
-                    version: APP_VERSION,
+                    version: version,
                     createdAt: new Date().toISOString(),
                     scope: 'backend-managed',
                     note: 'This backup contains settings from the backend. All AICRM data is backend-managed.',

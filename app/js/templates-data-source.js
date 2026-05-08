@@ -1,67 +1,50 @@
 /**
- * Templates Data Source - Primary data access layer for templates.
+ * Templates Data Source — Primary data access layer for templates.
  *
  * The backend API is the single source of truth for all template operations.
  * There is no localStorage fallback — when the backend fails, an error is
  * propagated to the UI so the user sees an honest failure.
+ *
+ * Contract consumption:
+ *   • Calls ApiClient domain methods (never fetch() directly)
+ *   • ApiClient validates response shapes and throws ApiError on failure
+ *   • This layer normalizes backend snake_case → frontend camelCase
  */
 const TemplatesDataSource = {
 
     /**
      * Get templates from the backend.
-     * Throws on failure so the caller can surface an error to the user.
+     * Throws ApiError on failure so the caller can surface an error to the user.
      */
     async getTemplates() {
-        const result = await ApiClient.getTemplatesFromApi();
-        if (!result.ok) {
-            throw this._apiError(result);
-        }
-        return result.data.map(t => this._normalizeTemplate(t));
+        const templates = await ApiClient.getTemplatesFromApi();
+        return templates.map(t => this._normalizeTemplate(t));
     },
 
     /**
      * Create a template via the backend.
-     * Throws on failure — no local fallback.
+     * Throws ApiError on failure — no local fallback.
      */
     async createTemplate(template) {
-        const result = await ApiClient.createTemplateInApi(template);
-        if (!result.ok) {
-            throw this._apiError(result);
-        }
-        return this._normalizeTemplate(result.data);
+        const entity = await ApiClient.createTemplateInApi(template);
+        return this._normalizeTemplate(entity);
     },
 
     /**
      * Update a template via the backend.
-     * Throws on failure — no local fallback.
+     * Throws ApiError on failure — no local fallback.
      */
     async updateTemplate(id, template) {
-        const result = await ApiClient.updateTemplateInApi(id, template);
-        if (!result.ok) {
-            throw this._apiError(result);
-        }
-        return this._normalizeTemplate(result.data);
+        const entity = await ApiClient.updateTemplateInApi(id, template);
+        return this._normalizeTemplate(entity);
     },
 
     /**
      * Delete a template via the backend.
-     * Throws on failure — no local fallback.
+     * Throws ApiError on failure — no local fallback.
      */
     async deleteTemplate(id) {
-        const result = await ApiClient.deleteTemplateInApi(id);
-        if (!result.ok) {
-            throw this._apiError(result);
-        }
-        return true;
-    },
-
-    /**
-     * Build an Error from an API failure result, preserving the HTTP status.
-     */
-    _apiError(result) {
-        const err = new Error(result.error || "An unexpected error occurred.");
-        err.status = result.status;
-        return err;
+        await ApiClient.deleteTemplateInApi(id);
     },
 
     /**

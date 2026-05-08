@@ -295,6 +295,31 @@ shellcheck backend/run_tests.sh backend/start.sh
 
 CI will reject PRs that fail any of these checks, so running them locally saves time.
 
+## Security Hygiene
+
+AICRM runs lightweight security checks in CI to catch common dependency and secret-management mistakes before merge. This is a practical hygiene layer, not a full security program.
+
+**What is checked:**
+
+| Check | Tool | Purpose |
+|-------|------|---------|
+| Python dependency audit | [pip-audit](https://github.com/pypa/pip-audit) | Known-vulnerability scanning for backend dependencies |
+| Secret-pattern scanning | [gitleaks](https://github.com/gitleaks/gitleaks) | Accidental committed API keys, tokens, and credentials |
+
+**Run locally before pushing:**
+
+```bash
+# Audit Python dependencies for known vulnerabilities
+pip install pip-audit
+pip-audit -r backend/requirements.txt
+
+# Scan for accidentally committed secrets
+# (install gitleaks: https://github.com/gitleaks/gitleaks#installing)
+gitleaks detect --source="." --no-git --verbose -c .gitleaks.toml
+```
+
+CI will reject PRs that introduce vulnerable dependencies or commit obvious secret patterns. The gitleaks configuration (`.gitleaks.toml`) excludes documentation and template files that intentionally contain example values.
+
 ## Continuous Integration
 
 Backend CI runs automatically on every push and pull request via GitHub Actions.
@@ -303,23 +328,120 @@ Backend CI runs automatically on every push and pull request via GitHub Actions.
 
 **What CI verifies before merge:**
 
-1. **Quality gates** — Python formatting (black), linting (ruff), and shell script checks (shellcheck) run first and fail fast without requiring a database
-2. **Migrations apply cleanly** — Alembic migrations run against a fresh PostgreSQL database
-3. **Full backend test suite passes** — auth, authz, CRUD, audit, and migration tests all run against a real PostgreSQL-backed database
+1. **Release metadata** — `VERSION` format, changelog consistency, and drift detection (no database required)
+2. **Quality gates** — Python formatting (black), linting (ruff), and shell script checks (shellcheck) run first and fail fast without requiring a database
+3. **Security hygiene** — Python dependency vulnerability scanning (pip-audit) and secret-pattern scanning (gitleaks) run without a database
+4. **API contract** — validates the committed OpenAPI schema artifact (`backend/openapi.json`) stays in sync with the live FastAPI application
+5. **Migrations apply cleanly** — Alembic migrations run against a fresh PostgreSQL database
+6. **Full backend test suite passes** — auth, authz, CRUD, audit, migration, and contract tests all run against a real PostgreSQL-backed database
 
-Quality gates run in a separate CI job from the backend tests, so formatting/linting problems are caught quickly without waiting for a database to start.
+Three independent CI jobs run in parallel after checkout: quality gates, security hygiene, and backend tests. This means formatting/linting problems and dependency issues are caught quickly without waiting for a database to start.
 
 ```
 Push or open PR
   → GitHub Actions starts automatically
     → Quality gates run (black, ruff, shellcheck)
-      → PostgreSQL service container launches
-        → Migrations are validated
-          → Backend test suite runs
-            → Pass/fail is visible in the PR check
+    → Security hygiene runs (pip-audit, gitleaks)
+    → PostgreSQL service container launches
+      → Migrations are validated
+        → Backend test suite runs
+          → Pass/fail is visible in the PR check
 ```
 
 See [Testing Strategy](docs/applications/aicrm/testing/testing-strategy.md) for the full testing approach.
+
+## Versioning and Releases
+
+AICRM uses a single application version for the entire project, following semantic versioning conventions.
+
+**Current version:** see [`VERSION`](VERSION) at the repository root.
+
+### Versioning Model
+
+- **Major**: breaking architectural or behavioral changes
+- **Minor**: meaningful feature or domain capability additions
+- **Patch**: fixes, polish, and non-breaking improvements
+
+The frontend and backend share one version because they are a single application.
+
+### Where Version Lives
+
+- **Source of truth:** `VERSION` file at repo root
+- **Backend:** reads from `VERSION` at startup (overridable via `APP_VERSION` env var)
+- **Frontend:** fetches version from backend `/api/health` at runtime
+- **Release notes:** [`CHANGELOG.md`](CHANGELOG.md) at repo root
+
+### How to Verify the Running Version
+
+```bash
+# Backend health endpoint
+curl http://localhost:9000/api/health
+# → {"status": "ok", "app_version": "0.1.0", "service": "aicrm-backend"}
+```
+
+When `GIT_SHA` and/or `BUILD_TIMESTAMP` environment variables are set (e.g. in CI or container builds), the health endpoint also includes traceability metadata:
+
+```json
+{
+  "status": "ok",
+  "app_version": "0.1.0",
+  "service": "aicrm-backend",
+  "git_sha": "abc1234",
+  "build_timestamp": "2025-01-15T10:30:00Z"
+}
+```
+
+The frontend also displays the version in the sidebar footer and Settings page.
+
+### How to Bump the Version
+
+1. Update the version in `VERSION` (e.g., `0.1.0` → `0.2.0`)
+2. Add a new section to `CHANGELOG.md` with the new version, date, and summary of changes
+3. Commit both changes together with a message like `chore: bump version to 0.2.0`
+4. Tag the release: `git tag -a v0.2.0 -m "Release v0.2.0"`
+
+**CI enforces release metadata consistency.** If you change `VERSION` without also updating `CHANGELOG.md`, CI will fail. The version format is also validated automatically (must be `MAJOR.MINOR.PATCH`). See [docs/operations/release-process.md](docs/operations/release-process.md) for the full release workflow and which checks are automated vs manual.
+
+### Release Metadata Validation
+
+CI validates the following before merge:
+
+| Check | Tool | Enforced By |
+|-------|------|-------------|
+| `VERSION` file exists and is non-empty | `scripts/check_release_metadata.py` | CI job: `release-metadata` |
+| `VERSION` format is `MAJOR.MINOR.PATCH` | `scripts/check_release_metadata.py` | CI job: `release-metadata` |
+| `CHANGELOG.md` exists | `scripts/check_release_metadata.py` | CI job: `release-metadata` |
+| Version appears in changelog (or `[Unreleased]` section exists) | `scripts/check_release_metadata.py` | CI job: `release-metadata` |
+| If `VERSION` changes in a PR, `CHANGELOG.md` must also change | `scripts/check_release_metadata.py` | CI job: `release-metadata` |
+
+Run the check locally:
+
+```bash
+python3 scripts/check_release_metadata.py
+```
+
+## API Contract Discipline
+
+AICRM treats the backend API as an explicit contract. All domain endpoints use explicit Pydantic request/response models. A committed OpenAPI schema artifact (`backend/openapi.json`) serves as the authoritative contract document, and CI validates that it stays in sync with the live application to prevent silent backend/frontend drift.
+
+### Frontend Contract Consumption
+
+The frontend consumes the governed API through a centralized, deliberate pattern:
+
+- **`app/js/api.js`** is the single contract boundary. It handles all HTTP execution, auth header injection, JSON parsing, error classification (auth/validation/network/server), and response-shape validation.
+- **Domain data-source files** (`*-data-source.js`) are thin wrappers that call `ApiClient` methods and normalize entity shapes (e.g., `snake_case` → `camelCase`). They should not call `fetch()` directly or reinvent error handling.
+- **`app/js/auth.js`** consumes `/api/auth/me` through a centralized parser with explicit response-shape expectations.
+- **`ApiError`** is a normalized error class used across all domains. Every API failure flows through `ApiError.fromResult()` so the UI can inspect `status`, `type`, and `message` consistently.
+- **Response-shape validators** (`assertList`, `assertEntity`, `assertObject`, `assertAuthMe`) make frontend contract assumptions explicit. When the backend drifts, the frontend fails fast with a clear error instead of producing confusing UI bugs.
+
+**Rules for frontend developers:**
+
+1. Use `api.js` for all backend interactions — never call `fetch()` directly in feature code.
+2. Keep domain data-source files thin (call API methods, normalize shapes, pass through errors).
+3. Do not add ad hoc fetch/response parsing in feature code.
+4. When the backend API contract changes: update the OpenAPI artifact, then verify the frontend API consumption layer still parses correctly.
+
+When making API changes, regenerate the contract artifact with `python3 scripts/export_openapi.py` and commit the updated `backend/openapi.json` alongside your code changes. See [backend/README.md](backend/README.md) for full details.
 
 ## Known Gaps
 

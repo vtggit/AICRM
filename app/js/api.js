@@ -1,14 +1,70 @@
 /**
- * API Client - Centralizes HTTP calls to the AICRM backend.
+ * API Client — Centralized HTTP client and contract boundary.
  *
- * Wraps fetch so the rest of the app never calls fetch directly.
- * Returns { ok: true, data: ... } on success or { ok: false, error: string }
- * on failure so callers can surface meaningful error messages.
+ * This is the single place where the frontend talks to the backend.
+ * All domain data-source files consume API methods from here;
+ * they should not call fetch() directly or reinvent response parsing.
  *
- * Automatically attaches an Authorization header when Auth.isAuthenticated().
+ * Contract rules:
+ *   • Success responses:  { ok: true, data: <parsed JSON> }
+ *   • Failure responses:  { ok: false, error: <ApiError>, status: <number> }
+ *   • Auth header injection is automatic via Auth.getAuthorizationHeader()
+ *   • 401/403 are classified as auth errors for consistent UI handling
+ *   • List endpoints are expected to return arrays
+ *   • Detail/mutation endpoints are expected to return objects with an id
+ *
+ * When the backend contract changes:
+ *   1. Update the OpenAPI artifact (backend/openapi.json)
+ *   2. Update response-shape expectations here if needed
+ *   3. Verify domain data-source files still parse correctly
  */
+
+/**
+ * ApiError — Normalized error class for all API failures.
+ *
+ * Every API error flows through this class so the rest of the app
+ * can inspect status, type, and message consistently.
+ */
+class ApiError extends Error {
+    /**
+     * @param {string} message - Human-readable error message
+     * @param {object} options - Additional context
+     * @param {number} [options.status] - HTTP status code
+     * @param {'auth'|'validation'|'network'|'server'} [options.type] - Error category
+     * @param {object} [options.responseBody] - Raw response body (if available)
+     * @param {string} [options.path] - Request path that failed
+     */
+    constructor(message, options = {}) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = options.status || 0;
+        this.type = options.type || 'server';
+        this.responseBody = options.responseBody || null;
+        this.path = options.path || null;
+    }
+
+    /**
+     * Factory: create an ApiError from an ApiClient failure result.
+     * @param {{ error: string, status: number }} result
+     * @returns {ApiError}
+     */
+    static fromResult(result) {
+        const err = new ApiError(result.error || 'An unexpected error occurred.', {
+            status: result.status || 0,
+            type: result._errorType || 'server',
+            responseBody: result._responseBody || null,
+            path: result._path || null,
+        });
+        return err;
+    }
+}
+
 const ApiClient = {
     BASE_URL: Config.API_BASE_URL,
+
+    // -----------------------------------------------------------------------
+    // Request execution
+    // -----------------------------------------------------------------------
 
     /**
      * Build common headers, including Authorization when available.
@@ -23,114 +79,137 @@ const ApiClient = {
     },
 
     /**
+     * Execute an HTTP request and return a normalized result.
+     *
+     * Returns { ok: true, data } on success or
+     *         { ok: false, error, status, _errorType, _responseBody, _path } on failure.
+     *
+     * This is the single place where fetch(), JSON parsing, and error
+     * normalization happen.  Domain-specific methods should call the
+     * generic helpers (get/post/put/delete) and never touch fetch() directly.
+     */
+    async _execute(method, path, body) {
+        const url = this.BASE_URL + path;
+        try {
+            const opts = { method, headers: this._headers() };
+            if (body !== undefined && body !== null) {
+                opts.body = JSON.stringify(body);
+            }
+
+            const response = await fetch(url, opts);
+
+            if (response.ok) {
+                if (response.status === 204) {
+                    return { ok: true, data: null };
+                }
+                return { ok: true, data: await response.json() };
+            }
+
+            // Non-OK response — extract error details
+            const { message, errorType, responseBody } =
+                await this._parseErrorResponse(response);
+
+            return {
+                ok: false,
+                error: message,
+                status: response.status,
+                _errorType: errorType,
+                _responseBody: responseBody,
+                _path: path,
+            };
+        } catch (e) {
+            console.warn(`API ${method} ${path} failed:`, e.message);
+            return {
+                ok: false,
+                error: `Network error: ${e.message}`,
+                _errorType: 'network',
+                _path: path,
+            };
+        }
+    },
+
+    /**
      * Generic GET helper.
-     * Returns { ok: true, data } on success, { ok: false, error, status } on failure.
      */
     async get(path) {
-        try {
-            const response = await fetch(this.BASE_URL + path, {
-                headers: this._headers(),
-            });
-            if (!response.ok) {
-                const msg = await this._extractErrorMessage(response);
-                return { ok: false, error: msg, status: response.status };
-            }
-            // 204 No Content — return empty
-            if (response.status === 204) {
-                return { ok: true, data: null };
-            }
-            return { ok: true, data: await response.json() };
-        } catch (e) {
-            console.warn(`API GET ${path} failed:`, e.message);
-            return { ok: false, error: `Network error: ${e.message}` };
-        }
+        return this._execute('GET', path);
     },
 
     /**
      * Generic POST helper.
-     * Returns { ok: true, data } on success, { ok: false, error, status } on failure.
      */
     async post(path, body) {
-        try {
-            const response = await fetch(this.BASE_URL + path, {
-                method: 'POST',
-                headers: this._headers(),
-                body: JSON.stringify(body),
-            });
-            if (!response.ok) {
-                const msg = await this._extractErrorMessage(response);
-                return { ok: false, error: msg, status: response.status };
-            }
-            return { ok: true, data: await response.json() };
-        } catch (e) {
-            console.warn(`API POST ${path} failed:`, e.message);
-            return { ok: false, error: `Network error: ${e.message}` };
-        }
+        return this._execute('POST', path, body);
     },
 
     /**
      * Generic PUT helper.
-     * Returns { ok: true, data } on success, { ok: false, error, status } on failure.
      */
     async put(path, body) {
-        try {
-            const response = await fetch(this.BASE_URL + path, {
-                method: 'PUT',
-                headers: this._headers(),
-                body: JSON.stringify(body),
-            });
-            if (!response.ok) {
-                const msg = await this._extractErrorMessage(response);
-                return { ok: false, error: msg, status: response.status };
-            }
-            return { ok: true, data: await response.json() };
-        } catch (e) {
-            console.warn(`API PUT ${path} failed:`, e.message);
-            return { ok: false, error: `Network error: ${e.message}` };
-        }
+        return this._execute('PUT', path, body);
     },
 
     /**
      * Generic DELETE helper.
-     * Returns { ok: true } on success, { ok: false, error, status } on failure.
      */
     async delete(path) {
-        try {
-            const response = await fetch(this.BASE_URL + path, {
-                method: 'DELETE',
-                headers: this._headers(),
-            });
-            if (response.ok || response.status === 204) {
-                return { ok: true };
-            }
-            const msg = await this._extractErrorMessage(response);
-            return { ok: false, error: msg, status: response.status };
-        } catch (e) {
-            console.warn(`API DELETE ${path} failed:`, e.message);
-            return { ok: false, error: `Network error: ${e.message}` };
-        }
+        return this._execute('DELETE', path);
     },
 
+    // -----------------------------------------------------------------------
+    // Error parsing and classification
+    // -----------------------------------------------------------------------
+
     /**
-     * Extract a human-readable error message from an HTTP response.
+     * Parse an HTTP error response into a structured error.
+     *
+     * Classifies errors into types for consistent frontend handling:
+     *   - 'auth'       → 401 Unauthorized or 403 Forbidden
+     *   - 'validation' → 422 Unprocessable Entity (FastAPI validation)
+     *   - 'server'     → 5xx or other non-OK responses
+     *
+     * @returns {{ message: string, errorType: string, responseBody: object|null }}
      */
-    async _extractErrorMessage(response) {
+    async _parseErrorResponse(response) {
+        let responseBody = null;
         try {
-            const body = await response.json();
-            if (body.detail) {
-                // FastAPI validation errors come as an array
-                if (Array.isArray(body.detail)) {
-                    return body.detail.map(d => d.msg).join('; ');
-                }
-                return body.detail;
-            }
-            if (body.message) {
-                return body.message;
-            }
-        } catch (_) {
-            // Response body wasn't JSON
+            responseBody = await response.json();
+        } catch {
+            // Response body wasn't JSON — use fallback
         }
-        return `Server error (${response.status})`;
+
+        // Classify by status code
+        let errorType;
+        if (response.status === 401) {
+            errorType = 'auth';
+        } else if (response.status === 403) {
+            errorType = 'auth';
+        } else if (response.status === 422) {
+            errorType = 'validation';
+        } else if (response.status >= 500) {
+            errorType = 'server';
+        } else {
+            errorType = 'server';
+        }
+
+        // Extract human-readable message
+        let message;
+        if (responseBody) {
+            if (responseBody.detail) {
+                if (Array.isArray(responseBody.detail)) {
+                    message = responseBody.detail.map(d => d.msg).join('; ');
+                } else {
+                    message = responseBody.detail;
+                }
+            } else if (responseBody.message) {
+                message = responseBody.message;
+            }
+        }
+        if (!message) {
+            message = `Server error (${response.status})`;
+        }
+
+        return { message, errorType, responseBody };
     },
 
     /**
@@ -141,23 +220,108 @@ const ApiClient = {
         return result.ok && result.data && result.data.status === 'ok';
     },
 
+    // -----------------------------------------------------------------------
+    // Response-shape validators
+    //
+    // Lightweight runtime guards that make frontend contract assumptions
+    // explicit.  When the backend response shape drifts, these fail fast
+    // with a clear error instead of producing confusing UI bugs.
+    // -----------------------------------------------------------------------
+
+    /**
+     * Assert that a result contains a valid list (array) response.
+     * @param {{ ok: boolean, data: any }} result
+     * @returns {any[]}
+     */
+    assertList(result) {
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
+        if (!Array.isArray(result.data)) {
+            throw new ApiError(
+                `Expected array response but got ${typeof result.data}. Contract drift detected.`,
+                { type: 'server' }
+            );
+        }
+        return result.data;
+    },
+
+    /**
+     * Assert that a result contains a valid entity (object with id) response.
+     * @param {{ ok: boolean, data: any }} result
+     * @returns {object}
+     */
+    assertEntity(result) {
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
+        if (!result.data || typeof result.data !== 'object' || !result.data.id) {
+            throw new ApiError(
+                `Expected entity object with 'id' but got: ${JSON.stringify(result.data)}. Contract drift detected.`,
+                { type: 'server' }
+            );
+        }
+        return result.data;
+    },
+
+    /**
+     * Assert that a result contains a valid object response (no id required).
+     * Used for settings, config, and other non-entity objects.
+     * @param {{ ok: boolean, data: any }} result
+     * @returns {object}
+     */
+    assertObject(result) {
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
+        if (!result.data || typeof result.data !== 'object') {
+            throw new ApiError(
+                `Expected object response but got: ${JSON.stringify(result.data)}. Contract drift detected.`,
+                { type: 'server' }
+            );
+        }
+        return result.data;
+    },
+
+    /**
+     * Assert that a result contains a valid auth/me response.
+     * Expected shape: { authenticated: boolean, user: { username, roles, ... } }
+     * @param {{ ok: boolean, data: any }} result
+     * @returns {{ authenticated: boolean, user: object|null }}
+     */
+    assertAuthMe(result) {
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
+        const data = result.data;
+        if (!data || typeof data !== 'object') {
+            throw new ApiError(
+                `Expected auth/me object but got: ${JSON.stringify(data)}. Contract drift detected.`,
+                { type: 'server' }
+            );
+        }
+        return {
+            authenticated: !!data.user,
+            user: data.user || null,
+        };
+    },
+
     // === Contacts ===
 
     /**
      * Fetch contacts from the backend API.
-     * Returns { ok: true, data: items[] } or { ok: false, error }.
+     * Returns a validated array of contact objects.
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async getContactsFromApi() {
         const result = await this.get('/contacts');
-        if (result.ok && Array.isArray(result.data.items)) {
-            return { ok: true, data: result.data.items };
-        }
-        return { ok: false, error: result.error || 'Unexpected response from contacts endpoint.' };
+        return this.assertList(result);
     },
 
     /**
      * Create a contact via the backend API.
-     * Returns { ok: true, data: contact } or { ok: false, error }.
+     * Returns a validated contact entity (object with id).
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async createContactInApi(contact) {
         const payload = {
@@ -168,12 +332,14 @@ const ApiClient = {
             status: contact.status || 'active',
             notes: contact.notes || null,
         };
-        return await this.post('/contacts', payload);
+        const result = await this.post('/contacts', payload);
+        return this.assertEntity(result);
     },
 
     /**
      * Update a contact via the backend API.
-     * Returns { ok: true, data: contact } or { ok: false, error }.
+     * Returns a validated contact entity (object with id).
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async updateContactInApi(id, contact) {
         const payload = {};
@@ -182,34 +348,38 @@ const ApiClient = {
                 payload[key] = contact[key] || null;
             }
         }
-        return await this.put(`/contacts/${id}`, payload);
+        const result = await this.put(`/contacts/${id}`, payload);
+        return this.assertEntity(result);
     },
 
     /**
      * Delete a contact via the backend API.
-     * Returns { ok: true } or { ok: false, error }.
+     * Returns void on success (204).
+     * Throws ApiError on HTTP failure.
      */
     async deleteContactInApi(id) {
-        return await this.delete(`/contacts/${id}`);
+        const result = await this.delete(`/contacts/${id}`);
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
     },
 
     // === Templates ===
 
     /**
      * Fetch templates from the backend API.
-     * Returns { ok: true, data: items[] } or { ok: false, error }.
+     * Returns a validated array of template objects.
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async getTemplatesFromApi() {
         const result = await this.get('/templates');
-        if (result.ok && Array.isArray(result.data)) {
-            return { ok: true, data: result.data };
-        }
-        return { ok: false, error: result.error || 'Unexpected response from templates endpoint.' };
+        return this.assertList(result);
     },
 
     /**
      * Create a template via the backend API.
-     * Returns { ok: true, data: template } or { ok: false, error }.
+     * Returns a validated template entity (object with id).
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async createTemplateInApi(template) {
         const payload = {
@@ -218,12 +388,14 @@ const ApiClient = {
             subject: template.subject || null,
             content: template.body || template.content || '',
         };
-        return await this.post('/templates', payload);
+        const result = await this.post('/templates', payload);
+        return this.assertEntity(result);
     },
 
     /**
      * Update a template via the backend API.
-     * Returns { ok: true, data: template } or { ok: false, error }.
+     * Returns a validated template entity (object with id).
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async updateTemplateInApi(id, template) {
         const payload = {};
@@ -235,34 +407,38 @@ const ApiClient = {
         if (template.body !== undefined || template.content !== undefined) {
             payload.content = template.body || template.content || '';
         }
-        return await this.put(`/templates/${id}`, payload);
+        const result = await this.put(`/templates/${id}`, payload);
+        return this.assertEntity(result);
     },
 
     /**
      * Delete a template via the backend API.
-     * Returns { ok: true } or { ok: false, error }.
+     * Returns void on success (204).
+     * Throws ApiError on HTTP failure.
      */
     async deleteTemplateInApi(id) {
-        return await this.delete(`/templates/${id}`);
+        const result = await this.delete(`/templates/${id}`);
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
     },
 
     // === Leads ===
 
     /**
      * Fetch leads from the backend API.
-     * Returns { ok: true, data: items[] } or { ok: false, error }.
+     * Returns a validated array of lead objects.
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async getLeadsFromApi() {
         const result = await this.get('/leads');
-        if (result.ok && Array.isArray(result.data)) {
-            return { ok: true, data: result.data };
-        }
-        return { ok: false, error: result.error || 'Unexpected response from leads endpoint.' };
+        return this.assertList(result);
     },
 
     /**
      * Create a lead via the backend API.
-     * Returns { ok: true, data: lead } or { ok: false, error }.
+     * Returns a validated lead entity (object with id).
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async createLeadInApi(lead) {
         const payload = {
@@ -275,12 +451,14 @@ const ApiClient = {
             source: lead.source || null,
             notes: lead.notes || null,
         };
-        return await this.post('/leads', payload);
+        const result = await this.post('/leads', payload);
+        return this.assertEntity(result);
     },
 
     /**
      * Update a lead via the backend API.
-     * Returns { ok: true, data: lead } or { ok: false, error }.
+     * Returns a validated lead entity (object with id).
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async updateLeadInApi(id, lead) {
         const payload = {};
@@ -292,34 +470,38 @@ const ApiClient = {
         if (lead.value !== undefined) {
             payload.value = lead.value ? Number(lead.value) : null;
         }
-        return await this.put(`/leads/${id}`, payload);
+        const result = await this.put(`/leads/${id}`, payload);
+        return this.assertEntity(result);
     },
 
     /**
      * Delete a lead via the backend API.
-     * Returns { ok: true } or { ok: false, error }.
+     * Returns void on success (204).
+     * Throws ApiError on HTTP failure.
      */
     async deleteLeadInApi(id) {
-        return await this.delete(`/leads/${id}`);
+        const result = await this.delete(`/leads/${id}`);
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
     },
 
     // === Activities ===
 
     /**
      * Fetch activities from the backend API.
-     * Returns { ok: true, data: items[] } or { ok: false, error }.
+     * Returns a validated array of activity objects.
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async getActivitiesFromApi() {
         const result = await this.get('/activities');
-        if (result.ok && Array.isArray(result.data)) {
-            return { ok: true, data: result.data };
-        }
-        return { ok: false, error: result.error || 'Unexpected response from activities endpoint.' };
+        return this.assertList(result);
     },
 
     /**
      * Create an activity via the backend API.
-     * Returns { ok: true, data: activity } or { ok: false, error }.
+     * Returns a validated activity entity (object with id).
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async createActivityInApi(activity) {
         const payload = {
@@ -330,12 +512,14 @@ const ApiClient = {
             due_date: activity.dueDate || activity.due_date || null,
             status: activity.status || 'pending',
         };
-        return await this.post('/activities', payload);
+        const result = await this.post('/activities', payload);
+        return this.assertEntity(result);
     },
 
     /**
      * Update an activity via the backend API.
-     * Returns { ok: true, data: activity } or { ok: false, error }.
+     * Returns a validated activity entity (object with id).
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async updateActivityInApi(id, activity) {
         const payload = {};
@@ -351,36 +535,41 @@ const ApiClient = {
             payload.due_date = activity.dueDate || activity.due_date || null;
         }
         if (activity.status !== undefined) payload.status = activity.status;
-        return await this.put(`/activities/${id}`, payload);
+        const result = await this.put(`/activities/${id}`, payload);
+        return this.assertEntity(result);
     },
 
     /**
      * Delete an activity via the backend API.
-     * Returns { ok: true } or { ok: false, error }.
+     * Returns void on success (204).
+     * Throws ApiError on HTTP failure.
      */
     async deleteActivityInApi(id) {
-        return await this.delete(`/activities/${id}`);
+        const result = await this.delete(`/activities/${id}`);
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
     },
 
     // === Settings ===
 
     /**
      * Fetch current settings from the backend API.
-     * Returns { ok: true, data: settings } or { ok: false, error }.
+     * Returns a validated settings object.
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async getSettingsFromApi() {
         const result = await this.get('/settings');
-        if (result.ok && result.data && typeof result.data === 'object') {
-            return { ok: true, data: result.data };
-        }
-        return { ok: false, error: result.error || 'Unexpected response from settings endpoint.' };
+        return this.assertObject(result);
     },
 
     /**
      * Update settings via the backend API (admin only).
-     * Returns { ok: true, data: settings } or { ok: false, error }.
+     * Returns a validated settings object.
+     * Throws ApiError on HTTP failure or contract drift.
      */
     async updateSettingsInApi(payload) {
-        return await this.put('/settings', { payload });
+        const result = await this.put('/settings', { payload });
+        return this.assertObject(result);
     },
 };

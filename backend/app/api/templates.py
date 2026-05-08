@@ -1,4 +1,4 @@
-"""Templates API routes — mirrors the Contacts pattern."""
+"""Templates API routes — CRUD for email template records."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -11,7 +11,7 @@ from app.repositories.templates_postgres_repository import TemplatesPostgresRepo
 from app.services.audit_service import AuditService
 from app.services.templates_service import TemplatesService
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api/templates", tags=["templates"])
 
 _repository = TemplatesPostgresRepository()
 _audit_repository = AuditPostgresRepository()
@@ -19,27 +19,18 @@ _audit_service = AuditService(_audit_repository)
 _service = TemplatesService(_repository, _audit_service)
 
 
-@router.get(
-    "/templates",
-    response_model=list[TemplateResponse],
-    dependencies=[Depends(require_authenticated_user)],
-)
-def list_templates():
-    """List all templates (authenticated users)."""
+@router.get("", response_model=list[TemplateResponse])
+def list_templates(_user: AuthUser = Depends(require_authenticated_user)):
+    """List all templates. Requires authentication."""
     return _service.list_templates()
 
 
-@router.post(
-    "/templates",
-    response_model=TemplateResponse,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role(ROLE_ADMIN))],
-)
+@router.post("", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
 def create_template(
     payload: TemplateCreate,
     user: AuthUser = Depends(require_role(ROLE_ADMIN)),
 ):
-    """Create a new template (admin only)."""
+    """Create a new template. Requires admin role."""
     try:
         template = _service.create_template(payload, user)
     except ValueError as exc:
@@ -47,17 +38,13 @@ def create_template(
     return template
 
 
-@router.put(
-    "/templates/{template_id}",
-    response_model=TemplateResponse,
-    dependencies=[Depends(require_role(ROLE_ADMIN))],
-)
+@router.put("/{template_id}", response_model=TemplateResponse)
 def update_template(
     template_id: str,
     payload: TemplateUpdate,
     user: AuthUser = Depends(require_role(ROLE_ADMIN)),
 ):
-    """Update an existing template (admin only)."""
+    """Update an existing template. Requires admin role."""
     result = _service.update_template(template_id, payload, user)
     if result is None:
         raise HTTPException(
@@ -66,16 +53,12 @@ def update_template(
     return result
 
 
-@router.delete(
-    "/templates/{template_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_role(ROLE_ADMIN))],
-)
+@router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_template(
     template_id: str,
     user: AuthUser = Depends(require_role(ROLE_ADMIN)),
 ):
-    """Delete a template (admin only)."""
+    """Delete a template. Requires admin role."""
     deleted = _service.delete_template(template_id, user)
     if not deleted:
         raise HTTPException(

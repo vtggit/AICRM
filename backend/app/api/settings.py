@@ -11,7 +11,7 @@ from app.repositories.settings_postgres_repository import SettingsPostgresReposi
 from app.services.audit_service import AuditService
 from app.services.settings_service import SettingsService
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 _repository = SettingsPostgresRepository()
 _audit_repository = AuditPostgresRepository()
@@ -19,26 +19,18 @@ _audit_service = AuditService(_audit_repository)
 _service = SettingsService(_repository, _audit_service)
 
 
-@router.get(
-    "/settings",
-    response_model=SettingsResponse,
-    dependencies=[Depends(require_authenticated_user)],
-)
-def get_settings():
-    """Return the current application settings (authenticated users)."""
+@router.get("", response_model=SettingsResponse)
+def get_settings(_user: AuthUser = Depends(require_authenticated_user)):
+    """Return the current application settings. Requires authentication."""
     return _service.get_settings()
 
 
-@router.put(
-    "/settings",
-    response_model=SettingsResponse,
-    dependencies=[Depends(require_role(ROLE_ADMIN))],
-)
+@router.put("", response_model=SettingsResponse)
 def update_settings(
     payload: SettingsUpdate,
     user: AuthUser = Depends(require_role(ROLE_ADMIN)),
 ):
-    """Update application settings (admin only).
+    """Update application settings. Requires admin role.
 
     The incoming payload is merged into the existing settings record.
     """

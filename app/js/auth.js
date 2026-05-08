@@ -5,7 +5,12 @@
  * in memory and exposes helpers the rest of the app can use to decide
  * whether protected operations are available.
  *
- * Design goals for Step 9:
+ * Contract consumption:
+ *   • Consumes /api/auth/me through ApiClient (never fetch() directly)
+ *   • Uses ApiClient.assertAuthMe() for explicit response shape validation
+ *   • Stores tokens in sessionStorage only (never localStorage)
+ *
+ * Design goals:
  *   - Know whether auth is enabled on the backend
  *   - Fetch /api/auth/me to establish identity from a real IdP token
  *   - Expose getCurrentUser() and isAuthenticated()
@@ -55,13 +60,31 @@ const Auth = {
         }
 
         // Attempt to resolve the current user
-        const meResult = await ApiClient.get('/auth/me');
-        if (meResult.ok && meResult.data && meResult.data.user) {
-            this._user = meResult.data.user;
-            console.info(`Authenticated as: ${this._user.username || this._user.sub}`);
-        } else {
+        this._setUserFromAuthResult(await ApiClient.get('/auth/me'));
+    },
+
+    /**
+     * Parse /api/auth/me response and update local auth state.
+     *
+     * Expected response shape (governed by backend contract):
+     *   { authenticated: boolean, user: { username, roles, ... } | null }
+     *
+     * If the response is missing or malformed, auth state is cleared.
+     */
+    _setUserFromAuthResult(meResult) {
+        try {
+            const parsed = ApiClient.assertAuthMe(meResult);
+            if (parsed.authenticated && parsed.user) {
+                this._user = parsed.user;
+                console.info(`Authenticated as: ${this._user.username || this._user.sub}`);
+            } else {
+                this._user = null;
+                console.warn('No authenticated user — protected operations will be blocked.');
+            }
+        } catch (e) {
+            // Auth response shape mismatch or network failure
             this._user = null;
-            console.warn('No authenticated user — protected operations will be blocked.');
+            console.warn('Auth initialization failed:', e.message);
         }
     },
 
@@ -177,9 +200,14 @@ const Auth = {
     async loginWithToken(token) {
         this._setToken(token);
         const meResult = await ApiClient.get('/auth/me');
-        if (meResult.ok && meResult.data && meResult.data.user) {
-            this._user = meResult.data.user;
-            return { ok: true, user: this._user };
+        try {
+            const parsed = ApiClient.assertAuthMe(meResult);
+            if (parsed.authenticated && parsed.user) {
+                this._user = parsed.user;
+                return { ok: true, user: this._user };
+            }
+        } catch (e) {
+            console.warn('Auth response parse failed during login:', e.message);
         }
         this._user = null;
         this._setToken(null); // clear invalid token
