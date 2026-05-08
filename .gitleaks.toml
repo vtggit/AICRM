@@ -1,0 +1,13 @@
+# Gitleaks configuration for AICRM
+#
+# Lightweight secret-pattern scanning with minimal exclusions.
+# Documentation and template files contain example values that are intentionally public.
+
+[allow]
+  paths = [
+    # Documentation files contain example tokens and placeholder values
+    '''README\.md''',
+    '''backend/README\.md''',
+    # Environment template — placeholder values only
+    '''.env\.example''',
+  ]

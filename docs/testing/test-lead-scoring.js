@@ -9,6 +9,11 @@ const { chromium } = require('playwright');
   try {
     await page.goto('http://localhost:8080/app/index.html', { waitUntil: 'domcontentloaded', timeout: 10000 });
 
+    // Clear localStorage for clean state
+    await page.evaluate(() => localStorage.clear());
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.waitForSelector('#page-dashboard', { timeout: 5000 });
+
     // Navigate to Leads
     console.log('SETUP: Navigate to Leads');
     await page.click('.nav-item[data-page="leads"]');

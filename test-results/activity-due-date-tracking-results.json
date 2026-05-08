@@ -1,0 +1,77 @@
+[
+  {
+    "test": "Navigate to Activities page",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Status filter dropdown exists",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Overdue activity shows red highlight",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Overdue due date displayed with warning",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Overdue badge visible on nav",
+    "status": "PASS",
+    "detail": "badge=1"
+  },
+  {
+    "test": "Future due date displayed without warning",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Overdue activity sorts to top",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Mark complete button exists",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Completed activity shows strikethrough style",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Overdue badge hidden after completing overdue",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Overdue filter shows only overdue activities",
+    "status": "PASS",
+    "detail": "count=0 (expected 0 since we completed it)"
+  },
+  {
+    "test": "Completed filter shows only completed activities",
+    "status": "PASS",
+    "detail": "count=1"
+  },
+  {
+    "test": "Active filter shows only active activities",
+    "status": "PASS",
+    "detail": "count=1"
+  },
+  {
+    "test": "Dashboard shows overdue count",
+    "status": "PASS",
+    "detail": "stat=0"
+  },
+  {
+    "test": "No console errors",
+    "status": "PASS",
+    "detail": ""
+  }
+]
