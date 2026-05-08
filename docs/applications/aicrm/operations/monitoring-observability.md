@@ -13,7 +13,15 @@ This document captures the current state of monitoring and observability for AIC
   - Log level is configurable via `LOG_LEVEL` environment variable (default: `INFO`).
 - **Request Correlation**: Every backend request is assigned a unique `X-Request-ID` (UUID). The ID is propagated from incoming requests or generated on-the-fly, included in response headers, and embedded in all log lines for the duration of the request.
 - **Audit API**: A read-only audit log endpoint (`GET /api/audit`) exposes recent mutations across all domains (Contacts, Templates, Leads, Activities, Settings — create, update, delete) with actor context and timestamps, backed by PostgreSQL.
-- **Health Checks**: A `GET /api/health` endpoint returns service status, the current application version (`app_version` field), and — when available — build/revision traceability metadata (`git_sha`, `build_timestamp`). The `git_sha` and `build_timestamp` fields are injected at build time via environment variables and allow tracing a running instance back to a specific commit and build time. Docker Compose uses a health check on the backend container that polls this endpoint. The version is read from the canonical `VERSION` file at repo root (overridable via `APP_VERSION` environment variable) and is also displayed in the frontend UI.
+- **Health Checks**: Two health endpoints are available:
+  - `GET /api/health` — Basic liveness check. Returns service status, application version (`app_version`), and build/revision traceability metadata (`git_sha`, `build_timestamp`) when available via environment variables. Docker Compose health checks poll this endpoint.
+  - `GET /api/health/ready` — Readiness check with dependency status. Includes a `dependencies` object reporting database connectivity. Returns `"status": "degraded"` if the database is unreachable, even though the process is running. The frontend uses this at startup to detect backend availability.
+- **Failure Handling**: The application handles common runtime failure modes with clear behavior:
+  - **Backend unavailable**: Frontend shows a "Backend server is unreachable" banner at startup. All API requests fail with a clear "service temporarily unavailable" message.
+  - **Database unavailable**: Health readiness reports degraded status. API requests return 503 with a meaningful error. Backend startup fails clearly if DB is unreachable within 60 seconds.
+  - **Migration failure**: Backend startup stops with a clear `[startup] ERROR: Database migrations failed` log line. The process exits with a non-zero code.
+  - **Auth failures**: Distinguished between 401 (unauthenticated) and 403 (forbidden). Backend logs include specific failure reasons (expired token, invalid signature, issuer/audience mismatch, JWKS fetch failure). Frontend shows appropriate user-facing messages.
+  - **Audit write failure**: Policy is Option B — audit failure causes the entire business mutation to fail, ensuring audit completeness. See `backend/app/services/audit_service.py` for rationale.
 - **Containerized Runtime**: The application runs as three Docker containers (frontend, backend, db) orchestrated by `docker-compose.yml`. All containers write logs to stdout, which Docker captures and can be inspected with `docker compose logs`.
 - **Monitoring**: No uptime monitoring, performance monitoring, or application performance monitoring (APM).
 - **Alerting**: No alerting mechanism. No automated incident response.
@@ -29,9 +37,9 @@ This document captures the current state of monitoring and observability for AIC
 - No metrics collection (request rates, error rates, latency, resource usage).
 - No distributed tracing or request correlation beyond the single backend process.
 - No automated backup or disaster recovery plan.
-- No health check endpoints beyond the basic `/api/health` ping.
 - No log shipping or log retention management.
-- No migration testing strategy (migrations are applied at startup but not tested against a clean database in CI).
+- No automated retry or circuit breaker logic for transient failures (DB, auth provider).
+- Frontend error handling is improving but not yet comprehensive for all failure modes.
 
 ## Target Direction
 

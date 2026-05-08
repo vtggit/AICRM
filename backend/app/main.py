@@ -1,5 +1,24 @@
-from fastapi import FastAPI
+"""AICRM FastAPI application factory.
+
+Startup behavior:
+    1. Bootstrap structured logging
+    2. Register middleware (request ID, request logging, CORS)
+    3. Register global exception handlers for operational clarity
+    4. Mount all API routers
+    5. Log startup confirmation
+
+Failure behavior:
+    - Database connection errors during requests return 503 with a clear message
+    - All unhandled exceptions return 500 with request ID for tracing
+"""
+
+import logging
+
+import psycopg2
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import APP_NAME, APP_VERSION, CORS_ORIGINS
 from app.observability.logging import setup_logging
@@ -12,8 +31,6 @@ from app.observability.middleware import (
 # Bootstrap logging before anything else runs
 # ---------------------------------------------------------------------------
 setup_logging()
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +60,82 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # -----------------------------------------------------------------------
+    # Global exception handlers for operational clarity
+    # -----------------------------------------------------------------------
+
+    @application.exception_handler(psycopg2.Error)
+    async def database_error_handler(request: Request, exc: psycopg2.Error):
+        """Handle PostgreSQL connection and query errors.
+
+        Returns 503 Service Unavailable with a clear message.
+        The request ID is included for tracing.
+        """
+        from app.observability.logging import get_request_id
+
+        request_id = get_request_id()
+        logger.error(
+            "database error during request %s %s — %s request_id=%s",
+            request.method,
+            request.url.path,
+            exc,
+            request_id,
+        )
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": "Database service is currently unavailable. Please try again later.",
+                "request_id": request_id,
+            },
+        )
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_error_handler(request: Request, exc: RequestValidationError):
+        """Handle FastAPI request validation errors with consistent formatting."""
+        from app.observability.logging import get_request_id
+
+        request_id = get_request_id()
+        errors = []
+        for error in exc.errors():
+            errors.append({
+                "field": ".".join(str(loc) for loc in error.get("loc", [])),
+                "message": error.get("msg", ""),
+                "type": error.get("type", ""),
+            })
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": "Request validation failed.",
+                "errors": errors,
+                "request_id": request_id,
+            },
+        )
+
+    @application.exception_handler(Exception)
+    async def unhandled_error_handler(request: Request, exc: Exception):
+        """Catch-all for unhandled exceptions.
+
+        Returns 500 Internal Server Error with request ID for tracing.
+        Never leaks internal details to the client.
+        """
+        from app.observability.logging import get_request_id
+
+        request_id = get_request_id()
+        logger.exception(
+            "unhandled exception during request %s %s — %s request_id=%s",
+            request.method,
+            request.url.path,
+            exc,
+            request_id,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "An internal server error occurred. Please try again later.",
+                "request_id": request_id,
+            },
+        )
 
     # Import routers inside the factory so they capture the current
     # app instance when reloaded between tests.

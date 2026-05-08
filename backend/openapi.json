@@ -11,7 +11,7 @@
           "health"
         ],
         "summary": "Health Check",
-        "description": "Return service health status and version information.",
+        "description": "Shallow liveness check \u2014 does not call dependencies.\n\nReturns app status, version, and build metadata.\nUse this for load balancer health checks and container liveness probes.",
         "operationId": "health_check_api_health_get",
         "responses": {
           "200": {
@@ -20,6 +20,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Readiness Check",
+        "description": "Readiness check \u2014 verifies critical dependencies are reachable.\n\nTests database connectivity and reports dependency health.\nReturns status 'ok' only when all dependencies are healthy.\nUse this for container readiness probes and operational diagnostics.",
+        "operationId": "readiness_check_api_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
                 }
               }
             }
@@ -2040,6 +2062,39 @@
         "title": "ContactUpdate",
         "description": "Request model for updating a contact."
       },
+      "DependencyStatus": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Dependency name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "ok, error, or unavailable"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail",
+            "description": "Optional diagnostic detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "status"
+        ],
+        "title": "DependencyStatus",
+        "description": "Status of a single dependency (e.g. database)."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2102,7 +2157,7 @@
           "service"
         ],
         "title": "HealthResponse",
-        "description": "Response model for the health check endpoint."
+        "description": "Response model for the shallow health check endpoint."
       },
       "LeadCreate": {
         "properties": {
@@ -2458,6 +2513,65 @@
         ],
         "title": "MeResponse",
         "description": "Response body for GET /api/auth/me."
+      },
+      "ReadinessResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Service readiness status"
+          },
+          "app_version": {
+            "type": "string",
+            "title": "App Version",
+            "description": "Application version string"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service",
+            "description": "Service identifier"
+          },
+          "git_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Git Sha",
+            "description": "Git commit SHA (build metadata)"
+          },
+          "build_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Timestamp",
+            "description": "ISO-8601 build timestamp (build metadata)"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyStatus"
+            },
+            "type": "array",
+            "title": "Dependencies",
+            "description": "Status of critical dependencies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "app_version",
+          "service"
+        ],
+        "title": "ReadinessResponse",
+        "description": "Response model for the readiness health check endpoint."
       },
       "SettingsResponse": {
         "properties": {

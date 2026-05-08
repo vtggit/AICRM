@@ -6,7 +6,7 @@ const App = {
     editId: null,
     editType: null,
 
-    init() {
+    async init() {
         this.bindNavigation();
         this.bindThemeToggle();
         this.bindMenuToggle();
@@ -21,9 +21,29 @@ const App = {
         this.bindVersion();
         this.bindAuth();
         this.loadTheme();
+
+        // Check backend availability before rendering
+        const backendAvailable = await this._checkBackendAvailability();
+        if (!backendAvailable) {
+            this._showBackendUnavailableBanner(true);
+        }
+
         this.renderDashboard();
         this.updateLastBackupDisplay();
         this.updateOverdueBadge();
+    },
+
+    /**
+     * Check if the backend is available at startup.
+     * Returns true if the backend responds to a health check.
+     */
+    async _checkBackendAvailability() {
+        try {
+            return await ApiClient.isHealthy();
+        } catch (err) {
+            console.warn('Backend health check failed at startup:', err.message);
+            return false;
+        }
     },
 
     // === Navigation ===
@@ -725,18 +745,84 @@ const App = {
 
     /**
      * Convert an API error into a user-friendly message.
-     * 401 → sign-in prompt
-     * 403 → permission denied
-     * other → pass through original message
+     * Distinguishes between:
+     *   - 401: Authentication required (no/invalid token)
+     *   - 403: Forbidden (authenticated but insufficient permissions)
+     *   - 422: Validation error (bad request data)
+     *   - 503: Backend/database unavailable
+     *   - 5xx: Internal server error
+     *   - network: Backend unreachable
+     *   - other: Pass through original message
      */
     _handleApiError(err) {
-        if (err && err.status === 401) {
+        if (!err) return 'An unexpected error occurred.';
+
+        // Auth errors — distinguish unauthenticated vs forbidden
+        if (err.status === 401) {
             return 'You must sign in to perform this action.';
         }
-        if (err && err.status === 403) {
+        if (err.status === 403) {
             return 'You do not have permission to perform this action.';
         }
-        return err ? (err.message || 'An unexpected error occurred.') : 'An unexpected error occurred.';
+
+        // Validation errors
+        if (err.status === 422) {
+            return err.message || 'The request contained invalid data. Please check your input.';
+        }
+
+        // Service unavailable (database down, etc.)
+        if (err.status === 503) {
+            return 'The service is temporarily unavailable. Please try again later.';
+        }
+
+        // Other server errors (5xx)
+        if (err.status >= 500) {
+            return 'An internal server error occurred. Please try again later.';
+        }
+
+        // Network errors (backend unreachable)
+        if (err.type === 'network') {
+            return 'Cannot reach the backend server. Please check your connection and try again.';
+        }
+
+        // Pass through original message for other cases
+        return err.message || 'An unexpected error occurred.';
+    },
+
+    /**
+     * Show or hide the backend-unavailable banner.
+     * This is a persistent, non-dismissable banner shown when the backend
+     * is unreachable during startup or when multiple requests fail.
+     */
+    _showBackendUnavailableBanner(show) {
+        let banner = document.getElementById('backend-unavailable-banner');
+
+        if (show) {
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'backend-unavailable-banner';
+                banner.className = 'backend-unavailable-banner active';
+                banner.innerHTML =
+                    '⚠️ Backend server is unreachable. Some features may not work correctly. ' +
+                    '<button id="backend-banner-retry-btn" style="margin-left:8px;cursor:pointer;">Retry</button>';
+                const mainContent = document.getElementById('main-content');
+                if (mainContent) {
+                    mainContent.insertBefore(banner, mainContent.firstChild);
+                }
+                document.getElementById('backend-banner-retry-btn').addEventListener('click', async () => {
+                    const healthy = await ApiClient.isHealthy();
+                    if (healthy) {
+                        banner.remove();
+                        this.showNotification('Backend connection restored.', 'success');
+                        await this.renderCurrentPage();
+                    } else {
+                        this.showNotification('Backend is still unreachable.', 'error');
+                    }
+                });
+            }
+        } else if (banner) {
+            banner.remove();
+        }
     },
 
     // === Duplicate Detection ===

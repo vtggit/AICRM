@@ -368,38 +368,223 @@ curl -v http://localhost:9000/api/contacts \
 
 ## Troubleshooting
 
-### Backend unreachable
+### Health Endpoints
 
-- Verify the server is running: `curl http://localhost:9000/api/health`
-- Check the port is not already in use: `lsof -i :9000`
-- Confirm the Python process started without import errors
+The backend provides two health endpoints for operational diagnostics:
 
-### Invalid token
+```bash
+# Basic liveness check (returns 200 if the process is running)
+curl http://localhost:9000/api/health
 
-- In development mode, ensure `Authorization: Bearer <AUTH_DEV_TOKEN>` matches the configured token.
-- In production mode, check the logs for specific JWT validation failures:
-  - `token expired` — the token's `exp` claim is in the past.
-  - `invalid audience` — the token's `aud` claim does not match `AUTH_AUDIENCE`.
-  - `invalid issuer` — the token's `iss` claim does not match `AUTH_ISSUER`.
-  - `no matching key in JWKS` — the token's `kid` header does not match any key in the JWKS set.
-- Logs include the request ID so you can correlate the failure with the HTTP request.
+# Readiness check (includes database connectivity status)
+curl http://localhost:9000/api/health/ready
+```
 
-### Forbidden action
+The readiness endpoint returns `"status": "degraded"` if the database is unreachable, even though the process itself is running. Use this to distinguish between "backend down" and "backend running but database unavailable."
 
-- The request is authenticated but the user lacks the required role.
-- Check the log line prefixed with `authz: forbidden` to see the user's subject, required role, and actual roles.
+Response fields:
+- `status`: `"ok"` or `"degraded"`
+- `app_version`: Application version from `VERSION` file or `APP_VERSION` env var
+- `service`: Always `"aicrm-backend"`
+- `git_sha`: Git commit SHA (if `GIT_SHA` env var is set)
+- `build_timestamp`: Build timestamp (if `BUILD_TIMESTAMP` env var is set)
+- `dependencies`: Object with dependency status (e.g., `{"database": {"status": "ok"|"error", "error": "..."}}`)
 
-### Database connection issue
+### Backend Not Starting
 
-- Verify PostgreSQL is running and accessible at the configured `DB_HOST`/`DB_PORT`.
-- Check credentials: `PGPASSWORD=aicrm psql -h localhost -U aicrm -d aicrm -c "SELECT 1;"`
-- Connection errors are logged at ERROR level with the request ID and exception details.
-- In docker-compose mode, the `start.sh` script automatically retries DB connectivity for up to 60 seconds.
+**Symptoms:** Backend container exits, process crashes, or port 9000 is not listening.
 
-### Audit write failure
+**Diagnostics:**
+```bash
+# Check if the process is running
+docker ps -a | grep aicrm-backend
 
-- If an audit write fails, the error is logged at ERROR level with entity type, entity ID, action, and the underlying exception.
-- The mutation that triggered the audit write will also fail (the audit is part of the same transaction boundary).
+# View startup logs (look for [startup] prefixed lines)
+docker logs aicrm-backend --tail 50
+
+# Check for port conflicts
+lsof -i :9000
+```
+
+**Startup log prefixes and their meaning:**
+- `[startup] INFO: Waiting for PostgreSQL...` — Normal: backend is waiting for DB
+- `[startup] INFO: PostgreSQL is ready` — Normal: DB connection established
+- `[startup] INFO: Running database migrations...` — Normal: applying schema migrations
+- `[startup] INFO: Migrations completed` — Normal: schema is up to date
+- `[startup] ERROR: PostgreSQL ... did not become ready` — DB is down or unreachable after 60s
+- `[startup] ERROR: Database migrations failed` — Migration error (see below)
+
+**Common causes:**
+- **Database not ready:** Backend waits 60 seconds. If DB doesn't start, the backend exits with a clear error. Start the database first.
+- **Port conflict:** Another process is using port 9000. Kill it or change `BACKEND_PORT`.
+- **Missing Python dependencies:** Rebuild the container image.
+
+### Database Connection Failure
+
+**Symptoms:**
+- Frontend shows "The service is temporarily unavailable" on API requests
+- `/api/health/ready` returns `"status": "degraded"` with database error
+- Backend logs show `psycopg2.OperationalError` or connection refused errors
+
+**Diagnostics:**
+```bash
+# Check if PostgreSQL is running
+docker ps | grep aicrm-db
+
+# Test database connectivity
+docker exec -it aicrm-db psql -U aicrm -d aicrm -c "SELECT 1"
+
+# Check backend logs for connection errors
+docker logs aicrm-backend --tail 50 | grep -i "database\|postgres\|psycopg"
+
+# Check readiness endpoint
+curl http://localhost:9000/api/health/ready
+```
+
+**Common causes:**
+- **Database container not started:** `docker start aicrm-db`
+- **Database still initializing:** PostgreSQL can take 10-30 seconds to start. Wait or restart backend.
+- **Wrong credentials:** Verify DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD environment variables.
+- **Network issue:** Containers must be on the same Docker network.
+
+### Migration Failure
+
+**Symptoms:**
+- Backend logs show `[startup] ERROR: Database migrations failed`
+- Backend process exits with non-zero code
+- Error references a specific migration file or SQL error
+
+**Diagnostics:**
+```bash
+# View migration error details
+docker logs aicrm-backend --tail 100 | grep -A 20 "migration"
+
+# Check current migration version
+docker exec -it aicrm-db psql -U aicrm -d aicrm -c "SELECT version_num FROM alembic_version"
+
+# Check migration history
+docker exec aicrm-backend alembic history
+docker exec aicrm-backend alembic current
+```
+
+**Common causes:**
+- **Stale schema:** Database was modified outside of migrations. Inspect with `alembic current` and `alembic heads`.
+- **Conflicting migrations:** Two HEAD revisions exist. Resolve with `alembic merge head`.
+- **Missing migration:** New code references tables not yet created. Create the migration with `alembic revision --autogenerate -m "description"`.
+- **Permission issue:** PostgreSQL user lacks CREATE/ALTER privileges.
+
+**Recovery:**
+```bash
+# If safe to stamp (schema manually matches a known revision)
+docker exec aicrm-backend alembic stamp <revision>
+
+# Re-run migrations
+docker exec aicrm-backend alembic upgrade head
+```
+
+### Authentication Failures
+
+**Symptoms:** Frontend shows "You must sign in to perform this action" or API returns 401.
+
+**Diagnostics:**
+```bash
+# Check auth-related log lines
+docker logs aicrm-backend --tail 50 | grep -i "auth\|token\|401"
+```
+
+**Auth failure types (check backend logs):**
+
+| Log message | Meaning | Resolution |
+|---|---|---|
+| `auth: unauthenticated access attempt` | No token provided | User needs to log in |
+| `auth: token validation failed — ExpiredSignatureError` | Token expired | Log in again |
+| `auth: token validation failed — InvalidSignatureError` | Token is invalid | Clear localStorage, log in again |
+| `auth: token validation failed — InvalidIssuerError` | Issuer mismatch | Check AUTH_ISSUER config |
+| `auth: token validation failed — InvalidAudienceError` | Audience mismatch | Check AUTH_AUDIENCE config |
+| `auth: JWKS fetch failed` | Can't reach auth provider | Check network and AUTH_JWKS_URI |
+| `auth: development mode — accepting any token` | Dev mode active | Expected in development |
+
+**Auth configuration:**
+- `AUTH_MODE=development`: Accepts any non-empty bearer token matching `AUTH_DEV_TOKEN`
+- `AUTH_MODE=production`: Validates real JWTs against JWKS endpoint
+- Unknown AUTH_MODE values cause startup failure (fail closed, no silent fallback)
+
+**Common causes:**
+- **Expired token:** Normal. User logs in again.
+- **Stale token in browser:** Clear browser localStorage and log in again.
+- **Auth mode misconfiguration:** Verify AUTH_MODE is "development" or "production".
+- **JWKS unreachable:** Production mode requires network access to AUTH_JWKS_URI.
+
+### Forbidden Action (403)
+
+**Symptoms:** Frontend shows "You do not have permission to perform this action" or API returns 403.
+
+**Diagnostics:**
+```bash
+# Check authorization log lines
+docker logs aicrm-backend --tail 50 | grep -i "forbidden\|403\|admin"
+```
+
+The log line prefixed with `authz: forbidden` includes the user's subject, required role, and actual roles.
+
+**Common causes:**
+- **Non-admin user accessing admin features:** Expected. Only admin users can access settings and audit logs.
+- **Token missing is_admin claim:** If the user should be admin, re-authenticate with correct claims.
+- **Frontend showing admin UI to non-admin users:** Admin-only elements should be hidden. If visible, it's a frontend bug.
+
+### Audit Write Failure
+
+**Symptoms:**
+- API mutations fail with 500 errors
+- Backend logs show `audit: failed to write event`
+
+**Current behavior (Option B):**
+When an audit write fails, the entire business mutation fails. This ensures every persisted mutation has a corresponding audit record. See `backend/app/services/audit_service.py` for the policy rationale.
+
+**Diagnostics:**
+```bash
+# Check audit-related log lines
+docker logs aicrm-backend --tail 50 | grep -i "audit"
+
+# Verify audit_log table is accessible
+docker exec -it aicrm-db psql -U aicrm -d aicrm -c "SELECT count(*) FROM audit_log"
+```
+
+**Common causes:**
+- **Audit table missing:** Run migrations (`alembic upgrade head`).
+- **Database permissions:** Grant INSERT on audit_log to the application user.
+- **Database disk full:** Free disk space or expand volume.
+
+### Request ID Tracing
+
+Every request carries a unique `X-Request-ID` (UUID), included in response headers and all backend log lines. Use this to trace a specific request:
+
+1. Note the `X-Request-ID` from the response header or error message
+2. Search logs: `docker logs aicrm-backend | grep "<request_id>"`
+3. This shows the complete log trail for that request
+
+```bash
+# Example: trace a request
+curl -v http://localhost:9000/api/contacts \
+  -H "Authorization: Bearer dev-secret-token"
+# Note the X-Request-ID from response headers
+# Then: docker logs aicrm-backend | grep "a1b2c3d4-..."
+```
+
+### Backend Port / Config Mismatch
+
+**Symptoms:** Frontend can't reach backend, but backend health check works on a different port.
+
+**Diagnostics:**
+```bash
+# Check what port the backend is actually listening on
+docker logs aicrm-backend --tail 20 | grep "Uvicorn"
+
+# Check frontend configuration
+grep "API_BASE_URL" app/js/api.js
+```
+
+The frontend connects to the backend via the `API_BASE_URL` constant in `app/js/api.js`. In docker-compose mode, this defaults to the backend service URL. If you've changed the backend port, update this accordingly.
 
 ## Testing
 

@@ -73,6 +73,9 @@ def require_authenticated_user(
     If the caller is not authenticated, FastAPI returns 401 Unauthorized
     before the route handler is ever invoked.  Use this on every route
     that must require a valid identity.
+
+    The response includes an ``auth_failure_reason`` field to help
+    distinguish between missing token, invalid token, and expired token.
     """
     if current_user is None:
         logger.warning("auth: unauthenticated access attempt%s", _req())

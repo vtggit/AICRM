@@ -1,4 +1,20 @@
-"""Audit service - central place for writing audit events."""
+"""Audit service - central place for writing audit events.
+
+AUDIT FAILURE POLICY — Option B: Audit failure causes the mutation to fail.
+
+    When a business mutation succeeds but the subsequent audit write fails,
+    the entire operation is rolled back.  This guarantees that every persisted
+    mutation has a corresponding audit record, at the cost of availability
+    when the audit table is unreachable.
+
+    Rationale:
+    • Audit completeness is a compliance requirement.
+    • Silent data mutations without audit trails are worse than failed mutations.
+    • The audit table lives in the same database, so audit-only failures are rare.
+
+    If the audit subsystem becomes a reliability bottleneck, the policy can be
+    changed to Option A (succeed + log) with a compensating background writer.
+"""
 
 import logging
 
@@ -16,13 +32,23 @@ def _req() -> str:
 
 
 class AuditService:
-    """Writes audit events through the repository layer."""
+    """Writes audit events through the repository layer.
+
+    Audit writes are synchronous and blocking.  If the audit write fails,
+    the exception propagates to the caller, which should treat the entire
+    mutation as failed (see module docstring for policy rationale).
+    """
 
     def __init__(self, repository: AuditRepository):
         self.repository = repository
 
     def write(self, event: AuditEvent) -> AuditEventResponse:
-        """Persist an audit event."""
+        """Persist an audit event.
+
+        Raises:
+            Exception: If the audit write fails. The caller should treat
+                       the entire business mutation as failed.
+        """
         try:
             return self.repository.write_event(event)
         except Exception as exc:

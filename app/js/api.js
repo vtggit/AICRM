@@ -214,10 +214,28 @@ const ApiClient = {
 
     /**
      * Health check – returns true when the backend is reachable.
+     * Uses the shallow /api/health endpoint (no dependency checks).
      */
     async isHealthy() {
         const result = await this.get('/health');
         return result.ok && result.data && result.data.status === 'ok';
+    },
+
+    /**
+     * Readiness check – returns true when the backend and all dependencies are healthy.
+     * Uses the /api/health/ready endpoint which tests database connectivity.
+     * Returns the full readiness response for diagnostics.
+     */
+    async isReady() {
+        const result = await this.get('/health/ready');
+        if (!result.ok) {
+            return { ready: false, reason: result.error || 'Backend unreachable' };
+        }
+        return {
+            ready: result.data.status === 'ok',
+            status: result.data.status,
+            dependencies: result.data.dependencies || [],
+        };
     },
 
     // -----------------------------------------------------------------------

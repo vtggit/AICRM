@@ -11,6 +11,7 @@ This document describes the current security posture of AICRM, identifies gaps, 
   - **Production mode** (`AUTH_MODE=production`): validates real JWTs against a configured identity provider using JWKS-based signature verification, issuer/audience validation, and token expiry checks.
   - Authentication is enforced via FastAPI route dependencies. Unknown `AUTH_MODE` values fail closed (no silent fallback to dev mode).
   - Auth failures are logged with clear diagnostics (missing header, malformed token, invalid signature, wrong issuer/audience, expired token) without exposing sensitive token contents.
+  - Auth failure modes are operationally distinguishable: 401 for unauthenticated (missing/invalid token), 403 for forbidden (authenticated but insufficient permissions). Frontend displays appropriate user-facing messages for each.
 - **Authorization**: Basic role-based authorization is implemented:
   - `require_role()` and `require_any_role()` FastAPI dependencies enforce role requirements on protected routes.
   - Recognized roles: `admin` (full access, including mutations) and `user` (read-only access).
@@ -20,7 +21,7 @@ This document describes the current security posture of AICRM, identifies gaps, 
   - Every create, update, and delete operation across Contacts, Templates, Leads, Activities, and Settings is recorded in a PostgreSQL `audit_log` table.
   - Audit events capture entity type, entity ID, action, actor identity (subject, username, email, roles), timestamp, and change details.
   - A read-only audit log API (`GET /api/audit`) allows querying recent events.
-  - Audit write failures are logged with entity/action context and the underlying error.
+  - **Audit failure policy (Option B)**: Audit write failures cause the entire business mutation to fail, ensuring every persisted mutation has a corresponding audit record. This is intentional and documented in `backend/app/services/audit_service.py`.
 - **Data Protection**: Data resides in PostgreSQL. No encryption at rest is configured yet. No HTTPS enforcement at the application layer (expected to be handled by reverse proxy / ingress).
 - **Input Validation**: Server-side validation exists per domain (e.g. Contacts: name required, status enum; Leads: status enum, stage validation; Activities: type enum). No comprehensive sanitization against XSS or injection beyond parameterized SQL queries.
 

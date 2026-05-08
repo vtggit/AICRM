@@ -19,8 +19,21 @@ AICRM is a **three-service containerized application** consisting of a frontend,
 - **Configuration**: All configuration is driven by environment variables with explicit defaults. A `.env.example` file documents every configurable value. No hidden fallback paths exist.
 - **Startup Order**: Docker Compose enforces startup order via `depends_on` with health check conditions:
   1. `db` starts and passes `pg_isready` health check
-  2. `backend` starts, `start.sh` confirms DB connectivity, runs `alembic upgrade head` to apply migrations, then uvicorn launches
+  2. `backend` starts, `start.sh` confirms DB connectivity (up to 60s retries), runs `alembic upgrade head` to apply migrations, then uvicorn launches
   3. `frontend` starts and proxies API requests to the backend
+- **Startup Failure Behavior**:
+  - **DB not ready within 60s**: `start.sh` exits with a clear error message (`[startup] ERROR: PostgreSQL ... did not become ready`). The backend container stops.
+  - **Migration failure**: `start.sh` exits with a clear error (`[startup] ERROR: Database migrations failed`). The backend container stops. Logs include the migration error details.
+  - **Auth misconfiguration**: Unknown `AUTH_MODE` values cause immediate startup failure with a descriptive error. No silent fallback to development mode.
+- **Health and Readiness**:
+  - `GET /api/health` — Liveness check. Returns 200 with service status, version, and build metadata. Used by Docker Compose health checks.
+  - `GET /api/health/ready` — Readiness check. Includes dependency status (database connectivity). Returns `"status": "degraded"` if database is unreachable.
+- **Frontend Startup Behavior**: The frontend checks backend availability at page load via the health endpoint. If the backend is unreachable, a "Backend server is unreachable" banner is displayed. The app continues rendering but API requests fail with clear error messages.
+- **Runtime Failure Behavior**:
+  - **Database becomes unavailable**: API requests return 503 with a meaningful error. Readiness endpoint reports degraded status. No automatic retry logic yet.
+  - **Auth provider unreachable** (production mode): Token validation fails with a clear 401. Backend logs include the JWKS fetch error.
+  - **Audit write failure**: Business mutation fails entirely (Option B policy). See `backend/app/services/audit_service.py` for rationale.
+- **Operational Documentation**: A practical runbook exists at `docs/operations/runbook.md` with first-response guidance for common incidents (backend not starting, DB failure, migration failure, auth failure, etc.).
 - **Schema Versioning**: Managed by Alembic. Migration files live in `backend/migrations/versions/`. A baseline migration (`0001_baseline.py`) captures the current schema state. On every container start, `start.sh` runs `alembic upgrade head` to ensure the database schema is current. Migration history is tracked in the `alembic_version` table. New schema changes are introduced through versioned migration files — not by editing legacy schema helpers.
 - **Auth Path**: All backend API endpoints require a valid JWT. The frontend includes auth helpers (`js/auth.js`) that read the token from sessionStorage and attach it to API requests.
 
@@ -64,10 +77,11 @@ No secrets are committed. Developers copy `.env.example` to `.env` and adjust va
 - No CI/CD pipeline for automated build, test, and deployment.
 - No environment separation (dev, staging, production) beyond local `.env` customization.
 - No infrastructure-as-code or deployment manifests for cloud platforms.
-- No health checks, readiness probes, or rolling update strategy beyond basic Docker health checks.
-- Migration testing strategy (run migrations against a test database in CI).
+- No rolling update strategy or zero-downtime deployment.
 - No automated backup/restore tooling for PostgreSQL.
 - No metrics collection or alerting (Prometheus/Grafana).
+- No automated retry or circuit breaker logic for transient dependency failures.
+- Frontend error handling covers major failure classes but is not yet exhaustive for all edge cases.
 
 ## Target Direction
 

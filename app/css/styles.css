@@ -1689,3 +1689,55 @@ body {
 .auth-required-banner.active {
     display: block;
 }
+
+/* ================================================
+   Backend Unavailable Banner
+   ================================================ */
+
+.backend-unavailable-banner {
+    display: none;
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.backend-unavailable-banner.active {
+    display: flex;
+}
+
+.backend-unavailable-banner button {
+    background-color: #ffc107;
+    color: #856404;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.backend-unavailable-banner button:hover {
+    background-color: #e0a800;
+}
+
+[data-theme="dark"] .backend-unavailable-banner {
+    background-color: #3d3200;
+    color: #ffc107;
+    border-color: #664d00;
+}
+
+[data-theme="dark"] .backend-unavailable-banner button {
+    background-color: #664d00;
+    color: #ffc107;
+}
+
+[data-theme="dark"] .backend-unavailable-banner button:hover {
+    background-color: #806000;
+}
+
