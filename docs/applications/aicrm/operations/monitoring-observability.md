@@ -54,6 +54,18 @@ The target observability model will include:
 - Migration testing in CI (run migrations against a clean test database before deployment).
 - Full observability coverage across all business domains (Contacts, Templates, Leads, Activities, Settings).
 
+## Steady-State Support
+
+The application now has a documented support and maintenance model that covers:
+
+- **Operational ownership** — defined roles for application code, backend operations, database, auth/configuration, releases, incident triage, and documentation upkeep
+- **Recurring maintenance** — scheduled tasks for CI review, dependency hygiene, migration monitoring, backup verification, and documentation updates
+- **Incident response expectations** — triage process, escalation guidance, and post-incident documentation workflow
+
+Ownership and recurring maintenance are now part of steady-state operation. The application is not just built; it is maintained.
+
+See [docs/operations/support-maintenance-model.md](../../operations/support-maintenance-model.md) for the full model, including the maintenance calendar and responsibility assignments.
+
 ## Related Enterprise Standards
 
 - Observability and monitoring standard

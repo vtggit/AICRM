@@ -4,7 +4,7 @@ This folder contains the backend API for AICRM, built with **FastAPI**.
 
 ## Architecture Overview
 
-AICRM is a **backend-owned application**. All business data — Contacts, Leads, Activities, Templates, and Settings — is managed by the backend and persisted in PostgreSQL. The frontend is a client that communicates exclusively through this API.
+AICRM is a **backend-owned application**. All business data  —  Contacts, Leads, Activities, Templates, and Settings  —  is managed by the backend and persisted in PostgreSQL. The frontend is a client that communicates exclusively through this API.
 
 ### Domains
 
@@ -114,7 +114,7 @@ backend/
 │   ├── db/                   # Database connection and schema
 │   │   ├── __init__.py
 │   │   ├── connection.py     # PostgreSQL connection helper
-│   │   └── schema.py         # DEPRECATED — kept as reference only
+│   │   └── schema.py         # DEPRECATED  —  kept as reference only
 │   ├── api/                  # API route modules
 │   │   ├── health.py         # Health check endpoint
 │   │   ├── auth.py           # Auth endpoints (/me, /config)
@@ -200,7 +200,7 @@ All schema evolution happens through migration files in `backend/migrations/vers
 
 - Schema changes are **versioned, ordered, reviewable, and repeatable**.
 - The baseline migration (`0001_baseline.py`) represents the current schema state at the time this system was introduced.
-- New schema changes are introduced by creating a new migration file — not by editing `schema.py`.
+- New schema changes are introduced by creating a new migration file  —  not by editing `schema.py`.
 - Migrations are applied automatically on container startup via `start.sh`.
 - Migration history is tracked in the `alembic_version` table inside PostgreSQL.
 
@@ -322,7 +322,7 @@ export AUTH_JWKS_URL=https://your-idp.example.com/realms/aicrm/protocol/openid-c
 Logs are written to stdout in a structured format that includes timestamp, level, request ID, logger name, and message. Example:
 
 ```
-2024-01-15T10:30:00+0000 INFO   [a1b2c3d4-...] app.auth.security: JWT validation failed — token expired request_id=a1b2c3d4-...
+2024-01-15T10:30:00+0000 INFO   [a1b2c3d4-...] app.auth.security: JWT validation failed  —  token expired request_id=a1b2c3d4-...
 ```
 
 ## Available Endpoints
@@ -407,12 +407,12 @@ lsof -i :9000
 ```
 
 **Startup log prefixes and their meaning:**
-- `[startup] INFO: Waiting for PostgreSQL...` — Normal: backend is waiting for DB
-- `[startup] INFO: PostgreSQL is ready` — Normal: DB connection established
-- `[startup] INFO: Running database migrations...` — Normal: applying schema migrations
-- `[startup] INFO: Migrations completed` — Normal: schema is up to date
-- `[startup] ERROR: PostgreSQL ... did not become ready` — DB is down or unreachable after 60s
-- `[startup] ERROR: Database migrations failed` — Migration error (see below)
+- `[startup] INFO: Waiting for PostgreSQL...`  —  Normal: backend is waiting for DB
+- `[startup] INFO: PostgreSQL is ready`  —  Normal: DB connection established
+- `[startup] INFO: Running database migrations...`  —  Normal: applying schema migrations
+- `[startup] INFO: Migrations completed`  —  Normal: schema is up to date
+- `[startup] ERROR: PostgreSQL ... did not become ready`  —  DB is down or unreachable after 60s
+- `[startup] ERROR: Database migrations failed`  —  Migration error (see below)
 
 **Common causes:**
 - **Database not ready:** Backend waits 60 seconds. If DB doesn't start, the backend exits with a clear error. Start the database first.
@@ -497,12 +497,12 @@ docker logs aicrm-backend --tail 50 | grep -i "auth\|token\|401"
 | Log message | Meaning | Resolution |
 |---|---|---|
 | `auth: unauthenticated access attempt` | No token provided | User needs to log in |
-| `auth: token validation failed — ExpiredSignatureError` | Token expired | Log in again |
-| `auth: token validation failed — InvalidSignatureError` | Token is invalid | Clear localStorage, log in again |
-| `auth: token validation failed — InvalidIssuerError` | Issuer mismatch | Check AUTH_ISSUER config |
-| `auth: token validation failed — InvalidAudienceError` | Audience mismatch | Check AUTH_AUDIENCE config |
+| `auth: token validation failed  —  ExpiredSignatureError` | Token expired | Log in again |
+| `auth: token validation failed  —  InvalidSignatureError` | Token is invalid | Clear localStorage, log in again |
+| `auth: token validation failed  —  InvalidIssuerError` | Issuer mismatch | Check AUTH_ISSUER config |
+| `auth: token validation failed  —  InvalidAudienceError` | Audience mismatch | Check AUTH_AUDIENCE config |
 | `auth: JWKS fetch failed` | Can't reach auth provider | Check network and AUTH_JWKS_URI |
-| `auth: development mode — accepting any token` | Dev mode active | Expected in development |
+| `auth: development mode  —  accepting any token` | Dev mode active | Expected in development |
 
 **Auth configuration:**
 - `AUTH_MODE=development`: Accepts any non-empty bearer token matching `AUTH_DEV_TOKEN`
@@ -597,7 +597,7 @@ run the tests.
 #### Option 1: Containerized PostgreSQL (Recommended)
 
 The simplest approach uses a containerized PostgreSQL test database. This
-requires only Docker — no host PostgreSQL installation needed.
+requires only Docker  —  no host PostgreSQL installation needed.
 
 ```bash
 cd backend
@@ -660,11 +660,11 @@ The workflow runs on every push and pull request to `main`/`master`.
 
 **CI jobs (in order of execution):**
 
-1. **Release metadata** — validates `VERSION` format, changelog consistency, and drift detection (no database required)
-2. **Quality gates** — Python formatting (black), linting (ruff), and shell checks (shellcheck) (no database required)
-3. **Security hygiene** — dependency vulnerability scanning (pip-audit) and secret detection (gitleaks) (no database required)
-4. **API contract** — validates `backend/openapi.json` stays in sync with the live FastAPI schema (requires backend dependencies)
-5. **Backend tests** — full DB-backed test suite
+1. **Release metadata**  —  validates `VERSION` format, changelog consistency, and drift detection (no database required)
+2. **Quality gates**  —  Python formatting (black), linting (ruff), and shell checks (shellcheck) (no database required)
+3. **Security hygiene**  —  dependency vulnerability scanning (pip-audit) and secret detection (gitleaks) (no database required)
+4. **API contract**  —  validates `backend/openapi.json` stays in sync with the live FastAPI schema (requires backend dependencies)
+5. **Backend tests**  —  full DB-backed test suite
 
 **CI test path (backend-tests job):**
 
@@ -697,7 +697,7 @@ Docker Compose:
 | Test command | `pytest tests/ -v --tb=short` | `pytest tests/ -v --tb=short` |
 | Result | Local output | PR check status |
 
-Both paths run the same real DB-backed test suite — CI does not substitute a
+Both paths run the same real DB-backed test suite  —  CI does not substitute a
 watered-down version. Migration failures and test failures appear as distinct
 CI steps for clear visibility.
 
@@ -712,7 +712,7 @@ These run in CI before the test suite and can be executed locally.
 |------|---------|--------|
 | [black](https://black.readthedocs.io/) | Deterministic Python formatting | `pyproject.toml` |
 | [ruff](https://docs.astral.sh/ruff/) | Fast Python linting (practical rules) | `pyproject.toml` |
-| [shellcheck](https://www.shellcheck.net/) | Shell script static analysis | — |
+| [shellcheck](https://www.shellcheck.net/) | Shell script static analysis |  —  |
 
 ### Local Commands
 
@@ -738,7 +738,7 @@ shellcheck backend/run_tests.sh backend/start.sh
 ### What the Rules Enforce
 
 **black** enforces consistent, deterministic formatting. There are no style
-arguments — if black says the file is wrong, run `black backend/` to fix it.
+arguments  —  if black says the file is wrong, run `black backend/` to fix it.
 
 **ruff** catches practical problems including:
 - Unused imports
@@ -771,7 +771,7 @@ AICRM treats the backend API as an explicit contract, not just a set of working 
 
 ### Why
 
-Backend route changes should be treated as **contract changes**, not casual implementation edits. This does not mean freezing everything forever — it means making changes explicit, reviewable, and less surprising.
+Backend route changes should be treated as **contract changes**, not casual implementation edits. This does not mean freezing everything forever  —  it means making changes explicit, reviewable, and less surprising.
 
 ### Request/Response Models
 
@@ -820,4 +820,25 @@ When making API changes:
 
 ### Frontend Alignment
 
-Frontend data-source modules and the API client (`app/js/api.js`) are expected to match the now-explicit API contract. When reviewing frontend changes, the committed OpenAPI schema serves as the reference for expected request/response shapes.
+Frontend data-source modules and the API client (`app/js/api.js`) are expected to match the now-explicit API contract. When reviewing backend changes, the committed OpenAPI schema serves as the reference for expected request/response shapes.
+
+## Operational Ownership
+
+The backend is the operational core of AICRM. The following expectations apply to anyone maintaining it.
+
+### Maintenance Tasks for Backend Maintainers
+
+| Task | Frequency | What to Do |
+|------|-----------|-----------|
+| Review failed CI runs | As they occur | Investigate and resolve quality gate, security hygiene, contract, or test failures |
+| Review dependency hygiene | Monthly | Run `pip-audit -r backend/requirements.txt`; patch critical vulnerabilities |
+| Review migration changes | Every schema change | Verify correctness, rollback safety, and data impact before merging |
+| Verify environment configuration | Monthly | Confirm environment variables and auth settings have not drifted |
+| Keep runbooks current | When behavior changes | Update `docs/operations/runbook.md` when new failure modes are discovered |
+
+### Where to Find Operational Documentation
+
+- **Runbook:** [docs/operations/runbook.md](../docs/operations/runbook.md)  —  first-response guidance for incidents
+- **Support and Maintenance Model:** [docs/operations/support-maintenance-model.md](../docs/operations/support-maintenance-model.md)  —  ownership, recurring tasks, incident expectations
+- **Release Process:** [docs/operations/release-process.md](../docs/operations/release-process.md)  —  version management and release workflow
+- **Known Issues:** [docs/operations/known-issues.md](../docs/operations/known-issues.md)  —  track of known operational issues

@@ -450,3 +450,13 @@ When making API changes, regenerate the contract artifact with `python3 scripts/
 3. No metrics collection or alerting (Prometheus/Grafana).
 4. No automated backup/restore tooling for PostgreSQL.
 5. Frontend UI automation (backend test coverage is now established).
+
+## Operations and Support
+
+AICRM has a documented steady-state support and maintenance model covering:
+
+- **Operational runbooks** — first-response guidance for common incidents
+- **Release discipline** — version management, CI-enforced metadata consistency, and release workflow
+- **Support and maintenance expectations** — ownership areas, recurring maintenance tasks, and incident response guidance
+
+See [docs/operations/support-maintenance-model.md](docs/operations/support-maintenance-model.md) for the full sustainment guide.

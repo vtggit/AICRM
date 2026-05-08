@@ -26,6 +26,7 @@ This section distinguishes between **conformance by decision** (the application 
 | Security hygiene | Dependency vulnerability scanning + secret detection in CI (pip-audit, gitleaks) | No formal adoption yet | Conforming | Supply-chain and secret-leak prevention |
 | Version and release management | Single shared app version via VERSION file, changelog, health endpoint exposure, CI-enforced metadata consistency | No formal adoption yet | Conforming | Versioned releases with traceability |
 | API contract governance | Explicit Pydantic request/response models, committed OpenAPI schema artifact, CI drift detection, consistent response conventions | No formal adoption yet | Conforming | Governed API surface with visible contract changes |
+| Operations and sustainment | Documented support/maintenance model with ownership roles, recurring maintenance tasks, cadence-based checklists, backup/recovery responsibility, and incident response expectations | No formal adoption yet | Conforming | Sustainable operational model with clear ownership |
 
 **Implementation notes:**
 
@@ -45,6 +46,18 @@ This section distinguishes between **conformance by decision** (the application 
 ## Target Direction
 
 Each non-conforming area will be addressed incrementally. The application is in a stable steady state — the current frontend will remain functional as a thin client while backend infrastructure enhancements are introduced alongside it.
+
+## Steady-State Support
+
+The application now has a documented support and maintenance model that covers:
+
+- **Operational ownership** — defined roles for application code, backend operations, database, auth/configuration, releases, incident triage, and documentation upkeep
+- **Recurring maintenance** — scheduled tasks for CI review, dependency hygiene, migration monitoring, backup verification, and documentation updates
+- **Incident response expectations** — triage process, escalation guidance, and post-incident documentation workflow
+
+Ownership and recurring maintenance are now part of steady-state operation. The application is not just built; it is maintained.
+
+See [docs/operations/support-maintenance-model.md](../../operations/support-maintenance-model.md) for the full model.
 
 ## Related Enterprise Standards
 

@@ -95,6 +95,18 @@ The target deployment will introduce:
 - Migration testing strategy (run migrations against a test database in CI).
 - Metrics collection, alerting, and log aggregation.
 
+## Steady-State Support
+
+The application now has a documented support and maintenance model that covers:
+
+- **Operational ownership** — defined roles for deployment/runtime, database, auth/configuration, and release management
+- **Recurring maintenance** — scheduled tasks for deployment verification, configuration drift review, and backup validation
+- **Incident response expectations** — triage process aligned with deployment architecture (container health, startup order, dependency readiness)
+
+Ownership and recurring maintenance are now part of steady-state operation. The application is not just built; it is maintained.
+
+See [docs/operations/support-maintenance-model.md](../../operations/support-maintenance-model.md) for the full model, including deployment-relevant responsibilities and the maintenance calendar.
+
 ## Related Enterprise Standards
 
 - Containerized deployment standard
