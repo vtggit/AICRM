@@ -37,7 +37,9 @@ class HealthResponse(BaseModel):
     status: str = Field(..., description="Service health status")
     app_version: str = Field(..., description="Application version string")
     service: str = Field(..., description="Service identifier")
-    git_sha: str | None = Field(default=None, description="Git commit SHA (build metadata)")
+    git_sha: str | None = Field(
+        default=None, description="Git commit SHA (build metadata)"
+    )
     build_timestamp: str | None = Field(
         default=None, description="ISO-8601 build timestamp (build metadata)"
     )
@@ -49,7 +51,9 @@ class ReadinessResponse(BaseModel):
     status: str = Field(..., description="Service readiness status")
     app_version: str = Field(..., description="Application version string")
     service: str = Field(..., description="Service identifier")
-    git_sha: str | None = Field(default=None, description="Git commit SHA (build metadata)")
+    git_sha: str | None = Field(
+        default=None, description="Git commit SHA (build metadata)"
+    )
     build_timestamp: str | None = Field(
         default=None, description="ISO-8601 build timestamp (build metadata)"
     )

@@ -98,11 +98,13 @@ def create_app() -> FastAPI:
         request_id = get_request_id()
         errors = []
         for error in exc.errors():
-            errors.append({
-                "field": ".".join(str(loc) for loc in error.get("loc", [])),
-                "message": error.get("msg", ""),
-                "type": error.get("type", ""),
-            })
+            errors.append(
+                {
+                    "field": ".".join(str(loc) for loc in error.get("loc", [])),
+                    "message": error.get("msg", ""),
+                    "type": error.get("type", ""),
+                }
+            )
         return JSONResponse(
             status_code=422,
             content={

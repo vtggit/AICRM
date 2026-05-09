@@ -2218,11 +2218,15 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
     },
 
     openModal() {
-        document.getElementById('modal-overlay').classList.remove('hidden');
+        const overlay = document.getElementById('modal-overlay');
+        overlay.classList.remove('hidden');
+        overlay.classList.add('active');
     },
 
     closeModal() {
-        document.getElementById('modal-overlay').classList.add('hidden');
+        const overlay = document.getElementById('modal-overlay');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('active');
         document.getElementById('modal-body').innerHTML = '';
     },
 
