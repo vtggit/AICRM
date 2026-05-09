@@ -75,7 +75,9 @@ class TestOpenAPISchemaGeneration:
         ]
 
         for name in expected_schemas:
-            assert name in schemas, f"Expected schema {name} not found in OpenAPI components"
+            assert (
+                name in schemas
+            ), f"Expected schema {name} not found in OpenAPI components"
 
     def test_committed_artifact_matches_generated_schema(self, client: TestClient):
         """The committed openapi.json must match the live schema."""
@@ -86,7 +88,9 @@ class TestOpenAPISchemaGeneration:
             with open(artifact_path) as f:
                 committed_schema = json.load(f)
         except FileNotFoundError:
-            pytest.fail(f"Contract artifact not found at {artifact_path}. Run: python3 scripts/export_openapi.py")
+            pytest.fail(
+                f"Contract artifact not found at {artifact_path}. Run: python3 scripts/export_openapi.py"
+            )
 
         assert live_schema == committed_schema, (
             "Live OpenAPI schema differs from committed artifact. "

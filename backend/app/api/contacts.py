@@ -33,7 +33,9 @@ def create_contact(
     try:
         contact = _service.create_contact(payload, actor=user)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
     return contact
 
 
@@ -46,7 +48,10 @@ def update_contact(
     """Update an existing contact. Requires admin role."""
     contact = _service.update_contact(contact_id, payload, actor=user)
     if not contact:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Contact {contact_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Contact {contact_id} not found",
+        )
     return contact
 
 
@@ -58,5 +63,8 @@ def delete_contact(
     """Delete a contact. Requires admin role."""
     deleted = _service.delete_contact(contact_id, actor=user)
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Contact {contact_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Contact {contact_id} not found",
+        )
     return None
