@@ -3,11 +3,14 @@
  * Tests revenue stat cards and pipeline revenue breakdown
  */
 const { chromium } = require('playwright');
+const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
 (async () => {
     const results = [];
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+    const context = await browser.newContext();
+    await setPageAuth(context, 'dev-secret-token:admin');
+    const page = await context.newPage();
     const errors = [];
 
     page.on('console', msg => {
@@ -15,10 +18,8 @@ const { chromium } = require('playwright');
     });
 
     try {
-        await page.goto('http://localhost:8080/app/index.html', { waitUntil: 'domcontentloaded' });
-        await page.evaluate(() => localStorage.clear());
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(300);
+        await page.goto('http://localhost:8080/', { waitUntil: 'domcontentloaded' });
+        await waitForAuthReady(page);
 
         // Navigate to Leads and create test leads with values
         await page.click('.nav-item[data-page="leads"]');

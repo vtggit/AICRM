@@ -17,6 +17,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
 const BASE_URL = 'http://localhost:8080';
 const RESULTS_DIR = path.join(__dirname, '..', '..', 'test-results');
@@ -39,6 +40,7 @@ function fail(test, detail) { results.push({ test, detail, status: 'FAIL' }); }
     const context = await browser.newContext({
         permissions: ['clipboard-read', 'clipboard-write'],
     });
+    await setPageAuth(context, 'dev-secret-token:admin');
     const page = await context.newPage();
     const consoleErrors = [];
 
@@ -47,7 +49,8 @@ function fail(test, detail) { results.push({ test, detail, status: 'FAIL' }); }
     });
 
     try {
-        await page.goto(BASE_URL + '/app/index.html', { waitUntil: 'domcontentloaded' });
+        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+        await waitForAuthReady(page);
         await page.evaluate(() => localStorage.clear());
         await page.reload({ waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(300);

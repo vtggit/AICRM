@@ -6,8 +6,9 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
-const BASE_URL = 'http://localhost:8080/app/index.html';
+const BASE_URL = 'http://localhost:8080/';
 const DOWNLOADS_DIR = path.join(__dirname, '../test-downloads');
 
 (async () => {
@@ -20,6 +21,7 @@ const DOWNLOADS_DIR = path.join(__dirname, '../test-downloads');
     const context = await browser.newContext({
         downloadsPath: DOWNLOADS_DIR,
     });
+    await setPageAuth(context, 'dev-secret-token:admin');
     const page = await context.newPage();
 
     let passed = 0;
@@ -34,6 +36,7 @@ const DOWNLOADS_DIR = path.join(__dirname, '../test-downloads');
 
     try {
         await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+        await waitForAuthReady(page);
 
         // === SETUP: Create test leads ===
         console.log('SETUP: Creating test leads for CSV export...');

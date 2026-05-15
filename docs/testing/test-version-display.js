@@ -1,13 +1,16 @@
 const { chromium } = require('playwright');
+const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
 (async () => {
   const results = [];
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await setPageAuth(context, 'dev-secret-token:admin');
   const page = await context.newPage();
 
   try {
-    await page.goto('http://localhost:8080/app/index.html', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.goto('http://localhost:8080/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await waitForAuthReady(page);
     await page.waitForSelector('#page-dashboard', { state: 'visible', timeout: 5000 });
 
     // Test 1: Sidebar version displays

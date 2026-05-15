@@ -36,6 +36,7 @@ class ContactCreate(BaseModel):
     company: str | None = Field(default=None, max_length=200)
     status: Literal["active", "inactive", "vip"] = Field(default="active")
     notes: str | None = Field(default=None, max_length=5000)
+    tag_ids: list[str] = Field(default_factory=list)
 
     @field_validator("email")
     @classmethod
@@ -57,6 +58,7 @@ class ContactUpdate(BaseModel):
     company: str | None = Field(default=None, max_length=200)
     status: Literal["active", "inactive", "vip"] | None = Field(default=None)
     notes: str | None = Field(default=None, max_length=5000)
+    tag_ids: list[str] | None = Field(default=None)
 
     @field_validator("email")
     @classmethod
@@ -79,6 +81,7 @@ class ContactResponse(BaseModel):
     company: str | None = None
     status: str = "active"
     notes: str | None = None
+    tags: list[dict] = Field(default_factory=list)
     created_at: str
     updated_at: str
 
@@ -92,7 +95,59 @@ class ContactResponse(BaseModel):
                 "company": "Acme Corp",
                 "status": "active",
                 "notes": "Met at conference",
+                "tags": [{"id": "tag-1", "name": "Customer", "color": "#ef4444"}],
                 "created_at": "2025-01-01T00:00:00",
                 "updated_at": "2025-01-01T00:00:00",
             }
         }
+
+
+class BulkContactIds(BaseModel):
+    """Request body for bulk contact operations."""
+
+    ids: list[str] = Field(..., min_length=1, description="List of contact IDs")
+
+
+class BulkStatusUpdate(BaseModel):
+    """Request body for bulk status update."""
+
+    ids: list[str] = Field(..., min_length=1, description="List of contact IDs")
+    status: Literal["active", "inactive", "vip"] = Field(
+        ..., description="New status for all contacts"
+    )
+
+
+class BulkOperationResult(BaseModel):
+    """Response for bulk operations."""
+
+    success_count: int
+    message: str
+
+
+class DuplicateContactResponse(BaseModel):
+    """A single contact within a duplicate group."""
+
+    id: str
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    company: str | None = None
+    status: str = "active"
+    created_at: str
+    updated_at: str
+
+
+class DuplicateGroup(BaseModel):
+    """A group of contacts that are duplicates of each other."""
+
+    group_id: int
+    match_type: str  # "email", "phone", or "name_company"
+    contacts: list[DuplicateContactResponse]
+
+
+class DuplicateDetectionResponse(BaseModel):
+    """Response for the duplicate detection endpoint."""
+
+    total_groups: int
+    total_duplicates: int
+    groups: list[DuplicateGroup]

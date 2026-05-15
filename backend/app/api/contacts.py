@@ -1,10 +1,18 @@
-"""Contacts API routes — CRUD for contact records."""
+"""Contacts API routes — CRUD and bulk operations for contact records."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.authorization import ROLE_ADMIN, require_role
 from app.auth.models import AuthUser
-from app.models.contacts import ContactCreate, ContactResponse, ContactUpdate
+from app.models.contacts import (
+    BulkContactIds,
+    BulkOperationResult,
+    BulkStatusUpdate,
+    ContactCreate,
+    ContactResponse,
+    ContactUpdate,
+    DuplicateDetectionResponse,
+)
 from app.repositories.audit_postgres_repository import AuditPostgresRepository
 from app.repositories.contacts_postgres_repository import ContactsPostgresRepository
 from app.services.audit_service import AuditService
@@ -68,3 +76,41 @@ def delete_contact(
             detail=f"Contact {contact_id} not found",
         )
     return None
+
+
+@router.post("/bulk-delete", response_model=BulkOperationResult)
+def bulk_delete_contacts(
+    payload: BulkContactIds,
+    user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+):
+    """Delete multiple contacts in a single request. Requires admin role."""
+    count = _service.bulk_delete_contacts(payload.ids, actor=user)
+    return BulkOperationResult(
+        success_count=count,
+        message=f"Successfully deleted {count} contact(s).",
+    )
+
+
+@router.post("/bulk-update-status", response_model=BulkOperationResult)
+def bulk_update_status(
+    payload: BulkStatusUpdate,
+    user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+):
+    """Update status for multiple contacts. Requires admin role."""
+    count = _service.bulk_update_status(payload.ids, payload.status, actor=user)
+    return BulkOperationResult(
+        success_count=count,
+        message=f"Successfully updated status to '{payload.status}' for {count} contact(s).",
+    )
+
+
+@router.get("/duplicates", response_model=DuplicateDetectionResponse)
+def find_duplicate_contacts(_user: AuthUser = Depends(require_role(ROLE_ADMIN))):
+    """Find duplicate contacts grouped by email, phone, and name+company. Requires admin role."""
+    groups = _repository.find_duplicates()
+    total_duplicates = sum(len(g["contacts"]) for g in groups)
+    return DuplicateDetectionResponse(
+        total_groups=len(groups),
+        total_duplicates=total_duplicates,
+        groups=groups,
+    )

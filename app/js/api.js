@@ -150,6 +150,13 @@ const ApiClient = {
     },
 
     /**
+     * Generic PATCH helper.
+     */
+    async patch(path, body) {
+        return this._execute('PATCH', path, body);
+    },
+
+    /**
      * Generic DELETE helper.
      */
     async delete(path) {
@@ -361,7 +368,7 @@ const ApiClient = {
      */
     async updateContactInApi(id, contact) {
         const payload = {};
-        for (const key of ['name', 'email', 'phone', 'company', 'status', 'notes']) {
+        for (const key of ['name', 'email', 'phone', 'company', 'status', 'notes', 'tag_ids']) {
             if (contact[key] !== undefined) {
                 payload[key] = contact[key] || null;
             }
@@ -377,6 +384,56 @@ const ApiClient = {
      */
     async deleteContactInApi(id) {
         const result = await this.delete(`/contacts/${id}`);
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
+    },
+
+    async bulkDeleteContactsInApi(ids) {
+        const result = await this.post('/contacts/bulk-delete', { ids });
+        return this.assertEntity(result);
+    },
+
+    async bulkUpdateContactsStatusInApi(ids, status) {
+        const result = await this.post('/contacts/bulk-update-status', { ids, status });
+        return this.assertEntity(result);
+    },
+
+    /**
+     * Find duplicate contacts via the backend API.
+     * Returns { totalGroups, totalDuplicates, groups: [{ groupId, matchType, contacts: [...] }] }.
+     */
+    async findDuplicateContactsInApi() {
+        const result = await this.get('/contacts/duplicates');
+        return this.assertEntity(result);
+    },
+
+    // === Tags ===
+
+    async getTagsFromApi() {
+        const result = await this.get('/tags');
+        return this.assertList(result);
+    },
+
+    async createTagInApi(tag) {
+        const result = await this.post('/tags', tag);
+        return this.assertEntity(result);
+    },
+
+    async updateTagInApi(id, tag) {
+        const result = await this.put(`/tags/${id}`, tag);
+        return this.assertEntity(result);
+    },
+
+    async deleteTagInApi(id) {
+        const result = await this.delete(`/tags/${id}`);
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
+    },
+
+    async setContactTagsInApi(contactId, tagIds) {
+        const result = await this.put(`/tags/contacts/${contactId}/tags`, { tag_ids: tagIds });
         if (!result.ok) {
             throw ApiError.fromResult(result);
         }
@@ -493,6 +550,15 @@ const ApiClient = {
     },
 
     /**
+     * Update a lead's stage via PATCH (used by Kanban drag-and-drop).
+     * Returns the updated lead entity.
+     */
+    async updateLeadStageInApi(id, stage) {
+        const result = await this.patch(`/leads/${id}/stage`, { stage });
+        return this.assertEntity(result);
+    },
+
+    /**
      * Delete a lead via the backend API.
      * Returns void on success (204).
      * Throws ApiError on HTTP failure.
@@ -588,6 +654,18 @@ const ApiClient = {
      */
     async updateSettingsInApi(payload) {
         const result = await this.put('/settings', { payload });
+        return this.assertObject(result);
+    },
+
+    // === Analytics ===
+
+    /**
+     * Fetch the lead conversion funnel analytics from the backend API.
+     * Returns a validated funnel analytics object.
+     * Throws ApiError on HTTP failure or contract drift.
+     */
+    async getFunnelAnalyticsFromApi() {
+        const result = await this.get('/analytics/funnel');
         return this.assertObject(result);
     },
 };

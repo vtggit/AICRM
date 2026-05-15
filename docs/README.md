@@ -19,9 +19,16 @@ AICRM is a AI First browser-based Customer Relationship Management (CRM) applica
 - **Keyboard Shortcuts** — Full keyboard navigation: number keys (1-5) for page navigation, `/` to focus search, `?` for shortcuts help, `Ctrl+N` for new contact, `Ctrl+L` for new lead, `Ctrl+E` for export, `Escape` to close modals
 - **Data Backup and Restore** — Create timestamped JSON backup files with metadata (app name, version, data summary), restore with Replace (overwrite all) or Merge (add new, keep existing) modes, and track last backup timestamp
 - **Activity Due Date Tracking** — Optional due dates on activities, overdue highlighting with red indicators, overdue count badge on navigation, dashboard overdue stat card, status filtering (All/Overdue/Completed/Active), mark complete functionality, and overdue sorting
+- **Contact Activity Quick-Add FAB** — Floating action button for one-tap activity creation with pre-filled type chips (Call, Email, Meeting, Note, Task), keyboard shortcut `Q` to toggle, and auto-collapse on outside click
+- **Dashboard Recent Items** — "Recent Contacts" and "Recent Leads" cards on the dashboard showing the 5 most recently modified items from each entity, with timestamps, "View All" navigation links, empty state messaging, and dark theme support
+- **Contact Tags** — Create, edit, and delete color-coded tags via Manage Tags modal; assign multiple tags to contacts through checkbox selector in contact edit form; tag badges rendered on contact cards; tags persist via backend API and pre-select on re-edit
+- **Bulk Contact Operations** — Select multiple contacts via checkboxes for batch operations: bulk delete, bulk status update (Active/Inactive/VIP), and bulk tag assignment. Bulk action bar shows selection count, supports select-all/select-none, and integrates with existing tag management.
+- **Quick Activity Logging from Contact Cards** — One-click activity logging buttons (📞 Call, 📧 Email, 🤝 Meeting, 📝 Note) directly on each contact card. Opens activity modal with type pre-filled and contact auto-selected, enabling rapid activity creation without navigating away from the list view.
+- **Activity Reminders and Notifications** — Browser-based notification system for upcoming and overdue activities. Configurable reminder settings (enable/disable, daily reminder time, advance notice 0-3 days, overdue notifications). Supports both in-app toast notifications (click-to-navigate) and native browser notifications. Periodic background checker (every 5 minutes) scans for due/overdue activities and alerts the user. Settings persist via backend.
+- **Sales Pipeline Kanban Board View** — Visual Kanban board for leads with 6 stage columns (New, Contacted, Qualified, Proposal, Won, Lost), HTML5 drag-and-drop to move leads between stages, stage-specific PATCH API endpoint, column headers showing lead count and total pipeline value, per-card stage selector dropdown, lead scoring badges, days-in-stage aging indicators, and keyboard shortcut `K` to toggle between grid and Kanban views.
+- **Dashboard PDF Report Export** — One-click "Export PDF Report" button on the dashboard that generates a clean, shareable one-page PDF of all dashboard metrics (stat cards, pipeline breakdown, recent activities, revenue summary) using native browser `window.print()` with dedicated `@media print` CSS. No external dependencies required.
 
 ### Planned 📋
-- Contact Tags and Grouping
 - Calendar Integration
 
 ## Technology Stack
@@ -40,9 +47,73 @@ AICRM is a AI First browser-based Customer Relationship Management (CRM) applica
 - Python 3.11+ (for FastAPI backend)
 - PostgreSQL 14+ (database)
 - Node.js (for testing with Playwright, optional)
+- Docker and Docker Compose (for containerized deployment)
 - Modern web browser (Chrome, Firefox, Edge)
 
-### Quick Start
+### Docker Compose (Recommended)
+
+The application runs as a Docker Compose stack with three services:
+
+| Service | Container Name | Image | Host Port | Internal Port |
+|---------|---------------|-------|-----------|---------------|
+| Database | `aicrm-db` | postgres:15-alpine | 5432 | 5432 |
+| Backend | `aicrm-backend` | python:3.11-slim (custom) | 9000 | 9000 |
+| Frontend | `aicrm-frontend` | nginx:1.25-alpine (custom) | 8080 | 80 |
+
+```bash
+# Start the full stack
+docker compose up -d
+
+# Check container health
+docker compose ps
+
+# View logs
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Stop the stack
+docker compose down
+```
+
+### ⚠️ CRITICAL: Docker Volume Mount Limitation
+
+**Both the frontend and backend containers use `COPY` in their Dockerfiles — there are NO volume mounts for source code.** This means:
+
+- Editing files in `app/` on the host does NOT affect the running frontend container.
+- Editing files in `backend/` on the host does NOT affect the running backend container.
+
+**To apply code changes to running containers, you MUST use one of these approaches:**
+
+#### Option A: `docker cp` (Fast — for iterative development)
+
+Copy individual files into the running container:
+
+```bash
+# Frontend changes (nginx serves from /usr/share/nginx/html/)
+docker cp app/index.html aicrm-frontend:/usr/share/nginx/html/app/index.html
+docker cp app/js/app.js aicrm-frontend:/usr/share/nginx/html/app/js/app.js
+docker cp app/css/styles.css aicrm-frontend:/usr/share/nginx/html/app/css/styles.css
+
+# Backend changes (app lives at /app/)
+docker cp backend/app/main.py aicrm-backend:/app/app/main.py
+```
+
+#### Option B: Rebuild containers (Thorough — for major changes)
+
+Rebuild and restart the affected service(s):
+
+```bash
+# Rebuild frontend only
+docker compose up -d --build frontend
+
+# Rebuild backend only
+docker compose up -d --build backend
+
+# Rebuild everything
+docker compose up -d --build
+```
+
+### Quick Start (Native — no Docker)
 ```bash
 # 1. Start PostgreSQL (if not already running)
 
@@ -97,6 +168,12 @@ node docs/testing/test-backup-restore.js
 
 # Run activity due date tracking tests
 node docs/testing/test-activity-due-date-tracking.js
+
+# Run quick activity logging tests
+node docs/testing/test-quick-activity-logging.js
+
+# Run activity reminders and notifications tests
+node docs/testing/test-activity-reminders.js
 ```
 
 ## Architecture
@@ -283,6 +360,107 @@ An activity is overdue when: `dueDate` is set AND `dueDate < today` AND `status 
 - `app/css/styles.css` — `.activity-card.overdue`, `.due-date-overdue`, `.due-date-future`, `.nav-badge`, completed activity styles
 - `docs/testing/test-activity-due-date-tracking.js` — 15-test Playwright suite
 
+### Contact Activity Quick-Add FAB
+
+A floating action button (FAB) provides instant access to activity creation from any page, with one-tap type selection.
+
+**Features:**
+- **Floating Button** — Fixed position button in bottom-right corner with "+" icon
+- **Activity Type Chips** — Expandable menu with 5 pre-configured activity types: Call, Email, Meeting, Note, Task
+- **One-Tap Creation** — Click any chip to open the activity modal with that type pre-selected
+- **Keyboard Shortcut** — Press `Q` to toggle FAB expansion
+- **Auto-Collapse** — FAB collapses when clicking outside or pressing `Escape`
+- **Visual Feedback** — Button rotates from "+" to "×" when expanded, with smooth CSS transitions
+- **Dark Theme Support** — FAB adapts to dark/light theme automatically
+
+**Implementation:**
+- FAB HTML added to `app/index.html` with button and chip container
+- `bindFAB()` method in `app/js/app.js` handles click events, chip selection, and outside-click detection
+- `toggleFAB()` method manages expand/collapse state and button rotation
+- CSS transitions for smooth chip reveal and button rotation
+- Keyboard shortcut `Q` integrated into existing `bindKeyboardShortcuts()` method
+- Shortcuts help modal updated with FAB entry
+
+**Files Modified:**
+- `app/index.html` — FAB button and chips HTML
+- `app/js/app.js` — `bindFAB()`, `toggleFAB()` methods, keyboard shortcut integration
+- `app/css/styles.css` — FAB button, chips, transitions, and dark theme styles
+
+### Bulk Contact Operations
+
+Multi-select contacts for batch operations, enabling efficient management of large contact lists.
+
+**Features:**
+- **Multi-Select Checkboxes** — Each contact card displays a checkbox; select individual contacts or use "Select All"
+- **Bulk Action Bar** — Floating action bar appears when contacts are selected, showing selection count
+- **Bulk Delete** — Delete all selected contacts in a single operation with confirmation dialog
+- **Bulk Status Update** — Change status of all selected contacts to Active, Inactive, or VIP
+- **Bulk Tag Assignment** — Assign existing tags to all selected contacts simultaneously
+- **Select All / Select None** — Quick toggles in the bulk action bar
+- **Visual Feedback** — Selected contacts are highlighted; action bar shows real-time count
+
+**Implementation:**
+- Bulk operation checkboxes added to contact cards in `app/index.html`
+- `bindBulkOperations()` method in `app/js/app.js` manages selection state, event delegation, and bulk action bar visibility
+- `updateBulkActionBar()` updates the floating action bar with selection count and action buttons
+- Backend bulk endpoints: `DELETE /api/contacts/bulk`, `PATCH /api/contacts/bulk/status`, `PATCH /api/contacts/bulk/tags`
+- Bulk operations are atomic — all succeed or all fail with rollback
+
+**Files Modified:**
+- `app/index.html` — Bulk action bar HTML, contact card checkboxes
+- `app/js/app.js` — `bindBulkOperations()`, `updateBulkActionBar()`, bulk action handlers
+- `app/css/styles.css` — `.bulk-action-bar`, `.contact-checkbox`, selection highlight styles
+- `backend/app/api/contacts.py` — Bulk delete, status update, and tag assignment endpoints
+
+### Quick Activity Logging from Contact Cards
+
+One-click activity logging buttons directly on contact cards enable rapid activity creation without navigating away from the list view.
+
+**Features:**
+- **Quick-Action Buttons** — Each contact card displays 4 icon buttons: 📞 Call, 📧 Email, 🤝 Meeting, 📝 Note
+- **Pre-filled Activity Modal** — Clicking a button opens the activity modal with the type pre-selected and contact name auto-filled
+- **Rapid Workflow** — Users can create activities directly from the contacts list without context switching
+- **Dark Theme Support** — Buttons adapt to dark/light theme with appropriate colors and hover states
+
+**Implementation:**
+- Quick action buttons rendered as part of the contact card template in `app/js/app.js`
+- Inline `onclick` handlers call `showActivityModal()` with pre-filled type and contact name
+- CSS styles for `.card-quick-actions` provide button row layout, hover states, and dark theme support
+
+**Files Modified:**
+- `app/js/app.js` — Contact card template includes quick action buttons
+- `app/css/styles.css` — `.card-quick-actions` styles with responsive layout
+- `docs/testing/test-quick-activity-logging.js` — 9-test Playwright E2E suite
+
+### Activity Reminders and Notifications
+
+Browser-based notification system that alerts users about upcoming and overdue activities through both in-app toast notifications and native browser notifications.
+
+**Features:**
+- **Reminder Settings** — Configurable via Settings page: enable/disable, daily reminder time, advance notice (0-3 days before due date), and overdue notification toggle
+- **In-App Notifications** — Enhanced toast notifications for activities due today and overdue activities, with click-to-navigate to Activities page
+- **Browser Notifications** — Native browser notifications (via Notification API) when permission is granted, with permission status display
+- **Test Notification** — One-click test button to request notification permission and verify the system works
+- **Periodic Checker** — Background interval (every 5 minutes) that scans all activities for upcoming/overdue items
+- **Auto-Start** — If reminders were previously enabled, the checker auto-starts on app load
+- **Settings Persistence** — All reminder settings persist via backend Settings API
+- **Dark Theme Support** — Reminder settings card and notification styles adapt to dark/light theme
+
+**Implementation:**
+- New settings card in `app/index.html` with form controls for all reminder options
+- `bindReminders()`, `loadReminderSettings()`, `saveReminderSettings()` methods in `app/js/app.js` for settings management
+- `testNotification()` and `_showBrowserNotification()` for browser notification integration
+- `_startReminderChecker()`, `_stopReminderChecker()`, `_checkReminders()` for the periodic background scan
+- `_showInAppReminder()` for enhanced in-app toast notifications with click-to-navigate
+- `_autoStartReminders()` called during app initialization to restore previous reminder state
+- CSS styles for `.reminder-status`, `.reminder-notification`, `.reminder-badge`, and form controls
+
+**Files Modified:**
+- `app/index.html` — Reminder settings card with form controls, save/test buttons, and permission display
+- `app/js/app.js` — Reminder settings management, browser notifications, periodic checker, in-app reminders
+- `app/css/styles.css` — Styles for reminder settings UI, notification toasts, and dark theme support
+- `docs/testing/test-activity-reminders.js` — 15-test Playwright E2E suite
+
 ## Project Milestones
 
 - [x] Project setup and core infrastructure
@@ -298,7 +476,11 @@ An activity is overdue when: `dueDate` is set AND `dueDate < today` AND `status 
 - [x] Keyboard Shortcuts (full keyboard navigation)
 - [x] Data Backup and Restore (metadata, merge/replace modes, timestamp tracking)
 - [x] Activity Due Date Tracking (overdue indicators, status filtering, badge, dashboard stat, completion tracking)
-- [ ] Contact tags and grouping
+- [x] Contact Activity Quick-Add FAB (floating action button, pre-filled type chips, keyboard shortcut Q)
+- [x] Contact tags (color-coded tags, manage tags modal, contact assignment, backend persistence)
+- [x] Bulk contact operations (multi-select, bulk delete, bulk status update, bulk tag assignment)
+- [x] Quick Activity Logging from Contact Cards (one-click call/email/meeting/note buttons on cards)
+- [x] Activity Reminders and Notifications (browser notifications, in-app toasts, configurable reminder time/advance notice, settings persistence)
 - [ ] Calendar integration
 
 ## Documentation

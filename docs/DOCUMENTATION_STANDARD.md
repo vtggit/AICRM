@@ -27,6 +27,9 @@ docs/
     ├── test-keyboard-shortcuts.js  # Keyboard shortcuts tests
     ├── test-backup-restore.js      # Data Backup and Restore tests
     ├── test-activity-due-date-tracking.js  # Activity Due Date Tracking tests
+    ├── test-quick-activity-logging.js  # Quick Activity Logging from Contact Cards tests
+    ├── test-activity-reminders.js      # Activity Reminders and Notifications tests
+    ├── test-pdf-export.js             # Dashboard PDF Report Export tests
     └── test-*.js                  # Feature-specific tests
 ```
 

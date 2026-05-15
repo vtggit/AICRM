@@ -19,4 +19,13 @@ and this project uses **semantic-ish versioning** (see [VERSION](VERSION)).
 
 ---
 
+## [0.1.5] — 2025-09-12
+
+### Added
+
+- **Quick Activity Logging from Contact Cards** — One-click activity logging buttons (📞 Call, 📧 Email, 🤝 Meeting, 📝 Note) directly on each contact card. Opens activity modal with type pre-filled and contact auto-selected, enabling rapid activity creation without navigating away from the list view.
+- Playwright E2E test suite for Quick Activity Logging (`docs/testing/test-quick-activity-logging.js`, 9 tests).
+
+---
+
 ## [Unreleased]

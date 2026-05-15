@@ -86,6 +86,23 @@ def update_lead(
     return lead
 
 
+@router.patch("/{lead_id}/stage", response_model=LeadResponse)
+def update_lead_stage(
+    lead_id: str,
+    payload: LeadUpdate,
+    _user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+    service: LeadsService = Depends(get_service),
+):
+    """Patch a lead's stage. Requires admin role. Used by Kanban drag-and-drop."""
+    lead = service.update_lead(lead_id, payload, actor=_user)
+    if lead is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Lead '{lead_id}' not found.",
+        )
+    return lead
+
+
 @router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_lead(
     lead_id: str,

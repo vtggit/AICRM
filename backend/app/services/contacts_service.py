@@ -15,6 +15,7 @@ _AUTHORITATIVE_FIELDS = (
     "company",
     "status",
     "notes",
+    "tags",
     "created_at",
     "updated_at",
 )
@@ -139,6 +140,57 @@ class ContactsService:
         )
 
         return True
+
+    def bulk_delete_contacts(self, contact_ids: list[str], actor: AuthUser) -> int:
+        """Delete multiple contacts. Returns count of deleted records."""
+        count = self.repository.bulk_delete(contact_ids)
+
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="contact",
+                entity_id="bulk",
+                action="bulk_deleted",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "count": count,
+                    "contact_ids": contact_ids,
+                },
+            )
+        )
+
+        return count
+
+    def bulk_update_status(
+        self,
+        contact_ids: list[str],
+        status: str,
+        actor: AuthUser,
+    ) -> int:
+        """Update status for multiple contacts. Returns count of updated records."""
+        _validate_status(status)
+        count = self.repository.bulk_update_status(contact_ids, status)
+
+        self.audit_service.write(
+            AuditEvent(
+                entity_type="contact",
+                entity_id="bulk",
+                action="bulk_status_updated",
+                actor_sub=actor.sub,
+                actor_username=actor.username,
+                actor_email=actor.email,
+                actor_roles=actor.roles,
+                details={
+                    "count": count,
+                    "status": status,
+                    "contact_ids": contact_ids,
+                },
+            )
+        )
+
+        return count
 
 
 # --------------------------------------------------------------------- #

@@ -40,8 +40,9 @@ const Config = Object.freeze({
             return '/api';
         }
 
-        // Default for local dev: backend on localhost:9000
-        return 'http://localhost:9000/api';
+        // Default for local dev behind nginx: use relative path so nginx
+        // reverse-proxies /api/* to the backend container.
+        return '/api';
     })(),
 
     /** Human-readable environment label (shown in settings, logs, etc.) */
