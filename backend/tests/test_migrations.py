@@ -52,8 +52,8 @@ def test_migration_applies_cleanly():
             row = cur.fetchone()
             assert row is not None, "alembic_version table should exist after migration"
             assert (
-                row[0] == "0001_baseline"
-            ), f"Expected version 0001_baseline, got {row[0]}"
+                row[0] == "0002_add_contact_tags"
+            ), f"Expected version 0002_add_contact_tags, got {row[0]}"
     finally:
         conn.close()
 

@@ -7,6 +7,8 @@ const App = {
     editType: null,
 
     async init() {
+        this._selectedContactIds = new Set();
+        this._currentContactIds = [];
         this.bindNavigation();
         this.bindThemeToggle();
         this.bindMenuToggle();
@@ -18,6 +20,9 @@ const App = {
         this.bindSettings();
         this.bindModal();
         this.bindKeyboardShortcuts();
+        this.bindFAB();
+        this.bindBulkOperations();
+        this.bindPdfExport();
         this.bindVersion();
         this.bindAuth();
         this.loadTheme();
@@ -31,6 +36,25 @@ const App = {
         this.renderDashboard();
         this.updateLastBackupDisplay();
         this.updateOverdueBadge();
+        this.loadReminderSettings();
+
+        // Auto-start reminder checker if previously enabled
+        this._autoStartReminders();
+    },
+
+    /**
+     * Check if reminders were previously enabled and auto-start the checker.
+     */
+    async _autoStartReminders() {
+        try {
+            const settings = await SettingsDataSource.getSettings();
+            const reminder = settings?.payload?.reminder;
+            if (reminder && reminder.enabled) {
+                this._startReminderChecker();
+            }
+        } catch (err) {
+            console.warn('Failed to auto-start reminders:', err);
+        }
     },
 
     /**
@@ -67,6 +91,7 @@ const App = {
         if (page === 'dashboard') await this.renderDashboard();
         if (page === 'contacts') await this.renderContacts();
         if (page === 'leads') await this.renderLeads();
+        if (page === 'analytics') await this.renderAnalytics();
         if (page === 'activities') await this.renderActivities();
         if (page === 'templates') this.renderTemplates();
 
@@ -81,6 +106,7 @@ const App = {
             dashboard: 'Dashboard',
             contacts: 'Contacts',
             leads: 'Leads',
+            analytics: 'Analytics',
             activities: 'Activities',
             templates: 'Email Templates',
             settings: 'Settings'
@@ -396,7 +422,7 @@ const App = {
         document.getElementById('stat-won-revenue').textContent = this.formatCurrency(wonRevenue);
 
         // Overdue activities
-        const overdueCount = this.getOverdueCount();
+        const overdueCount = await this.getOverdueCount();
         document.getElementById('stat-overdue-activities').textContent = overdueCount;
 
         // Pipeline counts + per-stage revenue
@@ -430,6 +456,12 @@ const App = {
 
         // Recommended Actions (AI-Powered Lead Recommendations)
         this.renderRecommendedActions(leads);
+
+        // Recent Contacts (Item 14)
+        this.renderRecentContacts(contacts);
+
+        // Recent Leads (Item 14)
+        this.renderRecentLeads(leads);
     },
 
     // === AI-Powered Lead Recommendations ===
@@ -534,12 +566,87 @@ const App = {
         }).join('');
     },
 
+    // === Dashboard Recent Items (Item 14) ===
+    renderRecentContacts(contacts) {
+        const container = document.getElementById('recent-contacts');
+        if (!container) return;
+
+        if (!contacts || contacts.length === 0) {
+            container.innerHTML = '<p class="empty-state">No recent contacts</p>';
+            return;
+        }
+
+        const recent = [...contacts]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 5);
+
+        container.innerHTML = recent.map(c => `
+            <div class="recent-item" onclick="App.viewContact('${c.id}')" title="Click to view ${this.escapeHtml(c.name)}">
+                <span class="recent-item-icon">👤</span>
+                <div class="recent-item-details">
+                    <div class="recent-item-name">${this.escapeHtml(c.name)}</div>
+                    <div class="recent-item-meta">${c.email ? this.escapeHtml(c.email) : (c.company ? this.escapeHtml(c.company) : 'No details')}</div>
+                </div>
+                <span class="recent-item-time">${this.getRelativeTime(c.createdAt)}</span>
+            </div>
+        `).join('');
+    },
+
+    renderRecentLeads(leads) {
+        const container = document.getElementById('recent-leads');
+        if (!container) return;
+
+        if (!leads || leads.length === 0) {
+            container.innerHTML = '<p class="empty-state">No recent leads</p>';
+            return;
+        }
+
+        const recent = [...leads]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 5);
+
+        container.innerHTML = recent.map(l => `
+            <div class="recent-item" onclick="App.editLead('${l.id}')" title="Click to view ${this.escapeHtml(l.name)}">
+                <span class="recent-item-icon">🎯</span>
+                <div class="recent-item-details">
+                    <div class="recent-item-name">${this.escapeHtml(l.name)}</div>
+                    <div class="recent-item-meta">${l.company ? this.escapeHtml(l.company) : 'No company'} · <span class="badge badge-${l.stage}">${l.stage}</span></div>
+                </div>
+                <span class="recent-item-time">${this.getRelativeTime(l.createdAt)}</span>
+            </div>
+        `).join('');
+    },
+
+    getRelativeTime(dateStr) {
+        if (!dateStr) return '';
+        const now = new Date();
+        const date = new Date(dateStr);
+        const diffMs = now - date;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+        const diffWeek = Math.floor(diffDay / 7);
+        const diffMonth = Math.floor(diffDay / 30);
+
+        if (diffSec < 60) return 'Just now';
+        if (diffMin < 60) return `${diffMin}m ago`;
+        if (diffHour < 24) return `${diffHour}h ago`;
+        if (diffDay < 7) return `${diffDay}d ago`;
+        if (diffWeek < 5) return `${diffWeek}w ago`;
+        return `${diffMonth}mo ago`;
+    },
+
     // === Contacts ===
     bindContacts() {
         document.getElementById('btn-add-contact').addEventListener('click', () => {
             this.editId = null;
             this.editType = 'contact';
             this.showContactModal();
+        });
+
+        document.getElementById('btn-manage-tags').addEventListener('click', () => {
+            this.showManageTagsModal();
         });
 
         document.getElementById('contact-filter-status').addEventListener('change', () => this.renderContacts());
@@ -586,36 +693,268 @@ const App = {
         }
         const duplicateGroups = this.getDuplicateGroups(allContacts);
 
+        // Pre-compute activity counts per contact
+        let activities;
+        try {
+            activities = await ActivitiesDataSource.getActivities();
+            activities = this._normalizeActivities(activities);
+        } catch (err) {
+            console.error('Failed to load activities for contact counts:', err);
+            activities = [];
+        }
+        const activityCounts = {};
+        activities.forEach(a => {
+            if (a.contactName) {
+                activityCounts[a.contactName] = (activityCounts[a.contactName] || 0) + 1;
+            }
+        });
+
+        // Store current contact IDs for bulk operations
+        this._currentContactIds = contacts.map(c => c.id);
+
         const container = document.getElementById('contacts-list');
         if (contacts.length === 0) {
             container.innerHTML = '<div class="empty-state-card"><p>No contacts found.</p></div>';
+            this.updateBulkActionBar();
             return;
         }
 
         const isAdmin = Auth.isAdmin();
         container.innerHTML = contacts.map(c => {
             const isDuplicate = duplicateGroups.some(g => g.length > 1 && g.some(d => d.id === c.id));
+            const activityCount = activityCounts[c.name] || 0;
+            const isSelected = (this._selectedContactIds || new Set()).has(c.id);
+            const tagsHtml = (c.tags || []).map(t =>
+                `<span class="contact-tag-badge" style="background-color:${t.color || '#3b82f6'}" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>`
+            ).join('');
             return `
-            <div class="contact-card${isDuplicate ? ' contact-card-duplicate' : ''}">
+            <div class="contact-card${isDuplicate ? ' contact-card-duplicate' : ''}${isSelected ? ' contact-card-selected' : ''}" data-contact-id="${c.id}">
                 <div class="card-header">
-                    <h4>${this.escapeHtml(c.name)}</h4>
+                    <div class="card-header-left">
+                        <input type="checkbox" class="contact-checkbox" data-contact-id="${c.id}" ${isSelected ? 'checked' : ''} title="Select for bulk operations">
+                        <h4>${this.escapeHtml(c.name)}</h4>
+                    </div>
                     <div class="card-actions">
                         ${isDuplicate ? '<span class="duplicate-badge" title="Duplicate contact detected">⚠️ Duplicate</span>' : ''}
+                        <button class="card-action-btn" onclick="App.viewContact('${c.id}')" title="View Details">👁️</button>
                         ${isAdmin ? `<button class="card-action-btn" onclick="App.editContact('${c.id}')" title="Edit">✏️</button>` : ''}
                         ${isAdmin ? `<button class="card-action-btn" onclick="App.deleteContact('${c.id}')" title="Delete">🗑️</button>` : ''}
                     </div>
+                </div>
+                <div class="card-quick-actions">
+                    <button class="quick-activity-btn" onclick="App.quickLogActivity('${this.escapeHtml(c.name)}', 'call')" title="Quick log a call">📞 Call</button>
+                    <button class="quick-activity-btn" onclick="App.quickLogActivity('${this.escapeHtml(c.name)}', 'email')" title="Quick log an email">📧 Email</button>
+                    <button class="quick-activity-btn" onclick="App.quickLogActivity('${this.escapeHtml(c.name)}', 'meeting')" title="Quick log a meeting">🤝 Meeting</button>
+                    <button class="quick-activity-btn" onclick="App.quickLogActivity('${this.escapeHtml(c.name)}', 'note')" title="Quick add a note">📝 Note</button>
                 </div>
                 <div class="card-body">
                     ${c.email ? `<p>📧 ${this.escapeHtml(c.email)}</p>` : ''}
                     ${c.phone ? `<p>📱 ${this.escapeHtml(c.phone)}</p>` : ''}
                     ${c.company ? `<p>🏢 ${this.escapeHtml(c.company)}</p>` : ''}
+                    ${tagsHtml ? `<div class="contact-tags-row">${tagsHtml}</div>` : ''}
                 </div>
                 <div class="card-meta">
                     <span class="badge badge-${c.status}">${c.status}</span>
+                    ${activityCount > 0 ? `<span class="activity-count-badge" title="${activityCount} activit${activityCount === 1 ? 'y' : 'ies'}">📋 ${activityCount}</span>` : ''}
                     <small class="text-secondary">${this.formatDate(c.createdAt)}</small>
                 </div>
             </div>
         `}).join('');
+
+        // Bind checkbox events
+        container.querySelectorAll('.contact-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const contactId = e.target.dataset.contactId;
+                if (e.target.checked) {
+                    this._selectedContactIds.add(contactId);
+                } else {
+                    this._selectedContactIds.delete(contactId);
+                }
+                this.updateBulkActionBar();
+                this._highlightSelectedCard(e.target, contactId);
+            });
+        });
+
+        this.updateBulkActionBar();
+    },
+
+    _highlightSelectedCard(checkbox, contactId) {
+        const card = checkbox.closest('.contact-card');
+        if (card) {
+            card.classList.toggle('contact-card-selected', checkbox.checked);
+        }
+    },
+
+    updateBulkActionBar() {
+        const bar = document.getElementById('bulk-action-bar');
+        const countEl = document.getElementById('bulk-selection-count');
+        const statusBtn = document.getElementById('btn-bulk-status');
+        const tagBtn = document.getElementById('btn-bulk-tag');
+        const statusSelect = document.getElementById('bulk-status-change');
+        const tagSelect = document.getElementById('bulk-tag-select');
+        const selectedCount = this._selectedContactIds ? this._selectedContactIds.size : 0;
+
+        if (selectedCount > 0) {
+            bar.classList.remove('hidden');
+            countEl.textContent = selectedCount;
+            statusBtn.disabled = !statusSelect.value;
+            tagBtn.disabled = !tagSelect.value;
+        } else {
+            bar.classList.add('hidden');
+        }
+
+        // Populate tag dropdown once tags are loaded
+        if (tagSelect.options.length <= 1 && this._allTags && this._allTags.length > 0) {
+            this._allTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.id;
+                option.textContent = tag.name;
+                tagSelect.appendChild(option);
+            });
+        }
+    },
+
+    bindBulkOperations() {
+        const bar = document.getElementById('bulk-action-bar');
+        if (!bar) return;
+
+        // Select All
+        document.getElementById('btn-select-all').addEventListener('click', () => {
+            if (!this._selectedContactIds) this._selectedContactIds = new Set();
+            (this._currentContactIds || []).forEach(id => this._selectedContactIds.add(id));
+            this.renderContacts();
+        });
+
+        // Select None
+        document.getElementById('btn-select-none').addEventListener('click', () => {
+            this._selectedContactIds = new Set();
+            this.renderContacts();
+        });
+
+        // Status change select enables/disables button
+        document.getElementById('bulk-status-change').addEventListener('change', () => {
+            const statusBtn = document.getElementById('btn-bulk-status');
+            const statusSelect = document.getElementById('bulk-status-change');
+            statusBtn.disabled = !statusSelect.value || (this._selectedContactIds && this._selectedContactIds.size === 0);
+        });
+
+        // Tag select enables/disables button
+        document.getElementById('bulk-tag-select').addEventListener('change', () => {
+            const tagBtn = document.getElementById('btn-bulk-tag');
+            const tagSelect = document.getElementById('bulk-tag-select');
+            tagBtn.disabled = !tagSelect.value || (this._selectedContactIds && this._selectedContactIds.size === 0);
+        });
+
+        // Apply bulk status
+        document.getElementById('btn-bulk-status').addEventListener('click', () => {
+            this.applyBulkStatus();
+        });
+
+        // Apply bulk tag
+        document.getElementById('btn-bulk-tag').addEventListener('click', () => {
+            this.applyBulkTags();
+        });
+
+        // Bulk delete
+        document.getElementById('btn-bulk-delete').addEventListener('click', () => {
+            this.bulkDeleteContacts();
+        });
+    },
+
+    // === PDF Export (Item 16) ===
+    bindPdfExport() {
+        const btn = document.getElementById('btn-export-pdf');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            this.exportDashboardPdf();
+        });
+    },
+
+    exportDashboardPdf() {
+        // Add print class to body to trigger print-specific CSS
+        document.body.classList.add('printing-report');
+
+        // Build a timestamp for the report header
+        const now = new Date();
+        const timestamp = now.toLocaleString();
+        const reportDateEl = document.getElementById('report-generation-date');
+        if (reportDateEl) {
+            reportDateEl.textContent = 'Generated: ' + timestamp;
+        }
+
+        // Trigger browser print dialog
+        window.print();
+
+        // Remove print class after print dialog closes
+        setTimeout(() => {
+            document.body.classList.remove('printing-report');
+        }, 500);
+    },
+
+    async applyBulkStatus() {
+        const statusSelect = document.getElementById('bulk-status-change');
+        const newStatus = statusSelect.value;
+        if (!newStatus || !this._selectedContactIds || this._selectedContactIds.size === 0) return;
+
+        const ids = Array.from(this._selectedContactIds);
+        try {
+            const result = await ApiClient.bulkUpdateContactsStatusInApi(ids, newStatus);
+            this._selectedContactIds = new Set();
+            statusSelect.value = '';
+            this.showNotification(result.message || `Status updated for ${ids.length} contact(s)`, 'success');
+            await this.renderContacts();
+            this.renderDashboard();
+        } catch (err) {
+            console.error('Bulk status update failed:', err);
+            this.showNotification('Failed to update status for some contacts.', 'error');
+        }
+    },
+
+    async applyBulkTags() {
+        const tagSelect = document.getElementById('bulk-tag-select');
+        const tagId = tagSelect.value;
+        if (!tagId || !this._selectedContactIds || this._selectedContactIds.size === 0) return;
+
+        const ids = Array.from(this._selectedContactIds);
+        let successCount = 0;
+
+        for (const id of ids) {
+            try {
+                const existing = await ContactsDataSource.getContactTags(id);
+                const existingIds = (existing || []).map(t => t.id);
+                if (!existingIds.includes(tagId)) {
+                    existingIds.push(tagId);
+                    await ContactsDataSource.setContactTags(id, existingIds);
+                }
+                successCount++;
+            } catch (err) {
+                console.error(`Failed to assign tag to contact ${id}:`, err);
+            }
+        }
+
+        this._selectedContactIds = new Set();
+        tagSelect.value = '';
+        this.showNotification(`Tag assigned to ${successCount} contact(s)`, 'success');
+        await this.renderContacts();
+    },
+
+    async bulkDeleteContacts() {
+        if (!this._selectedContactIds || this._selectedContactIds.size === 0) return;
+
+        const ids = Array.from(this._selectedContactIds);
+        const count = ids.length;
+        if (!confirm(`Are you sure you want to delete ${count} contact(s)? This action cannot be undone.`)) return;
+
+        try {
+            const result = await ApiClient.bulkDeleteContactsInApi(ids);
+            this._selectedContactIds = new Set();
+            this.showNotification(result.message || `${count} contact(s) deleted`, 'success');
+            await this.renderContacts();
+            this.renderDashboard();
+        } catch (err) {
+            console.error('Bulk delete failed:', err);
+            this.showNotification('Failed to delete some contacts.', 'error');
+        }
     },
 
     showContactModal(contact) {
@@ -651,6 +990,12 @@ const App = {
                     <label for="contact-notes">Notes</label>
                     <textarea id="contact-notes">${contact ? this.escapeHtml(contact.notes || '') : ''}</textarea>
                 </div>
+                <div class="form-group" id="contact-tags-group">
+                    <label>Tags</label>
+                    <div class="contact-tags-selector" id="contact-tags-selector">
+                        <span class="text-secondary tags-loading">Loading tags...</span>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">${contact ? 'Update' : 'Create'}</button>
@@ -664,6 +1009,132 @@ const App = {
         });
 
         this.openModal();
+        this._populateTagsSelector(contact);
+    },
+
+    /**
+     * Populate the tags selector in the contact form with checkboxes.
+     */
+    async _populateTagsSelector(contact) {
+        const container = document.getElementById('contact-tags-selector');
+        if (!container) return;
+        try {
+            const tags = await TagsDataSource.getTags();
+            const contactTagIds = (contact && contact.tags) ? contact.tags.map(t => t.id) : [];
+            if (tags.length === 0) {
+                container.innerHTML = `
+                    <div class="tags-empty">
+                        <span class="text-secondary">No tags yet. </span>
+                        <a href="#" onclick="App.showManageTagsModal(); return false;">Create tags</a>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = tags.map(t => {
+                const checked = contactTagIds.includes(t.id) ? 'checked' : '';
+                return `<label class="tag-checkbox-item">
+                    <input type="checkbox" class="tag-checkbox" value="${t.id}" ${checked}>
+                    <span class="tag-color-dot" style="background-color:${t.color || '#3b82f6'}"></span>
+                    ${this.escapeHtml(t.name)}
+                </label>`;
+            }).join('');
+            // Add "manage" link
+            container.innerHTML += `<div class="tags-manage-link"><a href="#" onclick="App.showManageTagsModal(); return false;">Manage tags</a></div>`;
+        } catch (err) {
+            container.innerHTML = '<span class="text-secondary">Could not load tags.</span>';
+            console.error('Failed to load tags:', err);
+        }
+    },
+
+    /**
+     * Gather selected tag IDs from the tags selector checkboxes.
+     */
+    _getSelectedTagIds() {
+        const checkboxes = document.querySelectorAll('#contact-tags-selector .tag-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    },
+
+    /**
+     * View contact detail with activity timeline.
+     * Opens a modal showing contact info and all related activities.
+     */
+    async viewContact(contactId) {
+        const contacts = await ContactsDataSource.getContacts();
+        const contact = contacts.find(c => c.id === contactId);
+        if (!contact) {
+            this.showNotification('Contact not found.', 'error');
+            return;
+        }
+        this.showContactDetail(contact);
+    },
+
+    /**
+     * Show contact detail modal with activity history timeline.
+     */
+    async showContactDetail(contact) {
+        let activities = [];
+        try {
+            const allActivities = await ActivitiesDataSource.getActivities();
+            activities = this._normalizeActivities(allActivities).filter(a => a.contactName === contact.name);
+            activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+        } catch (err) {
+            console.error('Failed to load activities for contact:', err);
+        }
+
+        document.getElementById('modal-title').textContent = 'Contact Details';
+        document.getElementById('modal-container').classList.add('modal-wide');
+
+        const timelineHtml = this._renderTimelineView(activities);
+
+        document.getElementById('modal-body').innerHTML = `
+            <div class="contact-detail-view">
+                <div class="contact-detail-header">
+                    <div class="contact-detail-info">
+                        <h3>${this.escapeHtml(contact.name)}</h3>
+                        <span class="badge badge-${contact.status}">${contact.status}</span>
+                    </div>
+                    <div class="contact-detail-actions">
+                        <button class="btn btn-secondary" onclick="App.quickAddActivityForContact('${this.escapeHtml(contact.name)}')">+ Add Activity</button>
+                        <button class="btn btn-secondary" onclick="App.closeModal(); App.editContact('${contact.id}')">✏️ Edit</button>
+                    </div>
+                </div>
+                <div class="contact-detail-fields">
+                    ${contact.email ? `<div class="detail-field"><span class="field-label">Email</span><span class="field-value">📧 ${this.escapeHtml(contact.email)}</span></div>` : ''}
+                    ${contact.phone ? `<div class="detail-field"><span class="field-label">Phone</span><span class="field-value">📱 ${this.escapeHtml(contact.phone)}</span></div>` : ''}
+                    ${contact.company ? `<div class="detail-field"><span class="field-label">Company</span><span class="field-value">🏢 ${this.escapeHtml(contact.company)}</span></div>` : ''}
+                    ${contact.notes ? `<div class="detail-field"><span class="field-label">Notes</span><span class="field-value">${this.escapeHtml(contact.notes)}</span></div>` : ''}
+                    <div class="detail-field"><span class="field-label">Created</span><span class="field-value">${this.formatDate(contact.createdAt)}</span></div>
+                </div>
+                <div class="contact-activity-timeline">
+                    <h4>Activity History <span class="activity-count-label">(${activities.length})</span></h4>
+                    <div class="timeline-list">
+                        ${timelineHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.openModal();
+    },
+
+    /**
+     * Open the activity creation modal with a contact pre-filled.
+     */
+    quickAddActivityForContact(contactName) {
+        this.closeModal();
+        setTimeout(() => {
+            this.showActivityModal(null, contactName);
+        }, 100);
+    },
+
+    /**
+     * Quick log an activity from a contact card.
+     * Opens a compact modal with the contact and type pre-filled.
+     */
+    quickLogActivity(contactName, type) {
+        this.closeModal();
+        setTimeout(() => {
+            this.showActivityModal(null, type, contactName);
+        }, 100);
     },
 
     async saveContact(existing) {
@@ -673,7 +1144,8 @@ const App = {
             phone: document.getElementById('contact-phone').value.trim(),
             company: document.getElementById('contact-company').value.trim(),
             status: document.getElementById('contact-status').value,
-            notes: document.getElementById('contact-notes').value.trim()
+            notes: document.getElementById('contact-notes').value.trim(),
+            tag_ids: this._getSelectedTagIds(),
         };
 
         if (!data.name) return;
@@ -687,13 +1159,14 @@ const App = {
                 this.showNotification('Contact updated.', 'success');
             } catch (err) {
                 console.error('Failed to update contact:', err);
+                this.closeModal();
                 this.showNotification(this._handleApiError(err), 'error');
             }
         } else {
             // Check for duplicates before saving new contact
             try {
                 const allContacts = await ContactsDataSource.getContacts();
-                const duplicates = this.findDuplicateContacts(data.name, data.email, data.company, null, allContacts);
+                const duplicates = this.findDuplicateContacts(data.name, data.email, data.company, data.phone, null, allContacts);
                 if (duplicates.length > 0) {
                     this.showDuplicateWarning(data, duplicates);
                     return;
@@ -710,6 +1183,7 @@ const App = {
                 this.showNotification('Contact created.', 'success');
             } catch (err) {
                 console.error('Failed to create contact:', err);
+                this.closeModal();
                 this.showNotification(this._handleApiError(err), 'error');
             }
         }
@@ -833,7 +1307,7 @@ const App = {
      * excludeId: optional ID to exclude from results (e.g. when editing an existing contact).
      * contacts: optional contacts array; defaults to reading from data source.
      */
-    findDuplicateContacts(name, email, company, excludeId, contacts) {
+    findDuplicateContacts(name, email, company, phone, excludeId, contacts) {
         if (!contacts) {
             // Caller must pass contacts array — don't block the UI with an await here.
             // This function is synchronous; the caller is responsible for providing the data.
@@ -842,15 +1316,20 @@ const App = {
         const searchEmail = email ? email.toLowerCase().trim() : '';
         const searchName = name ? name.toLowerCase().trim() : '';
         const searchCompany = company ? company.toLowerCase().trim() : '';
+        const searchPhone = phone ? phone.replace(/\D/g, '') : '';
 
         return contacts.filter(c => {
             if (c.id === excludeId) return false;
             const cEmail = c.email ? c.email.toLowerCase().trim() : '';
             const cName = c.name ? c.name.toLowerCase().trim() : '';
             const cCompany = c.company ? c.company.toLowerCase().trim() : '';
+            const cPhone = c.phone ? c.phone.replace(/\D/g, '') : '';
 
             // Exact email match
             if (searchEmail && cEmail === searchEmail) return true;
+
+            // Exact phone match (digits-only comparison)
+            if (searchPhone && cPhone && searchPhone === cPhone) return true;
 
             // Name + company match (both must be non-empty)
             if (searchName && searchCompany && cName === searchName && cCompany === searchCompany) return true;
@@ -869,7 +1348,7 @@ const App = {
 
         for (const c of contacts) {
             if (processed.has(c.id)) continue;
-            const matches = this.findDuplicateContacts(c.name, c.email, c.company, c.id, contacts);
+            const matches = this.findDuplicateContacts(c.name, c.email, c.company, c.phone, c.id, contacts);
             if (matches.length > 0) {
                 groups.push([c, ...matches]);
                 processed.add(c.id);
@@ -887,6 +1366,7 @@ const App = {
             <div class="duplicate-match-card">
                 <strong>${this.escapeHtml(d.name)}</strong>
                 ${d.email ? `<span>📧 ${this.escapeHtml(d.email)}</span>` : ''}
+                ${d.phone ? `<span>📱 ${this.escapeHtml(d.phone)}</span>` : ''}
                 ${d.company ? `<span>🏢 ${this.escapeHtml(d.company)}</span>` : ''}
                 <div class="duplicate-match-actions">
                     <button class="btn btn-primary btn-sm" onclick="App.mergeWithExisting('${d.id}')">Merge</button>
@@ -896,7 +1376,7 @@ const App = {
 
         document.getElementById('modal-title').textContent = '⚠️ Duplicate Contact Detected';
         document.getElementById('modal-body').innerHTML = `
-            <p class="text-secondary">A contact with the same email or name+company already exists:</p>
+            <p class="text-secondary">A contact with the same email, phone, or name+company already exists:</p>
             ${duplicateRows}
             <div class="form-actions" style="margin-top: 1rem;">
                 <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
@@ -906,6 +1386,101 @@ const App = {
         this._pendingContactData = newData;
         this.openModal();
         document.getElementById('btn-keep-both').addEventListener('click', () => this.saveContactAsNew());
+    },
+
+    // ── Tag Management ─────────────────────────────────────────────
+
+    /**
+     * Open the tag management modal for CRUD operations on tags.
+     */
+    async showManageTagsModal() {
+        let tags = [];
+        try {
+            tags = await TagsDataSource.getTags();
+        } catch (err) {
+            console.error('Failed to load tags:', err);
+        }
+
+        document.getElementById('modal-title').textContent = 'Manage Tags';
+        document.getElementById('modal-container').classList.add('modal-wide');
+        document.getElementById('modal-body').innerHTML = `
+            <div class="tags-manager">
+                <div class="tags-manager-header">
+                    <h4>All Tags</h4>
+                    <button class="btn btn-sm btn-primary" onclick="App.showCreateTagForm()">+ New Tag</button>
+                </div>
+                <div id="tags-create-form-container"></div>
+                <div id="tags-list-container">
+                    ${tags.length === 0 ? '<p class="text-secondary">No tags created yet.</p>' :
+                        tags.map(t => `
+                        <div class="tag-list-item" data-tag-id="${t.id}">
+                            <span class="tag-list-color" style="background-color:${t.color || '#3b82f6'}"></span>
+                            <span class="tag-list-name">${this.escapeHtml(t.name)}</span>
+                            <div class="tag-list-actions">
+                                <button class="btn btn-sm btn-secondary" onclick="App.editTagInline('${t.id}')">Edit</button>
+                                <button class="btn btn-sm btn-danger" onclick="App.deleteTagConfirm('${t.id}', '${this.escapeHtml(t.name)}')">Delete</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        this.openModal();
+    },
+
+    showCreateTagForm() {
+        document.getElementById('tags-create-form-container').innerHTML = `
+            <form id="tag-create-form" class="tag-create-form">
+                <input type="text" id="tag-create-name" placeholder="Tag name *" required maxlength="100">
+                <input type="color" id="tag-create-color" value="#3b82f6" title="Tag color">
+                <button type="submit" class="btn btn-sm btn-primary">Create</button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('tags-create-form-container').innerHTML=''">Cancel</button>
+            </form>
+        `;
+        document.getElementById('tag-create-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.createTag();
+        });
+    },
+
+    async createTag() {
+        const name = document.getElementById('tag-create-name').value.trim();
+        const color = document.getElementById('tag-create-color').value;
+        if (!name) return;
+        try {
+            await TagsDataSource.createTag(name, color);
+            document.getElementById('tags-create-form-container').innerHTML = '';
+            this.showNotification(`Tag "${name}" created.`, 'success');
+            await this.showManageTagsModal();
+        } catch (err) {
+            console.error('Failed to create tag:', err);
+            this.showNotification('Could not create tag.', 'error');
+        }
+    },
+
+    async editTagInline(tagId) {
+        const newName = prompt('Enter new tag name:');
+        if (newName === null) return;
+        try {
+            await TagsDataSource.updateTag(tagId, { name: newName.trim() });
+            this.showNotification('Tag updated.', 'success');
+            await this.showManageTagsModal();
+        } catch (err) {
+            console.error('Failed to update tag:', err);
+            this.showNotification('Could not update tag.', 'error');
+        }
+    },
+
+    async deleteTagConfirm(tagId, tagName) {
+        if (!confirm(`Delete tag "${tagName}"? Contacts will lose this tag.`)) return;
+        try {
+            await TagsDataSource.deleteTag(tagId);
+            this.showNotification(`Tag "${tagName}" deleted.`, 'success');
+            await this.showManageTagsModal();
+        } catch (err) {
+            console.error('Failed to delete tag:', err);
+            this.showNotification('Could not delete tag.', 'error');
+        }
     },
 
     /**
@@ -970,46 +1545,52 @@ const App = {
 
     /**
      * Scan all contacts for duplicates and show results.
+     * Uses the backend API for server-side duplicate detection with phone matching.
      */
     async findDuplicates() {
-        let contacts;
+        let result;
         try {
-            contacts = await ContactsDataSource.getContacts();
+            result = await apiClient.findDuplicateContactsInApi();
         } catch (err) {
-            console.error('Failed to load contacts:', err);
-            this.showNotification(err.message, 'error');
+            console.error('Failed to find duplicates via API:', err);
+            this.showNotification(this._handleApiError(err), 'error');
             return;
         }
-        const groups = this.getDuplicateGroups(contacts);
-        const groupsWithDuplicates = groups.filter(g => g.length > 1);
 
-        if (groupsWithDuplicates.length === 0) {
+        const groups = result.groups || [];
+
+        if (groups.length === 0) {
             this.showNotification('No duplicate contacts found.', 'info');
             return;
         }
 
-        const totalDuplicates = groupsWithDuplicates.reduce((sum, g) => sum + g.length, 0);
+        const totalDuplicates = result.totalDuplicates || groups.reduce((sum, g) => sum + g.contacts.length, 0);
+        const matchTypeLabels = { email: '📧 Email', phone: '📱 Phone', name_company: '👤 Name + Company' };
 
-        const groupRows = groupsWithDuplicates.map((group, gi) => `
+        const groupRows = groups.map((group, gi) => {
+            const matchLabel = matchTypeLabels[group.matchType] || group.matchType;
+            return `
             <div class="duplicate-group">
-                <h4>Group ${gi + 1} (${group.length} contacts)</h4>
-                ${group.map((c, ci) => `
+                <h4>Group ${gi + 1} — ${matchLabel} match (${group.contacts.length} contacts)</h4>
+                ${group.contacts.map((c, ci) => `
                     <div class="duplicate-match-card">
                         <strong>${this.escapeHtml(c.name)}</strong>
                         ${c.email ? `<span>📧 ${this.escapeHtml(c.email)}</span>` : ''}
+                        ${c.phone ? `<span>📱 ${this.escapeHtml(c.phone)}</span>` : ''}
                         ${c.company ? `<span>🏢 ${this.escapeHtml(c.company)}</span>` : ''}
-                        <span class="text-secondary">${this.formatDate(c.createdAt)}</span>
-                        ${ci < group.length - 1 ? `<div class="duplicate-match-actions">
-                            <button class="btn btn-primary btn-sm" onclick="App.mergeContacts('${group[0].id}', '${c.id}')">Merge into first</button>
+                        <span class="text-secondary">${this.formatDate(c.createdAt || c.created_at)}</span>
+                        ${ci < group.contacts.length - 1 ? `<div class="duplicate-match-actions">
+                            <button class="btn btn-primary btn-sm" onclick="App.mergeContacts('${group.contacts[0].id}', '${c.id}')">Merge into first</button>
                         </div>` : '<div class="text-secondary"><em>Keep</em></div>'}
                     </div>
                 `).join('')}
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         document.getElementById('modal-title').textContent = `🔍 Duplicate Contacts Found`;
         document.getElementById('modal-body').innerHTML = `
-            <p class="text-secondary">${totalDuplicates} contacts in ${groupsWithDuplicates.length} group(s) appear to be duplicates:</p>
+            <p class="text-secondary">${totalDuplicates} contacts in ${groups.length} group(s) appear to be duplicates:</p>
             ${groupRows}
             <div class="form-actions" style="margin-top: 1rem;">
                 <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Close</button>
@@ -1377,9 +1958,28 @@ const App = {
             this.showLeadModal();
         });
 
-        document.getElementById('lead-filter-stage').addEventListener('change', () => this.renderLeads());
-        document.getElementById('lead-sort').addEventListener('change', () => this.renderLeads());
-        document.getElementById('lead-filter-score').addEventListener('change', () => this.renderLeads());
+        document.getElementById('btn-toggle-kanban').addEventListener('click', () => this.toggleKanbanView());
+        document.getElementById('lead-filter-stage').addEventListener('change', () => {
+            if (this._isKanbanView) {
+                this.renderKanbanBoard();
+            } else {
+                this.renderLeads();
+            }
+        });
+        document.getElementById('lead-sort').addEventListener('change', () => {
+            if (this._isKanbanView) {
+                this.renderKanbanBoard();
+            } else {
+                this.renderLeads();
+            }
+        });
+        document.getElementById('lead-filter-score').addEventListener('change', () => {
+            if (this._isKanbanView) {
+                this.renderKanbanBoard();
+            } else {
+                this.renderLeads();
+            }
+        });
         document.getElementById('btn-export-leads-csv').addEventListener('click', () => this.exportLeadsCSV());
         document.getElementById('btn-import-leads-csv').addEventListener('click', () => {
             document.getElementById('leads-csv-file-input').click();
@@ -1454,6 +2054,194 @@ const App = {
                 </div>
             </div>
         `;}).join('');
+    },
+
+    // === Kanban Board View ===
+
+    _isKanbanView: false,
+
+    _KANBAN_STAGES: ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'],
+
+    toggleKanbanView() {
+        this._isKanbanView = !this._isKanbanView;
+        const grid = document.getElementById('leads-list');
+        const board = document.getElementById('kanban-board');
+        const btn = document.getElementById('btn-toggle-kanban');
+
+        if (this._isKanbanView) {
+            grid.style.display = 'none';
+            board.style.display = 'flex';
+            btn.textContent = '📋 Grid';
+            btn.title = 'Toggle Grid View (K)';
+            this.renderKanbanBoard();
+        } else {
+            grid.style.display = '';
+            board.style.display = 'none';
+            btn.textContent = '📊 Kanban';
+            btn.title = 'Toggle Kanban Board View (K)';
+        }
+    },
+
+    async renderKanbanBoard(leadsOverride) {
+        let leads;
+        if (leadsOverride) {
+            leads = leadsOverride;
+        } else {
+            try {
+                leads = await LeadsDataSource.getLeads();
+            } catch (err) {
+                console.error('Failed to load leads for Kanban:', err);
+                return;
+            }
+        }
+
+        const filterStage = document.getElementById('lead-filter-stage').value;
+        const filterScore = document.getElementById('lead-filter-score').value;
+
+        if (filterStage) {
+            leads = leads.filter(l => l.stage === filterStage);
+        }
+        if (filterScore) {
+            leads = leads.filter(l => {
+                const score = this.calculateLeadScore(l);
+                const tier = this.getScoreTier(score);
+                return tier.label.toLowerCase() === filterScore;
+            });
+        }
+
+        for (const stage of this._KANBAN_STAGES) {
+            const container = document.querySelector(`.kanban-cards[data-stage="${stage}"]`);
+            const column = container.closest('.kanban-column');
+            const stageLeads = leads.filter(l => l.stage === stage);
+            const totalValue = stageLeads.reduce((s, l) => s + (Number(l.value) || 0), 0);
+
+            column.querySelector('.kanban-count').textContent = stageLeads.length;
+            column.querySelector('.kanban-value').textContent = totalValue > 0 ? `$${totalValue.toLocaleString()}` : '$0';
+
+            container.innerHTML = stageLeads.map(l => this._renderKanbanCard(l)).join('');
+        }
+
+        this._bindKanbanDragDrop();
+    },
+
+    _renderKanbanCard(l) {
+        const score = this.calculateLeadScore(l);
+        const tier = this.getScoreTier(score);
+        const daysInStage = this._getDaysInStage(l);
+        const ageClass = daysInStage > 14 ? 'age-red' : daysInStage > 7 ? 'age-amber' : 'age-green';
+
+        const stageOptions = this._KANBAN_STAGES.map(s =>
+            `<option value="${s}" ${s === l.stage ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+        ).join('');
+
+        return `
+            <div class="kanban-card" draggable="true" data-lead-id="${l.id}" data-lead-stage="${l.stage}">
+                <p class="kanban-card-name">${this.escapeHtml(l.name)}</p>
+                ${l.company ? `<p class="kanban-card-company">${this.escapeHtml(l.company)}</p>` : ''}
+                ${l.value ? `<p class="kanban-card-value">$${Number(l.value).toLocaleString()}</p>` : ''}
+                <div class="kanban-card-footer">
+                    <span class="kanban-card-score ${tier.class}" title="Score: ${score}/100">${score}</span>
+                    <span class="kanban-card-age ${ageClass}">${daysInStage}d</span>
+                    <select class="kanban-card-stage-select" data-lead-id="${l.id}" title="Change stage">${stageOptions}</select>
+                    <div class="kanban-card-actions">
+                        <button class="kanban-card-action" onclick="App.editLead('${l.id}')" title="Edit">✏️</button>
+                        <button class="kanban-card-action" onclick="App.deleteLead('${l.id}')" title="Delete">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    _getDaysInStage(lead) {
+        const stage = lead.stage;
+        const created = new Date(lead.createdAt);
+        const updated = lead.updatedAt ? new Date(lead.updatedAt) : created;
+        const now = new Date();
+        const diffMs = now - updated;
+        return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    },
+
+    _bindKanbanDragDrop() {
+        const cards = document.querySelectorAll('.kanban-card');
+        const dropZones = document.querySelectorAll('.kanban-cards');
+
+        cards.forEach(card => {
+            card.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', card.dataset.leadId);
+                e.dataTransfer.effectAllowed = 'move';
+                card.classList.add('dragging');
+            });
+            card.addEventListener('dragend', () => {
+                card.classList.remove('dragging');
+                document.querySelectorAll('.kanban-column.drag-over').forEach(c => c.classList.remove('drag-over'));
+            });
+        });
+
+        dropZones.forEach(zone => {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                zone.closest('.kanban-column').classList.add('drag-over');
+            });
+            zone.addEventListener('dragleave', (e) => {
+                if (!zone.contains(e.relatedTarget)) {
+                    zone.closest('.kanban-column').classList.remove('drag-over');
+                }
+            });
+            zone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                zone.closest('.kanban-column').classList.remove('drag-over');
+                const leadId = e.dataTransfer.getData('text/plain');
+                const newStage = zone.dataset.stage;
+                const card = document.querySelector(`.kanban-card[data-lead-id="${leadId}"]`);
+                if (!card) return;
+
+                const currentStage = card.dataset.leadStage;
+                if (currentStage === newStage) return;
+
+                if ((newStage === 'won' || newStage === 'lost') && !confirm(`Move "${card.querySelector('.kanban-card-name').textContent}" to ${newStage}?`)) {
+                    return;
+                }
+
+                card.style.opacity = '0.5';
+                try {
+                    await this._api.updateLeadStageInApi(leadId, newStage);
+                    card.dataset.leadStage = newStage;
+                    this.renderKanbanBoard();
+                    this.showToast(`Lead moved to ${newStage}`, 'success');
+                } catch (err) {
+                    card.style.opacity = '1';
+                    console.error('Failed to update lead stage:', err);
+                    this.showToast('Failed to update lead stage', 'error');
+                }
+            });
+        });
+
+        const stageSelects = document.querySelectorAll('.kanban-card-stage-select');
+        stageSelects.forEach(select => {
+            select.addEventListener('change', async (e) => {
+                const leadId = e.target.dataset.leadId;
+                const newStage = e.target.value;
+                const card = e.target.closest('.kanban-card');
+
+                if (card.dataset.leadStage === newStage) return;
+
+                if ((newStage === 'won' || newStage === 'lost') && !confirm(`Move lead to ${newStage}?`)) {
+                    this.renderKanbanBoard();
+                    return;
+                }
+
+                try {
+                    await this._api.updateLeadStageInApi(leadId, newStage);
+                    this.renderKanbanBoard();
+                    this.showToast(`Lead moved to ${newStage}`, 'success');
+                } catch (err) {
+                    this.renderKanbanBoard();
+                    console.error('Failed to update lead stage:', err);
+                    this.showToast('Failed to update lead stage', 'error');
+                }
+            });
+        });
     },
 
     showLeadModal(lead) {
@@ -1545,6 +2333,7 @@ const App = {
             }
         } catch (err) {
             this.showNotification(this._handleApiError(err), 'error');
+            this.closeModal();
             return;
         }
 
@@ -1603,6 +2392,124 @@ const App = {
         }));
     },
 
+    // === Analytics ===
+
+    async renderAnalytics() {
+        try {
+            const funnel = await ApiClient.getFunnelAnalyticsFromApi();
+            this._renderAnalyticsOverview(funnel);
+            this._renderFunnelChart(funnel);
+            this._renderFunnelBreakdown(funnel);
+        } catch (err) {
+            console.error('Failed to load analytics:', err);
+            const el = document.getElementById('funnel-chart');
+            if (el) {
+                el.innerHTML = '<p class="empty-state">Failed to load analytics data.</p>';
+            }
+        }
+    },
+
+    _renderAnalyticsOverview(data) {
+        document.getElementById('analytics-total-leads').textContent = data.total_leads;
+        document.getElementById('analytics-won-leads').textContent = data.won_leads;
+        document.getElementById('analytics-conversion-rate').textContent =
+            data.overall_conversion_rate + '%';
+        document.getElementById('analytics-pipeline-value').textContent =
+            '$' + data.total_pipeline_value.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    },
+
+    _renderFunnelChart(data) {
+        const container = document.getElementById('funnel-chart');
+        const steps = data.funnel_steps;
+
+        if (!steps || !steps.length) {
+            container.innerHTML = '<p class="empty-state">No funnel data available.</p>';
+            return;
+        }
+
+        const maxCount = Math.max(...steps.map(s => s.count), 1);
+        let html = '';
+
+        steps.forEach((step, i) => {
+            const widthPct = Math.max((step.count / maxCount) * 100, 15);
+            const colorClass = 'funnel-color-' + i;
+
+            html += `
+                <div class="funnel-step">
+                    <div class="funnel-bar ${colorClass}" style="width: ${widthPct}%">
+                        <div class="funnel-bar-content">
+                            <span class="funnel-stage-label">${step.label}</span>
+                            <span class="funnel-step-count">${step.count}</span>
+                            ${step.value > 0 ? '<span class="funnel-step-value">$' + step.value.toLocaleString() + '</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Arrow between steps showing conversion rate
+            if (i < steps.length - 1) {
+                const nextStep = steps[i + 1];
+                const dropClass = nextStep.drop_off > 0 ? 'funnel-arrow-drop' : '';
+                html += `
+                    <div class="funnel-arrow">
+                        <span>▼</span>
+                        <span class="funnel-arrow-rate">${nextStep.conversion_rate}% convert</span>
+                        ${nextStep.drop_off > 0 ? '<span class="' + dropClass + '">(-' + nextStep.drop_off + ')</span>' : ''}
+                    </div>
+                `;
+            }
+        });
+
+        container.innerHTML = html;
+    },
+
+    _renderFunnelBreakdown(data) {
+        const container = document.getElementById('funnel-breakdown');
+        const steps = data.funnel_steps;
+
+        if (!steps || !steps.length) {
+            container.innerHTML = '<p class="empty-state">No breakdown data available.</p>';
+            return;
+        }
+
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stage</th>
+                        <th>Count</th>
+                        <th>Value</th>
+                        <th>Conv. Rate</th>
+                        <th>Drop-off</th>
+                        <th>Avg. Days</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        steps.forEach(step => {
+            const convClass = step.conversion_rate >= 70 ? 'metric-positive' :
+                              step.conversion_rate >= 40 ? 'metric-neutral' : 'metric-negative';
+            const dropClass = step.drop_off > 0 ? 'metric-negative' : 'metric-neutral';
+            const avgDays = step.avg_days_in_stage !== null ? step.avg_days_in_stage + 'd' : '—';
+
+            html += `
+                <tr>
+                    <td><strong>${step.label}</strong></td>
+                    <td>${step.count}</td>
+                    <td>$${step.value.toLocaleString()}</td>
+                    <td class="${convClass}">${step.conversion_rate}%</td>
+                    <td class="${dropClass}">${step.drop_off > 0 ? '-' + step.drop_off : '—'}</td>
+                    <td>${avgDays}</td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    },
+
+    // === Activities ===
     async renderActivities() {
         let activities;
         try {
@@ -1721,7 +2628,7 @@ const App = {
         }
     },
 
-    async showActivityModal(activity) {
+    async showActivityModal(activity, prefillTypeOrContact, prefillContactName) {
         document.getElementById('modal-title').textContent = activity ? 'Edit Activity' : 'Add Activity';
         let contacts;
         try {
@@ -1734,20 +2641,28 @@ const App = {
         if (activity) {
             activity = this._normalizeActivities([activity])[0];
         }
-        const contactOptions = contacts.map(c =>
-            `<option value="${c.name}" ${activity && activity.contactName === c.name ? 'selected' : ''}>${this.escapeHtml(c.name)}</option>`
-        ).join('');
+        // Determine if prefillTypeOrContact is a type (call/email/meeting/note/task) or a contact name
+        const validTypes = ['call', 'email', 'meeting', 'note', 'task'];
+        const prefillContact = prefillContactName || (validTypes.includes(prefillTypeOrContact) ? null : prefillTypeOrContact);
+        const prefillType = validTypes.includes(prefillTypeOrContact) ? prefillTypeOrContact : null;
+        const selectedType = activity ? activity.type : (prefillType || 'call');
+        const contactOptions = contacts.map(c => {
+            let isSelected = '';
+            if (activity && activity.contactName === c.name) isSelected = 'selected';
+            else if (prefillContact && c.name === prefillContact) isSelected = 'selected';
+            return `<option value="${c.name}" ${isSelected}>${this.escapeHtml(c.name)}</option>`;
+        }).join('');
 
         document.getElementById('modal-body').innerHTML = `
             <form id="activity-form">
                 <div class="form-group">
                     <label for="activity-type">Type *</label>
                     <select id="activity-type" required>
-                        <option value="call" ${activity && activity.type === 'call' ? 'selected' : ''}>📞 Call</option>
-                        <option value="email" ${activity && activity.type === 'email' ? 'selected' : ''}>📧 Email</option>
-                        <option value="meeting" ${activity && activity.type === 'meeting' ? 'selected' : ''}>🤝 Meeting</option>
-                        <option value="note" ${activity && activity.type === 'note' ? 'selected' : ''}>📝 Note</option>
-                        <option value="task" ${activity && activity.type === 'task' ? 'selected' : ''}>✅ Task</option>
+                        <option value="call" ${selectedType === 'call' ? 'selected' : ''}>📞 Call</option>
+                        <option value="email" ${selectedType === 'email' ? 'selected' : ''}>📧 Email</option>
+                        <option value="meeting" ${selectedType === 'meeting' ? 'selected' : ''}>🤝 Meeting</option>
+                        <option value="note" ${selectedType === 'note' ? 'selected' : ''}>📝 Note</option>
+                        <option value="task" ${selectedType === 'task' ? 'selected' : ''}>✅ Task</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1803,12 +2718,14 @@ const App = {
                 const updated = await ActivitiesDataSource.updateActivity(existing.id, data);
                 if (!updated) {
                     this.showNotification('Failed to update activity. Admin access required.', 'error');
+                    this.closeModal();
                     return;
                 }
             } else {
                 const created = await ActivitiesDataSource.createActivity(data);
                 if (!created) {
                     this.showNotification('Failed to create activity. Admin access required.', 'error');
+                    this.closeModal();
                     return;
                 }
             }
@@ -1819,6 +2736,7 @@ const App = {
             this.showNotification(existing ? 'Activity updated.' : 'Activity created.', 'success');
         } catch (err) {
             this.showNotification('Failed to save activity.', 'error');
+            this.closeModal();
         }
     },
 
@@ -2040,6 +2958,268 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             document.getElementById('backup-file-input').click();
         });
         document.getElementById('backup-file-input').addEventListener('change', (e) => this.restoreBackup(e));
+        this.bindReminders();
+    },
+
+    // === Activity Reminders and Notifications ===
+    bindReminders() {
+        const saveBtn = document.getElementById('btn-save-reminders');
+        const testBtn = document.getElementById('btn-test-notification');
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveReminderSettings());
+        }
+        if (testBtn) {
+            testBtn.addEventListener('click', () => this.testNotification());
+        }
+    },
+
+    /**
+     * Load reminder settings from backend and populate the settings form.
+     */
+    async loadReminderSettings() {
+        try {
+            const settings = await SettingsDataSource.getSettings();
+            const payload = settings?.payload || {};
+            const reminder = payload.reminder || {};
+
+            const enabledEl = document.getElementById('reminder-enabled');
+            const timeEl = document.getElementById('reminder-time');
+            const advanceEl = document.getElementById('reminder-advance');
+            const overdueEl = document.getElementById('reminder-overdue');
+
+            if (enabledEl) enabledEl.checked = !!reminder.enabled;
+            if (timeEl) timeEl.value = reminder.time || '09:00';
+            if (advanceEl) advanceEl.value = reminder.advance != null ? String(reminder.advance) : '1';
+            if (overdueEl) overdueEl.checked = reminder.overdue !== false;
+        } catch (err) {
+            console.warn('Failed to load reminder settings:', err);
+        }
+        this.updateNotificationPermissionDisplay();
+    },
+
+    /**
+     * Save reminder settings to the backend.
+     */
+    async saveReminderSettings() {
+        const enabled = document.getElementById('reminder-enabled')?.checked || false;
+        const time = document.getElementById('reminder-time')?.value || '09:00';
+        const advance = parseInt(document.getElementById('reminder-advance')?.value || '1', 10);
+        const overdue = document.getElementById('reminder-overdue')?.checked !== false;
+
+        try {
+            const settings = await SettingsDataSource.getSettings();
+            const payload = settings?.payload || {};
+            payload.reminder = { enabled, time, advance, overdue };
+            await SettingsDataSource.updateSettings(payload);
+            this.showNotification('Reminder settings saved.', 'success');
+
+            // Start or stop the reminder checker
+            if (enabled) {
+                this._startReminderChecker();
+            } else {
+                this._stopReminderChecker();
+            }
+        } catch (err) {
+            this.showNotification(`Failed to save settings: ${err.message}`, 'error');
+        }
+    },
+
+    /**
+     * Test browser notification permission and show a sample notification.
+     */
+    async testNotification() {
+        if (!('Notification' in window)) {
+            this.showNotification('Browser notifications are not supported in this browser.', 'error');
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            this._showBrowserNotification('AICRM Test Notification', 'Activity reminders are working! Configure them in Settings.');
+            this.showNotification('Test notification sent (check your browser notifications).', 'success');
+        } else if (Notification.permission !== 'denied') {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                this._showBrowserNotification('AICRM Test Notification', 'Activity reminders are working! Configure them in Settings.');
+                this.showNotification('Permission granted. Test notification sent.', 'success');
+            } else {
+                this.showNotification('Notification permission was denied.', 'error');
+            }
+        } else {
+            this.showNotification('Notifications are blocked. Please enable them in your browser settings.', 'error');
+        }
+        this.updateNotificationPermissionDisplay();
+    },
+
+    /**
+     * Show a browser notification (native).
+     */
+    _showBrowserNotification(title, body) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+                new Notification(title, {
+                    body,
+                    icon: '/favicon.ico',
+                    tag: 'aicrm-reminder'
+                });
+            } catch (err) {
+                console.warn('Failed to show browser notification:', err);
+            }
+        }
+    },
+
+    /**
+     * Update the notification permission display in settings.
+     */
+    updateNotificationPermissionDisplay() {
+        const el = document.getElementById('notif-permission');
+        if (!el) return;
+
+        if (!('Notification' in window)) {
+            el.textContent = 'Not supported';
+            el.style.color = '#ef4444';
+        } else if (Notification.permission === 'granted') {
+            el.textContent = 'Granted ✓';
+            el.style.color = '#22c55e';
+        } else if (Notification.permission === 'denied') {
+            el.textContent = 'Blocked — enable in browser settings';
+            el.style.color = '#ef4444';
+        } else {
+            el.textContent = 'Not requested — click Test to request';
+            el.style.color = '#f59e0b';
+        }
+    },
+
+    /**
+     * Start the periodic reminder checker.
+     */
+    _startReminderChecker() {
+        this._stopReminderChecker();
+
+        // Check immediately on start
+        this._checkReminders();
+
+        // Then check every 5 minutes
+        this._reminderInterval = setInterval(() => {
+            this._checkReminders();
+        }, 5 * 60 * 1000);
+    },
+
+    /**
+     * Stop the periodic reminder checker.
+     */
+    _stopReminderChecker() {
+        if (this._reminderInterval) {
+            clearInterval(this._reminderInterval);
+            this._reminderInterval = null;
+        }
+    },
+
+    /**
+     * Check for upcoming and overdue activities and send reminders.
+     */
+    async _checkReminders() {
+        try {
+            const settings = await SettingsDataSource.getSettings();
+            const reminder = settings?.payload?.reminder;
+
+            if (!reminder || !reminder.enabled) return;
+
+            let activities;
+            try {
+                activities = await ActivitiesDataSource.getActivities();
+            } catch (err) {
+                console.warn('Failed to load activities for reminder check:', err);
+                return;
+            }
+            activities = this._normalizeActivities(activities);
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const advanceDays = parseInt(reminder.advance, 10) || 1;
+            const upcoming = [];
+            const overdue = [];
+
+            activities.forEach(a => {
+                if (!a.dueDate || a.status === 'completed') return;
+
+                const due = new Date(a.dueDate);
+                due.setHours(0, 0, 0, 0);
+
+                const diffDays = Math.floor((due - today) / (1000 * 60 * 60 * 24));
+
+                if (diffDays < 0 && reminder.overdue !== false) {
+                    overdue.push(a);
+                } else if (diffDays >= 0 && diffDays <= advanceDays) {
+                    upcoming.push(a);
+                }
+            });
+
+            // Send in-app notification for upcoming activities
+            if (upcoming.length > 0) {
+                const todayUpcoming = upcoming.filter(a => {
+                    const due = new Date(a.dueDate);
+                    due.setHours(0, 0, 0, 0);
+                    return due.getTime() === today.getTime();
+                });
+
+                if (todayUpcoming.length > 0) {
+                    const desc = todayUpcoming.slice(0, 3).map(a => a.description).join(', ');
+                    this._showInAppReminder(
+                        `📅 ${todayUpcoming.length} activity${todayUpcoming.length > 1 ? 'ies' : ''} due today`,
+                        desc + (todayUpcoming.length > 3 ? ` and ${todayUpcoming.length - 3} more` : '')
+                    );
+
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        this._showBrowserNotification(
+                            `📅 ${todayUpcoming.length} Activity Due Today`,
+                            desc + (todayUpcoming.length > 3 ? ` and ${todayUpcoming.length - 3} more` : '')
+                        );
+                    }
+                }
+            }
+
+            // Send in-app notification for overdue activities
+            if (overdue.length > 0 && reminder.overdue !== false) {
+                const desc = overdue.slice(0, 3).map(a => a.description).join(', ');
+                this._showInAppReminder(
+                    `⚠️ ${overdue.length} overdue activit${overdue.length > 1 ? 'ies' : 'y'}`,
+                    desc + (overdue.length > 3 ? ` and ${overdue.length - 3} more` : '')
+                );
+
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    this._showBrowserNotification(
+                        `⚠️ ${overdue.length} Overdue Activities`,
+                        desc + (overdue.length > 3 ? ` and ${overdue.length - 3} more` : '')
+                    );
+                }
+            }
+        } catch (err) {
+            console.warn('Reminder check failed:', err);
+        }
+    },
+
+    /**
+     * Show an in-app reminder notification (enhanced toast).
+     */
+    _showInAppReminder(title, description) {
+        const container = document.getElementById('notification-container');
+        const notif = document.createElement('div');
+        notif.className = 'notification notification-info reminder-notification';
+        notif.innerHTML = `
+            <div class="notif-title">${this.escapeHtml(title)}</div>
+            <div class="notif-desc">${this.escapeHtml(description)}</div>
+        `;
+        notif.style.cursor = 'pointer';
+        notif.addEventListener('click', () => {
+            this.navigate('activities');
+        });
+        container.appendChild(notif);
+        setTimeout(() => {
+            notif.classList.add('fade-out');
+            setTimeout(() => notif.remove(), 300);
+        }, 6000);
     },
 
     /**
@@ -2227,6 +3407,7 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
         const overlay = document.getElementById('modal-overlay');
         overlay.classList.add('hidden');
         overlay.classList.remove('active');
+        document.getElementById('modal-container').classList.remove('modal-wide');
         document.getElementById('modal-body').innerHTML = '';
     },
 
@@ -2251,6 +3432,22 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             if (e.key === '/' && !isInput) {
                 e.preventDefault();
                 document.getElementById('global-search').focus();
+                return;
+            }
+
+            // Q opens quick-add FAB
+            if (e.key.toLowerCase() === 'q' && !isInput && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                this.toggleFAB();
+                return;
+            }
+
+            // K toggles Kanban board view (only on leads page)
+            if (e.key.toLowerCase() === 'k' && !isInput && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                if (this._currentPage === 'leads') {
+                    this.toggleKanbanView();
+                }
                 return;
             }
 
@@ -2284,6 +3481,55 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
         });
     },
 
+    // === Quick-Add FAB ===
+    bindFAB() {
+        const fabButton = document.getElementById('fab-button');
+        const fabChips = document.getElementById('fab-chips');
+
+        if (!fabButton || !fabChips) return;
+
+        fabButton.addEventListener('click', () => this.toggleFAB());
+
+        fabChips.querySelectorAll('.fab-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const type = chip.dataset.type;
+                this.collapseFAB();
+                this.showActivityModal(null, type);
+            });
+        });
+
+        // Close FAB when clicking outside
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('fab-container');
+            if (container && !container.contains(e.target) && this._fabExpanded) {
+                this.collapseFAB();
+            }
+        });
+    },
+
+    toggleFAB() {
+        this._fabExpanded = !this._fabExpanded;
+        const fabButton = document.getElementById('fab-button');
+        const fabChips = document.getElementById('fab-chips');
+        if (this._fabExpanded) {
+            fabButton.classList.add('expanded');
+            fabChips.classList.remove('hidden');
+        } else {
+            fabButton.classList.remove('expanded');
+            fabChips.classList.add('hidden');
+        }
+    },
+
+    collapseFAB() {
+        if (!this._fabExpanded) return;
+        this._fabExpanded = false;
+        const fabButton = document.getElementById('fab-button');
+        const fabChips = document.getElementById('fab-chips');
+        fabButton.classList.remove('expanded');
+        fabChips.classList.add('hidden');
+    },
+
+    // === Shortcuts Help ===
     showShortcutsModal() {
         document.getElementById('modal-title').textContent = 'Keyboard Shortcuts';
         document.getElementById('modal-body').innerHTML = `
@@ -2299,6 +3545,7 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
                 <div class="shortcut-section">
                     <h4>Actions</h4>
                     <div class="shortcut-row"><kbd>/</kbd><span>Focus search bar</span></div>
+                    <div class="shortcut-row"><kbd>Q</kbd><span>Quick-add activity</span></div>
                     <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>N</kbd><span>New Contact</span></div>
                     <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>L</kbd><span>New Lead</span></div>
                     <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>E</kbd><span>Export CSV</span></div>
@@ -2364,6 +3611,200 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             task: '✅'
         };
         return icons[type] || '📋';
+    },
+
+    getActivityColor(type) {
+        const colors = {
+            call: '#3b82f6',
+            email: '#22c55e',
+            meeting: '#a855f7',
+            note: '#f97316',
+            task: '#ef4444'
+        };
+        return colors[type] || '#6b7280';
+    },
+
+    /**
+     * Group activities into time buckets for the timeline view.
+     * Returns array of { label, activities[] } sorted newest first.
+     */
+    _groupActivitiesByDate(activities) {
+        if (!activities.length) return [];
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const thisWeek = new Date(today);
+        thisWeek.setDate(thisWeek.getDate() - thisWeek.getDay());
+        const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        const groups = [];
+        const groupMap = {};
+
+        activities.forEach(a => {
+            const date = new Date(a.date);
+            const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            let label;
+
+            if (dateStart >= today) label = 'Today';
+            else if (dateStart >= yesterday) label = 'Yesterday';
+            else if (dateStart >= thisWeek) label = 'This Week';
+            else if (dateStart >= thisMonth) label = 'This Month';
+            else {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+                label = monthNames[date.getMonth()] + ' ' + date.getFullYear();
+            }
+
+            if (!groupMap[label]) {
+                groupMap[label] = { label, activities: [] };
+                groups.push(groupMap[label]);
+            }
+            groupMap[label].activities.push(a);
+        });
+
+        return groups;
+    },
+
+    /**
+     * Calculate time gaps between consecutive activities.
+     * Returns array of { from, to, days } for gaps exceeding threshold.
+     */
+    _calculateTimeGaps(activities, thresholdDays = 14) {
+        if (activities.length < 2) return [];
+        const sorted = [...activities].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const gaps = [];
+
+        for (let i = 1; i < sorted.length; i++) {
+            const prev = new Date(sorted[i - 1].date);
+            const curr = new Date(sorted[i].date);
+            const diffMs = curr.getTime() - prev.getTime();
+            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= thresholdDays) {
+                gaps.push({
+                    from: sorted[i - 1].date,
+                    to: sorted[i].date,
+                    days: diffDays
+                });
+            }
+        }
+
+        // Check gap from last activity to now
+        const now = new Date();
+        const lastActivity = new Date(sorted[sorted.length - 1].date);
+        const daysSinceLast = Math.round((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceLast >= thresholdDays) {
+            gaps.push({
+                from: sorted[sorted.length - 1].date,
+                to: null,
+                days: daysSinceLast
+            });
+        }
+
+        return gaps;
+    },
+
+    /**
+     * Generate activity summary text for a contact.
+     * Returns string like "Last contacted 5 days ago via email. 12 total activities."
+     */
+    _generateActivitySummary(activities) {
+        if (!activities.length) return 'No activities recorded yet.';
+
+        const now = new Date();
+        const sorted = [...activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const lastActivity = new Date(sorted[0].date);
+        const daysSince = Math.round((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+
+        const timeAgo = daysSince === 0 ? 'today' : daysSince === 1 ? 'yesterday' : `${daysSince} days ago`;
+        const lastType = sorted[0].type;
+        const icon = this.getActivityIcon(lastType);
+
+        // Count by type
+        const typeCounts = {};
+        activities.forEach(a => {
+            typeCounts[a.type] = (typeCounts[a.type] || 0) + 1;
+        });
+
+        const typeSummary = Object.entries(typeCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([type, count]) => `${this.getActivityIcon(type)} ${count}`)
+            .join(', ');
+
+        return `Last contacted ${timeAgo} via ${icon} ${lastType}. ${activities.length} total activities: ${typeSummary}`;
+    },
+
+    /**
+     * Render the enhanced communication timeline HTML.
+     */
+    _renderTimelineView(activities) {
+        if (!activities.length) {
+            return '<div class="empty-state-card"><p>No activities recorded for this contact yet.</p></div>';
+        }
+
+        const groups = this._groupActivitiesByDate(activities);
+        const gaps = this._calculateTimeGaps(activities);
+        const summary = this._generateActivitySummary(activities);
+
+        let html = `<div class="timeline-summary" title="${this.escapeHtml(summary)}">${this.escapeHtml(summary)}</div>`;
+
+        groups.forEach(group => {
+            html += `<div class="timeline-group"><div class="timeline-group-header">${this.escapeHtml(group.label)} (${group.activities.length})</div>`;
+
+            group.activities.forEach(a => {
+                const isCompleted = a.status === 'completed';
+                const isOverdue = a.dueDate && !isCompleted && this.isOverdue(a.dueDate);
+                const overdueClass = isOverdue ? ' activity-overdue' : '';
+                const completedClass = isCompleted ? ' activity-completed' : '';
+                const dotColor = this.getActivityColor(a.type);
+                const dueDateHtml = a.dueDate ? `
+                    <span class="activity-due-date ${isOverdue ? 'due-overdue' : ''}">
+                        ${isOverdue ? '⚠️ ' : '📅 '}Due: ${this.formatDateShort(a.dueDate)}
+                    </span>` : '';
+
+                html += `
+                    <div class="timeline-item${overdueClass}${completedClass}">
+                        <div class="timeline-marker">
+                            <div class="timeline-dot" style="background: ${dotColor}"></div>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <h4>${this.getActivityIcon(a.type)} ${this.escapeHtml(a.type.charAt(0).toUpperCase() + a.type.slice(1))}</h4>
+                                <div class="card-actions">
+                                    ${!isCompleted ? `<button class="card-action-btn btn-mark-complete" onclick="App.markActivityComplete('${a.id}')" title="Mark Complete">✅</button>` : ''}
+                                </div>
+                            </div>
+                            <p>${this.escapeHtml(a.description)}</p>
+                            <div class="activity-meta">
+                                <span class="timeline-date">${this.formatDate(a.date)}</span>
+                                ${dueDateHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+        });
+
+        // Render time gap indicators
+        gaps.forEach(gap => {
+            const gapLabel = gap.to
+                ? `No activity for ${gap.days} days`
+                : `No activity for ${gap.days} days`;
+            html += `
+                <div class="timeline-gap" title="${gapLabel}">
+                    <div class="timeline-gap-marker"></div>
+                    <div class="timeline-gap-content">
+                        <span class="timeline-gap-icon">⏰</span>
+                        <span class="timeline-gap-text">${gapLabel}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        return html;
     },
 
     formatCurrency(value) {

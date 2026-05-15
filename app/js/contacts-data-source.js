@@ -48,6 +48,13 @@ const ContactsDataSource = {
     },
 
     /**
+     * Set tags for a contact.
+     */
+    async setContactTags(contactId, tagIds) {
+        await ApiClient.setContactTagsInApi(contactId, tagIds);
+    },
+
+    /**
      * Normalize a contact object from the backend (snake_case → camelCase).
      */
     _normalizeContact(c) {
@@ -56,6 +63,28 @@ const ContactsDataSource = {
             ...c,
             createdAt: c.created_at || c.createdAt,
             updatedAt: c.updated_at || c.updatedAt,
+            tags: Array.isArray(c.tags) ? c.tags : [],
         };
+    },
+};
+
+/**
+ * Tags Data Source — CRUD for tag definitions.
+ */
+const TagsDataSource = {
+    async getTags() {
+        return await ApiClient.getTagsFromApi();
+    },
+
+    async createTag(name, color = '#3b82f6') {
+        return await ApiClient.createTagInApi({ name, color });
+    },
+
+    async updateTag(id, data) {
+        return await ApiClient.updateTagInApi(id, data);
+    },
+
+    async deleteTag(id) {
+        await ApiClient.deleteTagInApi(id);
     },
 };

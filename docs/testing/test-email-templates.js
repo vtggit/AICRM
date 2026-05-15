@@ -3,17 +3,17 @@
  * Tests template CRUD, category filtering, and variable insertion
  */
 const { chromium } = require('playwright');
+const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
 (async () => {
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
+    await setPageAuth(context, 'dev-secret-token:admin');
     const page = await context.newPage();
 
-    // Clear localStorage first
-    await page.goto('http://localhost:8080/app/index.html');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
-    await page.waitForTimeout(500);
+    // Navigate to app and wait for auth
+    await page.goto('http://localhost:8080/');
+    await waitForAuthReady(page);
 
     const results = [];
 

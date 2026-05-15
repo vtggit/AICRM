@@ -2,7 +2,7 @@
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from app.db.connection import get_cursor
 from app.observability.logging import get_request_id
@@ -30,7 +30,7 @@ def _row_to_dict(row) -> dict:
             if isinstance(ts, datetime):
                 d[key] = ts.isoformat()
     # due_date is a date object — convert to ISO string
-    if d.get("due_date") and isinstance(d["due_date"], datetime):
+    if d.get("due_date") and isinstance(d["due_date"], date):
         d["due_date"] = d["due_date"].isoformat()
     return d
 

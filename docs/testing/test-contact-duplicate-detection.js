@@ -6,8 +6,9 @@
  */
 
 const { chromium } = require('playwright');
+const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
-const BASE_URL = 'http://localhost:8080/app/index.html';
+const BASE_URL = 'http://localhost:8080/';
 const passed = [];
 const failed = [];
 
@@ -23,7 +24,9 @@ function log(result, testName) {
 
 (async () => {
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+    const context = await browser.newContext();
+    await setPageAuth(context, 'dev-secret-token:admin');
+    const page = await context.newPage();
 
     page.on('console', msg => {
         if (msg.type() === 'error') console.log(`  [BROWSER ERROR] ${msg.text()}`);
@@ -33,14 +36,7 @@ function log(result, testName) {
 
     try {
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 10000 });
-        await page.waitForTimeout(500);
-
-        // Clear storage and reload
-        await page.evaluate(() => {
-            Object.keys(localStorage).forEach(k => localStorage.removeItem(k));
-        });
-        await page.evaluate(() => window.location.reload());
-        await page.waitForTimeout(1500);
+        await waitForAuthReady(page);
 
         // Navigate to contacts
         await page.click('.nav-item[data-page="contacts"]');

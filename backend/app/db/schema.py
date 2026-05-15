@@ -106,6 +106,31 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 """
 
+CREATE_CONTACT_TAGS_TABLE = """
+CREATE TABLE IF NOT EXISTS contact_tags (
+    id          VARCHAR(64)  PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    color       VARCHAR(20)  NOT NULL DEFAULT '#3b82f6',
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+"""
+
+CREATE_CONTACT_TAGS_INDEX = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_tags_name
+ON contact_tags (LOWER(name));
+"""
+
+CREATE_CONTACT_TAG_MAPPING_TABLE = """
+CREATE TABLE IF NOT EXISTS contact_tag_mapping (
+    contact_id  VARCHAR(64) NOT NULL,
+    tag_id      VARCHAR(64) NOT NULL,
+    assigned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (contact_id, tag_id),
+    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES contact_tags(id) ON DELETE CASCADE
+);
+"""
+
 
 def create_schema():
     """Execute all schema creation statements."""
@@ -120,3 +145,6 @@ def create_schema():
         cur.execute(CREATE_ACTIVITIES_OCCURRED_AT_INDEX)
         cur.execute(CREATE_ACTIVITIES_STATUS_INDEX)
         cur.execute(CREATE_SETTINGS_TABLE)
+        cur.execute(CREATE_CONTACT_TAGS_TABLE)
+        cur.execute(CREATE_CONTACT_TAGS_INDEX)
+        cur.execute(CREATE_CONTACT_TAG_MAPPING_TABLE)

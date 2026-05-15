@@ -1,6 +1,16 @@
 # AICRM
 
 **AI-powered Customer Relationship Management** — a backend-owned web application for managing contacts, leads, activities, and email templates.
+This software has always been and is intended to be 100 percent AI coded. Its original and ongoing purpose is to test AI software development systems.
+However, in this role a full featured CRM has been created.
+
+## License
+
+This project is source-available proprietary software.
+
+You may download and use this software, but you may not modify it, redistribute it, sublicense it, sell it, or include it in another product.
+
+See [LICENSE](./LICENSE) for the full license terms.
 
 ## Architecture
 

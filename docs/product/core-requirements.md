@@ -125,6 +125,20 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Completed activities hidden from overdue count and overdue filter
 - Due date tracking persisted in PostgreSQL with activity data
 
+### 16. Contact Tags (COMPLETED)
+- Manage Tags modal accessible from Contacts page ("Manage Tags" button)
+- Tag CRUD operations: create, edit, delete tags via modal UI
+- Each tag has a name (unique, required) and color (hex color code, default: #6b7280)
+- New tag creation via "+ New Tag" button revealing inline form (name input + color picker)
+- Tag list displays all tags with colored indicator dot, name, and delete button
+- Tag assignment in contact edit form: checkbox selector listing all available tags with color dots
+- Selected tags pre-populated when editing existing contact (async API fetch)
+- Tag badges rendered on contact cards showing colored dot + tag name
+- Tags persist via backend API (`/api/tags` CRUD + `tag_ids` in contact create/update payload)
+- Tags pre-selected when re-editing a contact
+- Backend: `contact_tags` and `contact_tag_mapping` tables in PostgreSQL
+- Dark theme support for all tag UI components
+
 ## Technical Requirements
 - Single Page Application (SPA) frontend architecture
 - Backend-owned data: FastAPI + PostgreSQL for all business domains

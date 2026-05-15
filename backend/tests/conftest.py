@@ -291,8 +291,12 @@ def clean_database(client):
     conn = psycopg2.connect(**get_connection_params())
     try:
         with conn.cursor() as cur:
-            # Truncate in reverse dependency order (audit_log last)
+            # Truncate all tables in a single statement so PostgreSQL handles
+            # foreign-key constraints atomically (e.g. contact_tag_mapping has
+            # FKs to both contacts and contact_tags).
             tables = [
+                "contact_tag_mapping",
+                "contact_tags",
                 "contacts",
                 "templates",
                 "leads",
@@ -300,8 +304,11 @@ def clean_database(client):
                 "settings",
                 "audit_log",
             ]
-            for table in tables:
-                cur.execute(f"TRUNCATE TABLE {table} RESTART IDENTITY;")
+            cur.execute(
+                "TRUNCATE TABLE "
+                + ", ".join(tables)
+                + " RESTART IDENTITY;"
+            )
         conn.commit()
     except Exception:
         conn.rollback()

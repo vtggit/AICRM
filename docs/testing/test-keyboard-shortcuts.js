@@ -5,25 +5,24 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
-const BASE = 'http://localhost:8080/app/index.html';
+const BASE = 'http://localhost:8080/';
 const results = [];
 
 function log(msg) { console.log(msg); }
 
 (async () => {
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+    const context = await browser.newContext();
+    await setPageAuth(context, 'dev-secret-token:admin');
+    const page = await context.newPage();
     const errors = [];
 
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
 
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#page-dashboard', { timeout: 10000 });
-
-    // Clear localStorage for clean state
-    await page.evaluate(() => localStorage.clear());
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForAuthReady(page);
     await page.waitForSelector('#page-dashboard', { timeout: 10000 });
 
     // TEST 1: Shortcuts button exists

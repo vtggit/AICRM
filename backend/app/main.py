@@ -141,6 +141,7 @@ def create_app() -> FastAPI:
 
     # Import routers inside the factory so they capture the current
     # app instance when reloaded between tests.
+    from app.api.analytics import router as analytics_router
     from app.api.activities import router as activities_router
     from app.api.audit import router as audit_router
     from app.api.auth import router as auth_router
@@ -148,15 +149,18 @@ def create_app() -> FastAPI:
     from app.api.health import router as health_router
     from app.api.leads import router as leads_router
     from app.api.settings import router as settings_router
+    from app.api.tags import router as tags_router
     from app.api.templates import router as templates_router
 
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(contacts_router)
+    application.include_router(tags_router)
     application.include_router(templates_router)
     application.include_router(leads_router)
     application.include_router(activities_router)
     application.include_router(settings_router)
+    application.include_router(analytics_router)
     application.include_router(audit_router)
 
     @application.on_event("startup")
