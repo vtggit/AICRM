@@ -1,0 +1,74 @@
+[REQUEST] GET http://localhost:8080/api/auth/config
+[REQUEST] GET http://localhost:8080/api/settings
+[REQUEST] GET http://localhost:8080/api/health
+[REQUEST] GET http://localhost:8080/api/auth/me
+[REQUEST] GET http://localhost:8080/api/contacts
+[REQUEST] GET http://localhost:8080/api/settings
+[REQUEST] GET http://localhost:8080/api/activities
+[REQUEST] GET http://localhost:8080/api/settings
+[REQUEST] GET http://localhost:8080/api/settings
+[RESPONSE] 200 http://localhost:8080/api/auth/config -> {"authEnabled":true,"authMode":"development","issuer":"https://dev.example.com/realms/aicrm","clientId":"aicrm-backend","audience":"aicrm-backend","jwksUrl":"https://dev.example.com/realms/aicrm/proto
+[RESPONSE] 200 http://localhost:8080/api/health -> {"status":"ok","app_version":"0.1.0","service":"aicrm-backend","git_sha":null,"build_timestamp":null}
+[RESPONSE] 200 http://localhost:8080/api/settings -> {"id":"app","payload":{"theme":"dark","reminder":{"time":"09:00","advance":2,"enabled":true,"overdue":true},"lastBackup":"2026-05-18T20:00:49.710Z"},"created_at":"2026-05-08T17:08:35.550355+00:00","up
+[CONSOLE info] Authenticated as: admin
+[RESPONSE] 200 http://localhost:8080/api/auth/me -> {"authenticated":true,"user":{"sub":"dev-admin-1","username":"admin","email":"admin@aicrm.local","roles":["admin","user"],"groups":[],"raw_claims":{"mode":"development"}}}
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[RESPONSE] 200 http://localhost:8080/api/settings -> {"id":"app","payload":{"theme":"dark","reminder":{"time":"09:00","advance":2,"enabled":true,"overdue":true},"lastBackup":"2026-05-18T20:00:49.710Z"},"created_at":"2026-05-08T17:08:35.550355+00:00","up
+[RESPONSE] 200 http://localhost:8080/api/settings -> {"id":"app","payload":{"theme":"dark","reminder":{"time":"09:00","advance":2,"enabled":true,"overdue":true},"lastBackup":"2026-05-18T20:00:49.710Z"},"created_at":"2026-05-08T17:08:35.550355+00:00","up
+[REQUEST] GET http://localhost:8080/api/settings
+[RESPONSE] 200 http://localhost:8080/api/settings -> {"id":"app","payload":{"theme":"dark","reminder":{"time":"09:00","advance":2,"enabled":true,"overdue":true},"lastBackup":"2026-05-18T20:00:49.710Z"},"created_at":"2026-05-08T17:08:35.550355+00:00","up
+[REQUEST] GET http://localhost:8080/api/leads
+[RESPONSE] 200 http://localhost:8080/api/contacts -> [{"id":"34e6e2ee-7f4d-466f-bcb8-118a9aba4ac2","name":"Debug Contact 1779134612699","email":"debug1779134612699@example.com","phone":"555-2699","company":"Debug Corp 1779134612699","status":"active","n
+[REQUEST] GET http://localhost:8080/api/activities
+[RESPONSE] 200 http://localhost:8080/api/settings -> {"id":"app","payload":{"theme":"dark","reminder":{"time":"09:00","advance":2,"enabled":true,"overdue":true},"lastBackup":"2026-05-18T20:00:49.710Z"},"created_at":"2026-05-08T17:08:35.550355+00:00","up
+[REQUEST] GET http://localhost:8080/api/activities
+[REQUEST] GET http://localhost:8080/api/contacts
+[RESPONSE] 200 http://localhost:8080/api/leads -> [{"id":"2e81877b-3f95-41c4-8e52-8400db440a61","name":"Lost Deal","company":null,"email":null,"phone":null,"value":10000.0,"stage":"lost","source":null,"notes":null,"created_at":"2026-05-18T20:03:29.62
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[REQUEST] GET http://localhost:8080/api/activities
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[REQUEST] GET http://localhost:8080/api/tags
+[RESPONSE] 200 http://localhost:8080/api/tags -> [{"id":"663b79fd-70e3-45b0-b2ec-74b7f756e78e","name":"Follow Up","color":"#f59e0b","created_at":"2026-05-11T19:23:54.459322+00:00"},{"id":"a3861671-c3bc-4d95-b143-38891cf81911","name":"VIP Customer","
+[REQUEST] GET http://localhost:8080/api/activities
+[REQUEST] GET http://localhost:8080/api/analytics/activity-trends?range=30d&group=day
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[RESPONSE] 200 http://localhost:8080/api/analytics/activity-trends?range=30d&group=day -> {"range":"30d","group":"day","start_date":"2026-04-18T20:03:46.054005+00:00","end_date":"2026-05-18T20:03:46.054005+00:00","total_activities":146,"buckets":[{"bucket_date":"2026-04-30","total":1,"call
+[REQUEST] GET http://localhost:8080/api/contacts
+[RESPONSE] 200 http://localhost:8080/api/contacts -> [{"id":"34e6e2ee-7f4d-466f-bcb8-118a9aba4ac2","name":"Debug Contact 1779134612699","email":"debug1779134612699@example.com","phone":"555-2699","company":"Debug Corp 1779134612699","status":"active","n
+Form filled, checking button...
+Form buttons: [ 'Cancel', 'Create' ]
+Modal body buttons: [ 'Cancel', 'Create' ]
+[REQUEST] GET http://localhost:8080/api/contacts
+Submit clicked, waiting...
+[REQUEST] GET http://localhost:8080/api/activities
+[RESPONSE] 200 http://localhost:8080/api/contacts -> [{"id":"34e6e2ee-7f4d-466f-bcb8-118a9aba4ac2","name":"Debug Contact 1779134612699","email":"debug1779134612699@example.com","phone":"555-2699","company":"Debug Corp 1779134612699","status":"active","n
+[REQUEST] GET http://localhost:8080/api/activities
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[REQUEST] POST http://localhost:8080/api/contacts
+[RESPONSE] 200 http://localhost:8080/api/contacts -> [{"id":"34e6e2ee-7f4d-466f-bcb8-118a9aba4ac2","name":"Debug Contact 1779134612699","email":"debug1779134612699@example.com","phone":"555-2699","company":"Debug Corp 1779134612699","status":"active","n
+[REQUEST] GET http://localhost:8080/api/contacts
+[RESPONSE] 201 http://localhost:8080/api/contacts -> {"id":"9a778319-3566-4d34-8eea-d3c94501966e","name":"Debug Contact 1779134626058","email":"debug1779134626058@example.com","phone":"555-0123","company":"Debug Corp","status":"active","notes":"Debug te
+[REQUEST] GET http://localhost:8080/api/contacts
+[RESPONSE] 200 http://localhost:8080/api/contacts -> [{"id":"9a778319-3566-4d34-8eea-d3c94501966e","name":"Debug Contact 1779134626058","email":"debug1779134626058@example.com","phone":"555-0123","company":"Debug Corp","status":"active","notes":"Debug t
+[REQUEST] GET http://localhost:8080/api/activities
+[RESPONSE] 200 http://localhost:8080/api/contacts -> [{"id":"9a778319-3566-4d34-8eea-d3c94501966e","name":"Debug Contact 1779134626058","email":"debug1779134626058@example.com","phone":"555-0123","company":"Debug Corp","status":"active","notes":"Debug t
+[REQUEST] GET http://localhost:8080/api/contacts
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[REQUEST] GET http://localhost:8080/api/leads
+[RESPONSE] 200 http://localhost:8080/api/contacts -> [{"id":"9a778319-3566-4d34-8eea-d3c94501966e","name":"Debug Contact 1779134626058","email":"debug1779134626058@example.com","phone":"555-0123","company":"Debug Corp","status":"active","notes":"Debug t
+[REQUEST] GET http://localhost:8080/api/activities
+[RESPONSE] 200 http://localhost:8080/api/leads -> [{"id":"2e81877b-3f95-41c4-8e52-8400db440a61","name":"Lost Deal","company":null,"email":null,"phone":null,"value":10000.0,"stage":"lost","source":null,"notes":null,"created_at":"2026-05-18T20:03:29.62
+[REQUEST] GET http://localhost:8080/api/activities
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[REQUEST] GET http://localhost:8080/api/activities
+[REQUEST] GET http://localhost:8080/api/analytics/activity-trends?range=30d&group=day
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[RESPONSE] 200 http://localhost:8080/api/activities -> [{"id":"b62aa065-f7b8-45ed-8a4e-f9029886a47b","type":"call","description":"Quick logged call from contact card - 1779134595391","contact_name":"Alice Johnson","occurred_at":"2026-05-18T20:03:00+00:00"
+[RESPONSE] 200 http://localhost:8080/api/analytics/activity-trends?range=30d&group=day -> {"range":"30d","group":"day","start_date":"2026-04-18T20:03:47.010314+00:00","end_date":"2026-05-18T20:03:47.010314+00:00","total_activities":146,"buckets":[{"bucket_date":"2026-04-30","total":1,"call
+Modal title: Add Contact
+Modal body (first 200 chars): 
+Modal still visible: false
+Contact cards visible: 6
+Screenshot saved to /tmp/debug-final.png

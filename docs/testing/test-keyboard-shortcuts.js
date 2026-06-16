@@ -142,6 +142,7 @@ function log(msg) { console.log(msg); }
     log(`  Console errors: ${errors.length}`);
 
     // Screenshot
+    fs.mkdirSync('test-results', { recursive: true });
     await page.screenshot({ path: 'test-results/keyboard-shortcuts.png', fullPage: false });
     log('\nScreenshot saved to test-results/keyboard-shortcuts.png');
 

@@ -1,0 +1,23 @@
+
+=== Activity Due Date Tracking Tests ===
+
+  [PASS] Navigate to Activities page
+  [PASS] Status filter dropdown exists
+  [PASS] Overdue activity shows red highlight
+  [PASS] Overdue due date displayed with warning
+  [PASS] Overdue badge visible on nav - badge=20
+  [PASS] Future due date displayed without warning
+  [PASS] Overdue activity sorts to top
+  [PASS] Mark complete button exists
+  [PASS] Completed activity shows strikethrough style
+  [FAIL] Overdue badge hidden after completing overdue - badge=19 (may have pre-existing overdue activities)
+  [PASS] Overdue filter shows only overdue activities - count=19 (includes pre-existing overdue)
+  [PASS] Completed filter shows only completed activities - count=58 (includes pre-existing completed)
+  [PASS] Active filter shows only active activities - count=80 (includes pre-existing active)
+  [PASS] Dashboard shows overdue count - stat=19
+  [PASS] No console errors
+
+  Screenshot saved: test-results/activity-due-date-tracking.png
+
+=== Results: 14 passed, 1 failed, 15 total ===
+

@@ -3,76 +3,95 @@
  * Tests revenue stat cards and pipeline revenue breakdown
  */
 const { chromium } = require('playwright');
+const fs = require('fs');
 const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
 (async () => {
     const results = [];
     const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext();
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await setPageAuth(context, 'dev-secret-token:admin');
     const page = await context.newPage();
+    page.setDefaultTimeout(15000);
     const errors = [];
 
     page.on('console', msg => {
         if (msg.type() === 'error') errors.push(msg.text());
     });
 
+    // Prevent unhandled page errors from crashing the test
+    page.on('pageerror', (err) => {
+        console.log('Page error (non-fatal):', err.message);
+    });
+
     try {
-        await page.goto('http://localhost:8080/', { waitUntil: 'domcontentloaded' });
+        await page.goto('http://localhost:8080/', { waitUntil: 'domcontentloaded', timeout: 10000 });
         await waitForAuthReady(page);
 
-        // Navigate to Leads and create test leads with values
+        // Navigate to Leads
         await page.click('.nav-item[data-page="leads"]');
-        await page.waitForTimeout(200);
+        await page.waitForSelector('#page-leads', { state: 'visible', timeout: 5000 });
+
+        // Clear existing leads via API for deterministic test results
+        await page.evaluate(async () => {
+            const token = sessionStorage.getItem('aicrm_token');
+            const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+            const resp = await fetch(Config.API_BASE_URL + '/leads', { headers });
+            const leads = await resp.json();
+            for (const l of leads) {
+                await fetch(Config.API_BASE_URL + '/leads/' + l.id, { method: 'DELETE', headers });
+            }
+        });
+        await page.waitForTimeout(500);
 
         // Lead 1: Won deal, $50,000
         console.log('SETUP: Create Won lead ($50,000)');
         await page.click('#btn-add-lead');
-        await page.waitForSelector('#lead-form');
+        await page.waitForSelector('#modal-overlay', { state: 'visible' });
         await page.fill('#lead-name', 'Won Deal');
         await page.fill('#lead-company', 'Big Corp');
         await page.fill('#lead-value', '50000');
         await page.selectOption('#lead-stage', 'won');
         await page.selectOption('#lead-source', 'referral');
         await page.fill('#lead-email', 'won@bigcorp.com');
-        await page.click('#lead-form .btn-primary');
-        await page.waitForTimeout(300);
+        await page.click('#lead-form button[type="submit"]');
+        await page.waitForSelector('#modal-overlay', { state: 'hidden', timeout: 5000 });
 
         // Lead 2: Proposal stage, $30,000
         console.log('SETUP: Create Proposal lead ($30,000)');
         await page.click('#btn-add-lead');
-        await page.waitForSelector('#lead-form');
+        await page.waitForSelector('#modal-overlay', { state: 'visible' });
         await page.fill('#lead-name', 'Proposal Deal');
         await page.fill('#lead-company', 'Medium Inc');
         await page.fill('#lead-value', '30000');
         await page.selectOption('#lead-stage', 'proposal');
         await page.selectOption('#lead-source', 'website');
-        await page.click('#lead-form .btn-primary');
-        await page.waitForTimeout(300);
+        await page.click('#lead-form button[type="submit"]');
+        await page.waitForSelector('#modal-overlay', { state: 'hidden', timeout: 5000 });
 
         // Lead 3: Qualified stage, $15,000
         console.log('SETUP: Create Qualified lead ($15,000)');
         await page.click('#btn-add-lead');
-        await page.waitForSelector('#lead-form');
+        await page.waitForSelector('#modal-overlay', { state: 'visible' });
         await page.fill('#lead-name', 'Qualified Deal');
         await page.fill('#lead-value', '15000');
         await page.selectOption('#lead-stage', 'qualified');
-        await page.click('#lead-form .btn-primary');
-        await page.waitForTimeout(300);
+        await page.click('#lead-form button[type="submit"]');
+        await page.waitForSelector('#modal-overlay', { state: 'hidden', timeout: 5000 });
 
         // Lead 4: Lost deal, $10,000 (should NOT count in pipeline)
         console.log('SETUP: Create Lost lead ($10,000)');
         await page.click('#btn-add-lead');
-        await page.waitForSelector('#lead-form');
+        await page.waitForSelector('#modal-overlay', { state: 'visible' });
         await page.fill('#lead-name', 'Lost Deal');
         await page.fill('#lead-value', '10000');
         await page.selectOption('#lead-stage', 'lost');
-        await page.click('#lead-form .btn-primary');
-        await page.waitForTimeout(300);
+        await page.click('#lead-form button[type="submit"]');
+        await page.waitForSelector('#modal-overlay', { state: 'hidden', timeout: 5000 });
 
         // Navigate to Dashboard
         await page.click('.nav-item[data-page="dashboard"]');
-        await page.waitForTimeout(300);
+        await page.waitForSelector('#page-dashboard', { state: 'visible', timeout: 5000 });
 
         // TEST 1: Revenue stat cards exist
         console.log('\nTEST 1: Revenue stat cards exist');
@@ -126,13 +145,16 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
         if (errors.length > 0) console.log(`  Errors: ${errors.join(', ')}`);
 
         // Screenshot
+        fs.mkdirSync('test-results', { recursive: true });
         await page.screenshot({ path: 'test-results/revenue-summary.png', fullPage: true });
         console.log('\nScreenshot saved to test-results/revenue-summary.png');
 
     } catch (err) {
         console.error('Test error:', err.message);
     } finally {
-        await browser.close();
+        try {
+            await browser.close();
+        } catch { /* ignore close errors */ }
     }
 
     // Report

@@ -1,0 +1,35 @@
+✅ T1: Find Duplicates button exists in contacts toolbar
+✅ T2: findDuplicateContacts returns empty for unique contact
+✅ T3: findDuplicateContacts detects email duplicate
+✅ T4: getDuplicateGroups returns 1+ group with 2+ contacts
+✅ T5: Duplicate badges appear on contact cards (expected 2+, got 2)
+✅ T6: findDuplicateContacts detects name+company duplicate
+✅ T7: Different name with same company is NOT flagged as duplicate
+✅ T8: mergeContacts reduces count and removes source contact
+✅ T9: mergeContacts combines notes from both contacts
+  [BROWSER ERROR] Failed to find duplicates via API: ApiError: Expected entity object with 'id' but got: {"total_groups":0,"total_duplicates":0,"groups":[]}. Contract drift detected.
+    at Object.assertEntity (http://localhost:8080/js/api.js:284:19)
+    at Object.findDuplicateContactsInApi (http://localhost:8080/js/api.js:411:21)
+    at async Object.findDuplicates (http://localhost:8080/js/app.js?v=0.1.9:1564:22)
+    at async eval (eval at evaluate (:302:30), <anonymous>:4:13)
+    at async <anonymous>:328:30
+❌ T10: "No duplicates found" notification shown for unique contacts
+  [BROWSER ERROR] Failed to find duplicates via API: ApiError: Expected entity object with 'id' but got: {"total_groups":1,"total_duplicates":2,"groups":[{"group_id":1,"match_type":"email","contacts":[{"id":"c98aef59-6218-40b6-b978-0cc8b9731409","name":"Dup One","email":"dup@example.com","phone":null,"company":"Co1","status":"active","created_at":"2026-05-18T20:01:15.553839+00:00","updated_at":"2026-05-18T20:01:15.553839+00:00"},{"id":"3b300a03-be6b-4106-b9fc-db62a93b4197","name":"Dup Two","email":"dup@example.com","phone":null,"company":"Co2","status":"active","created_at":"2026-05-18T20:01:15.636467+00:00","updated_at":"2026-05-18T20:01:15.636467+00:00"}]}]}. Contract drift detected.
+    at Object.assertEntity (http://localhost:8080/js/api.js:284:19)
+    at Object.findDuplicateContactsInApi (http://localhost:8080/js/api.js:411:21)
+    at async Object.findDuplicates (http://localhost:8080/js/app.js?v=0.1.9:1564:22)
+    at async eval (eval at evaluate (:302:30), <anonymous>:2:13)
+    at async <anonymous>:328:30
+❌ T11: Duplicate modal opens when duplicates are detected
+❌ T12: Merge buttons visible in duplicate modal (found 0)
+✅ T13: Duplicate warning modal shown when creating contact with existing email
+✅ T14: "Keep Both" button available in duplicate warning modal
+✅ T15: Contact saved after clicking "Keep Both"
+
+==================================================
+Results: 12 passed, 3 failed out of 15 tests
+Failed tests:
+  - T10: "No duplicates found" notification shown for unique contacts
+  - T11: Duplicate modal opens when duplicates are detected
+  - T12: Merge buttons visible in duplicate modal (found 0)
+==================================================

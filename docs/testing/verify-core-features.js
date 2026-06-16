@@ -49,7 +49,7 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     await page.fill('#contact-company', `Test Corp ${ts}`);
     await page.selectOption('#contact-status', 'active');
     await page.fill('#contact-notes', 'Test contact');
-    await page.click('#contact-form .btn-primary');
+    await page.click('#contact-form button[type="submit"]');
     // Wait for modal to close
     await page.waitForSelector('#modal-overlay', { state: 'hidden', timeout: 5000 });
     // Wait for re-render
@@ -76,7 +76,7 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     await page.selectOption('#lead-stage', 'qualified');
     await page.selectOption('#lead-source', 'website');
     await page.fill('#lead-notes', 'Test lead');
-    await page.click('#lead-form .btn-primary');
+    await page.click('#lead-form button[type="submit"]');
     // Wait for modal to close
     await page.waitForSelector('#modal-overlay', { state: 'hidden', timeout: 5000 });
     await page.waitForTimeout(1000);
@@ -95,7 +95,7 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     await page.selectOption('#activity-type', 'meeting');
     await page.fill('#activity-description', 'Test activity description');
     // Don't select a specific contact to avoid dropdown issues
-    await page.click('#activity-form .btn-primary');
+    await page.click('#activity-form button[type="submit"]');
     // Wait for modal to close
     await page.waitForSelector('#modal-overlay', { state: 'hidden', timeout: 5000 });
     await page.waitForTimeout(1000);
@@ -116,12 +116,13 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
     // Test 8: Search functionality
     console.log('TEST 8: Search functionality');
-    await page.fill('#global-search', 'John');
+    // Search for the contact created in Test 4 (use its unique name)
+    await page.fill('#global-search', uniqueContactName);
     // Wait for debounce (300ms) + API calls + navigation render
     await page.waitForTimeout(3000);
     await page.screenshot({ path: '/tmp/test-search.png', fullPage: true });
     const searchPageTitle = await page.textContent('#page-title');
-    console.log(`  After search, page: "${searchPageTitle}"`);
+    console.log(`  After search for "${uniqueContactName}", page: "${searchPageTitle}"`);
     results.push({ test: 'Search navigates to contacts', pass: searchPageTitle === 'Contacts' });
 
     // Test 9: Theme toggle

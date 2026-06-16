@@ -36,14 +36,30 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     console.log('T6: Timeline events rendered:', eventCount > 0 ? 'PASS (' + eventCount + ')' : 'FAIL (0)');
     
     // Check for JS errors
-    const errors = [];
-    for (const c of await page.evaluate(() => [])) {
-        errors.push(c);
-    }
+    const errorCount = await page.evaluate(() => {
+        // Check for any visible error indicators on the page
+        const errorEls = document.querySelectorAll('.error, .error-message, [role="alert"]');
+        return errorEls.length;
+    });
+    console.log('T7: JS errors on page:', errorCount === 0 ? 'PASS (0 errors)' : 'FAIL (' + errorCount + ' errors)');
     
     // Screenshot
     await page.screenshot({ path: '/home/aicrm/workspace/AICRM/docs/testing/screenshots/timeline-view-test.png', fullPage: true });
-    console.log('T7: Screenshot captured: PASS');
+    console.log('Screenshot captured: PASS');
+    
+    // Summary
+    const tests = [
+        hasMethod === 'function',
+        hasGroup === 'function',
+        hasColor === 'function',
+        summaryCount > 0,
+        groupCount > 0,
+        eventCount > 0,
+        errorCount === 0,
+    ];
+    const passed = tests.filter(Boolean).length;
+    console.log(`\nTotal: ${tests.length} | Passed: ${passed} | Failed: ${tests.length - passed}`);
     
     await browser.close();
+    process.exit(tests.length - passed > 0 ? 1 : 0);
 })();

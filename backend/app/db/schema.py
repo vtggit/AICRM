@@ -131,6 +131,21 @@ CREATE TABLE IF NOT EXISTS contact_tag_mapping (
 );
 """
 
+CREATE_SALES_GOALS_TABLE = """
+CREATE TABLE IF NOT EXISTS sales_goals (
+    id              VARCHAR(64)  PRIMARY KEY,
+    name            VARCHAR(200) NOT NULL,
+    type            VARCHAR(50)  NOT NULL,
+    target_value    NUMERIC(14, 2) NOT NULL DEFAULT 0,
+    current_value   NUMERIC(14, 2) NOT NULL DEFAULT 0,
+    period          VARCHAR(50)  NOT NULL,
+    start_date      DATE         NOT NULL,
+    end_date        DATE         NOT NULL,
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+"""
+
 
 def create_schema():
     """Execute all schema creation statements."""
@@ -148,3 +163,4 @@ def create_schema():
         cur.execute(CREATE_CONTACT_TAGS_TABLE)
         cur.execute(CREATE_CONTACT_TAGS_INDEX)
         cur.execute(CREATE_CONTACT_TAG_MAPPING_TABLE)
+        cur.execute(CREATE_SALES_GOALS_TABLE)

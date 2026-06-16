@@ -1,0 +1,40 @@
+
+SETUP: Loading app with admin auth
+  ✅ T0: User is authenticated
+  ✅ T0b: User has admin role
+
+TEST 1: Navigate to Contacts page
+  ✅ T1: Contacts page is visible after navigation
+  ✅ T1b: Page title is "Contacts"
+
+TEST 2: "Add Contact" button visibility
+  ✅ T2: #btn-add-contact button exists in DOM
+  ✅ T2b: "Add Contact" button is visible
+
+TEST 3: Click "Add Contact" opens modal
+  ✅ T3a: Button is clickable (has bounding box)
+  ✅ T3b: #modal-overlay is visible after clicking "Add Contact"
+  ✅ T3c: Modal box is rendered inside overlay
+
+TEST 4: Modal title
+  ✅ T4: Modal title is correct (got: "Add Contact")
+
+TEST 5: Form fields present and editable
+  ✅ T5: "Name" field (#contact-name) is visible
+  ✅ T5: "Email" field (#contact-email) is visible
+  ✅ T5: "Phone" field (#contact-phone) is visible
+  ✅ T5: "Company" field (#contact-company) is visible
+  ✅ T5: "Status" field (#contact-status) is visible
+  ✅ T5: "Notes" field (#contact-notes) is visible
+
+TEST 6: Fill form and submit
+  Screenshot saved: /tmp/test-add-contact-filled.png
+
+❌ Test error: page.waitForResponse: Timeout 10000ms exceeded while waiting for event "response"
+page.waitForResponse: Timeout 10000ms exceeded while waiting for event "response"
+    at /home/aicrm/workspace/AICRM/docs/testing/test-add-contact.js:140:18
+  Error screenshot saved: /tmp/test-add-contact-error.png
+
+=======================================================
+  Results: 16 passed, 0 failed out of 16 tests
+=======================================================

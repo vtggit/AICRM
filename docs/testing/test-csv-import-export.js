@@ -6,13 +6,22 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 (async () => {
   const results = [];
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    acceptDownloads: true,
+  });
   await setPageAuth(context, 'dev-secret-token:admin');
   const page = await context.newPage();
+  page.setDefaultTimeout(15000);
 
   // Capture downloads
   const downloadDir = '/tmp/aicrm-downloads';
   fs.mkdirSync(downloadDir, { recursive: true });
+
+  // Prevent unhandled page errors from crashing the test
+  page.on('pageerror', (err) => {
+    console.log('Page error (non-fatal):', err.message);
+  });
 
   try {
     await page.goto('http://localhost:8080/', { waitUntil: 'domcontentloaded', timeout: 10000 });
@@ -21,25 +30,31 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     // Pre-condition: Add a contact for export testing
     console.log('SETUP: Add a contact for export testing');
     await page.click('.nav-item[data-page="contacts"]');
-    await page.waitForTimeout(200);
+    await page.waitForSelector('#page-contacts', { state: 'visible', timeout: 5000 });
 
-    // Clear existing contacts by going to contacts page and checking count
-    const existingCount = await page.locator('.contact-card').count();
-    console.log(`  Existing contacts: ${existingCount}`);
+    // Clear existing contacts via API
+    await page.evaluate(async () => {
+      const token = sessionStorage.getItem('aicrm_token');
+      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+      const resp = await fetch(Config.API_BASE_URL + '/contacts', { headers });
+      const contacts = await resp.json();
+      for (const c of contacts) {
+        await fetch(Config.API_BASE_URL + '/contacts/' + c.id, { method: 'DELETE', headers });
+      }
+    });
+    await page.waitForTimeout(500);
 
-    // Add a contact if none exist
-    if (existingCount === 0) {
-      await page.click('#btn-add-contact');
-      await page.waitForSelector('#modal-overlay', { state: 'visible' });
-      await page.fill('#contact-name', 'Test Export User');
-      await page.fill('#contact-email', 'test@example.com');
-      await page.fill('#contact-phone', '555-9999');
-      await page.fill('#contact-company', 'Test Corp');
-      await page.selectOption('#contact-status', 'active');
-      await page.fill('#contact-notes', 'Test contact for CSV export');
-      await page.click('#contact-form .btn-primary');
-      await page.waitForTimeout(500);
-    }
+    // Add a contact for export testing
+    await page.click('#btn-add-contact');
+    await page.waitForSelector('#modal-overlay', { state: 'visible' });
+    await page.fill('#contact-name', 'Test Export User');
+    await page.fill('#contact-email', 'test@example.com');
+    await page.fill('#contact-phone', '555-9999');
+    await page.fill('#contact-company', 'Test Corp');
+    await page.selectOption('#contact-status', 'active');
+    await page.fill('#contact-notes', 'Test contact for CSV export');
+    await page.click('#contact-form button[type="submit"]');
+    await page.waitForSelector('#modal-overlay', { state: 'hidden', timeout: 5000 });
 
     // TEST 1: Verify Export CSV button exists
     console.log('TEST 1: Verify Export/Import buttons exist');
@@ -52,17 +67,22 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     // TEST 2: Export CSV
     console.log('TEST 2: Export CSV');
     let downloadPromise;
-    downloadPromise = page.waitForEvent('download', { timeout: 5000 });
+    downloadPromise = page.waitForEvent('download', { timeout: 15000 });
     await page.click('#btn-export-csv');
-    const download = await downloadPromise;
-    const downloadPath = path.join(downloadDir, 'exported_contacts.csv');
-    await download.saveAs(downloadPath);
-    const csvContent = fs.readFileSync(downloadPath, 'utf-8');
-    const hasHeader = csvContent.includes('Name,Email,Phone,Company,Status,Notes');
-    const hasTestData = csvContent.includes('Test Export User') || csvContent.includes('Test Corp');
-    console.log(`  Downloaded: ${download.suggestedFilename()}`);
-    console.log(`  Has header: ${hasHeader}, Has test data: ${hasTestData}`);
-    results.push({ test: 'CSV export downloads correctly', pass: hasHeader && hasTestData });
+    const download = await downloadPromise.catch(() => null);
+    if (!download) {
+      console.log('  No download triggered - checking if export works via alternative method');
+      results.push({ test: 'CSV export downloads correctly', pass: false, error: 'No download event triggered' });
+    } else {
+      const downloadPath = path.join(downloadDir, 'exported_contacts.csv');
+      await download.saveAs(downloadPath);
+      const csvContent = fs.readFileSync(downloadPath, 'utf-8');
+      const hasHeader = csvContent.includes('Name,Email,Phone,Company,Status,Notes');
+      const hasTestData = csvContent.includes('Test Export User') || csvContent.includes('Test Corp');
+      console.log(`  Downloaded: ${download.suggestedFilename()}`);
+      console.log(`  Has header: ${hasHeader}, Has test data: ${hasTestData}`);
+      results.push({ test: 'CSV export downloads correctly', pass: hasHeader && hasTestData });
+    }
 
     // TEST 3: Import CSV
     console.log('TEST 3: Import CSV');
@@ -75,18 +95,30 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     const importCSVPath = path.join(downloadDir, 'import_test.csv');
     fs.writeFileSync(importCSVPath, testCSV);
 
-    // Wait for previous notifications to fade out
+    // Set up file upload - click the import button which triggers the hidden file input
+    // Wait for any previous notifications to clear first
     await page.waitForTimeout(3500);
 
-    // Set up file chooser handler
+    // Use the import button which triggers the hidden file input's click
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 5000 });
     await page.click('#btn-import-csv');
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(importCSVPath);
-    await page.waitForTimeout(1500);
+
+    // Wait for the import notification specifically
+    await page.waitForFunction(
+        () => {
+            const notifs = document.querySelectorAll('.notification');
+            for (const n of notifs) {
+                if (n.textContent.includes('Imported')) return true;
+            }
+            return false;
+        },
+        { timeout: 5000 }
+    );
 
     // Verify notification appeared - get the LAST notification (most recent)
-    const notifs = await page.locator('.notification-success').all();
+    const notifs = await page.locator('.notification').all();
     const lastNotif = notifs[notifs.length - 1];
     const notifText = await lastNotif.textContent();
     console.log(`  Notification: "${notifText}"`);
@@ -113,7 +145,7 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     // TEST 6: Dashboard stats updated after import
     console.log('TEST 6: Dashboard stats updated');
     await page.click('.nav-item[data-page="dashboard"]');
-    await page.waitForTimeout(300);
+    await page.waitForSelector('#page-dashboard', { state: 'visible', timeout: 5000 });
     await page.screenshot({ path: '/tmp/test-csv-dashboard.png', fullPage: true });
     const totalContacts = await page.textContent('#stat-total-contacts');
     console.log(`  Dashboard total contacts: ${totalContacts}`);
@@ -122,7 +154,7 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     // TEST 7: Notification system works
     console.log('TEST 7: Notification system styling');
     await page.click('.nav-item[data-page="contacts"]');
-    await page.waitForTimeout(200);
+    await page.waitForSelector('#page-contacts', { state: 'visible', timeout: 5000 });
     // Trigger another export notification and check immediately (before 3s fade)
     const [downloaded] = await Promise.all([
       page.waitForEvent('download', { timeout: 5000 }),
@@ -138,7 +170,9 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     console.error('Test error:', err.message);
     results.push({ test: 'Error', pass: false, error: err.message });
   } finally {
-    await browser.close();
+    try {
+      await browser.close();
+    } catch { /* ignore close errors */ }
   }
 
   console.log('\n=== CSV IMPORT/EXPORT TEST RESULTS ===');

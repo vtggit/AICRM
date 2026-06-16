@@ -113,8 +113,8 @@ function log(result, testName) {
         const testContact = {
             name: `Playwright Test ${ts}`,
             email: `playwright-${ts}@test.com`,
-            phone: '555-PLAY',
-            company: 'Test Corp',
+            phone: '',
+            company: `Test Corp ${ts}`,
             status: 'active',
             notes: 'Created by Playwright QA test',
         };
@@ -126,12 +126,19 @@ function log(result, testName) {
         await page.selectOption('#contact-status', testContact.status);
         await page.fill('#contact-notes', testContact.notes);
 
+        // Wait for tags selector to finish loading before submitting
+        await page.waitForTimeout(1000);
+
         // Take screenshot after filling
         await page.screenshot({ path: '/tmp/test-add-contact-filled.png', fullPage: true });
         console.log('  Screenshot saved: /tmp/test-add-contact-filled.png');
 
-        // Submit the form
-        await page.click('#contact-form .btn-primary');
+        // Submit the form via the submit button
+        // Wait for the API response to ensure save completes
+        await Promise.all([
+            page.click('#contact-form button[type="submit"]'),
+            page.waitForResponse(resp => /\/api\/contacts/.test(resp.url()) && resp.status() === 201, { timeout: 30000 }),
+        ]);
         await page.waitForTimeout(1500);
 
         // ── TEST 7: Modal closes after submission ───────────────────────

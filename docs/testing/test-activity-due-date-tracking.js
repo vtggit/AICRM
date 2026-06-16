@@ -163,6 +163,7 @@ function log(test, ok, detail = '') {
     // --- Screenshot ---
     await page.click('.nav-item[data-page="activities"]');
     await page.waitForTimeout(500);
+    fs.mkdirSync('test-results', { recursive: true });
     await page.screenshot({ path: 'test-results/activity-due-date-tracking.png', fullPage: true });
     console.log('\n  Screenshot saved: test-results/activity-due-date-tracking.png');
 

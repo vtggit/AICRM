@@ -92,8 +92,11 @@ const App = {
         if (page === 'contacts') await this.renderContacts();
         if (page === 'leads') await this.renderLeads();
         if (page === 'analytics') await this.renderAnalytics();
-        if (page === 'activities') await this.renderActivities();
+        if (page === 'activities') await this._renderActivitiesView();
         if (page === 'templates') this.renderTemplates();
+        if (page === 'winloss') await this.renderWinLossPage();
+        if (page === 'salesgoals') await this.renderSalesGoals();
+        if (page === 'settings') this.renderSettings();
 
         this.updateOverdueBadge();
 
@@ -109,6 +112,7 @@ const App = {
             analytics: 'Analytics',
             activities: 'Activities',
             templates: 'Email Templates',
+            winloss: 'Win/Loss Reasons',
             settings: 'Settings'
         };
         return titles[page] || page;
@@ -274,10 +278,13 @@ const App = {
                 this._updateAuthStatus();
                 this._showAuthBanner(false);
                 this._applyAdminOnlyVisibility();
-                if (this._currentPage === 'contacts') {
-                    await this.renderContacts();
+                // Refresh the current page so data loads with the new auth token
+                if (this.currentPage === 'dashboard') {
+                    await this.renderDashboard();
+                } else {
+                    await this.renderCurrentPage();
                 }
-                this.notify('success', `Welcome, ${result.user.display_name || result.user.sub}`);
+                this.showNotification(`Welcome, ${result.user.display_name || result.user.sub}`, 'success');
             } else {
                 errorEl.textContent = result.error || 'Invalid token.';
             }
@@ -376,7 +383,7 @@ const App = {
     async renderCurrentPage() {
         if (this.currentPage === 'contacts') await this.renderContacts();
         if (this.currentPage === 'leads') await this.renderLeads();
-        if (this.currentPage === 'activities') await this.renderActivities();
+        if (this.currentPage === 'activities') await this._renderActivitiesView();
     },
 
     // === Dashboard ===
@@ -462,6 +469,10 @@ const App = {
 
         // Recent Leads (Item 14)
         this.renderRecentLeads(leads);
+
+        // Activity Trends
+        this._renderActivityTrends();
+        this._bindTrendControls();
     },
 
     // === AI-Powered Lead Recommendations ===
@@ -656,6 +667,10 @@ const App = {
             document.getElementById('csv-file-input').click();
         });
         document.getElementById('csv-file-input').addEventListener('change', (e) => this.importContactsCSV(e));
+        document.getElementById('btn-import-vcard').addEventListener('click', () => {
+            document.getElementById('vcard-file-input').click();
+        });
+        document.getElementById('vcard-file-input').addEventListener('change', (e) => this.importContactsVCard(e));
         document.getElementById('btn-find-duplicates').addEventListener('click', () => this.findDuplicates());
     },
 
@@ -1550,7 +1565,7 @@ const App = {
     async findDuplicates() {
         let result;
         try {
-            result = await apiClient.findDuplicateContactsInApi();
+            result = await ApiClient.findDuplicateContactsInApi();
         } catch (err) {
             console.error('Failed to find duplicates via API:', err);
             this.showNotification(this._handleApiError(err), 'error');
@@ -1750,6 +1765,144 @@ const App = {
         reader.readAsText(file);
     },
 
+    // === vCard Import ===
+    async importContactsVCard(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const text = e.target.result;
+                const vcards = this.parseVCard(text);
+                if (vcards.length === 0) {
+                    this.showNotification('No valid vCard records found in file.', 'error');
+                    event.target.value = '';
+                    return;
+                }
+
+                let imported = 0;
+                let skipped = 0;
+
+                for (const contact of vcards) {
+                    if (!contact.name || contact.name.trim() === '') {
+                        skipped++;
+                        continue;
+                    }
+                    try {
+                        await ContactsDataSource.createContact(contact);
+                        imported++;
+                    } catch (err) {
+                        console.error(`Failed to import vCard contact "${contact.name}":`, err);
+                        skipped++;
+                    }
+                }
+
+                await this.renderContacts();
+                await this.renderDashboard();
+                this.showNotification(
+                    `Imported ${imported} contact(s) from vCard${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
+                    skipped > imported ? 'error' : 'success'
+                );
+            } catch (err) {
+                this.showNotification('Error parsing vCard: ' + err.message, 'error');
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    },
+
+    parseVCard(text) {
+        const contacts = [];
+        const lines = text.split(/\r?\n/);
+        let current = null;
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            // Handle line folding (lines starting with space/continuation)
+            if (line.startsWith(' ') || line.startsWith('\t')) {
+                if (current) {
+                    const lastKey = Object.keys(current._raw).pop();
+                    if (lastKey) {
+                        current._raw[lastKey] += line.trim();
+                    }
+                }
+                continue;
+            }
+
+            if (line.trim() === 'BEGIN:VCARD') {
+                current = { _raw: {}, _phones: [], _emails: [], _notes: [] };
+                continue;
+            }
+
+            if (line.trim() === 'END:VCARD') {
+                if (current) {
+                    const name = this._extractVCardName(current._raw);
+                    const email = current._emails[0] || '';
+                    const phone = current._phones[0] || '';
+                    const company = current._raw['ORG'] || '';
+                    let notes = current._notes.join(' ').trim();
+                    const title = current._raw['TITLE'] || '';
+                    const status = 'active';
+
+                    if (notes && title) {
+                        notes = `Title: ${title}\n${notes}`;
+                    } else if (title) {
+                        notes = `Title: ${title}`;
+                    }
+
+                    contacts.push({
+                        name: name || 'Unknown',
+                        email: email,
+                        phone: phone,
+                        company: company,
+                        status: status,
+                        notes: notes
+                    });
+                }
+                current = null;
+                continue;
+            }
+
+            if (current) {
+                const colonIdx = line.indexOf(':');
+                if (colonIdx === -1) continue;
+
+                let value = line.substring(colonIdx + 1);
+                let paramStr = line.substring(0, colonIdx);
+                let key = paramStr;
+                const semiIdx = paramStr.indexOf(';');
+                if (semiIdx !== -1) {
+                    key = paramStr.substring(0, semiIdx);
+                }
+
+                key = key.toUpperCase();
+                value = value.replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\').trim();
+
+                if (key === 'TEL' || key.startsWith('TEL')) {
+                    current._phones.push(value);
+                } else if (key === 'EMAIL' || key.startsWith('EMAIL')) {
+                    current._emails.push(value);
+                } else if (key === 'NOTE' || key.startsWith('NOTE')) {
+                    current._notes.push(value);
+                } else if (!key.includes(';') || key === 'N' || key === 'FN' || key === 'ORG' || key === 'TITLE' || key === 'URL') {
+                    current._raw[key] = value;
+                }
+            }
+        }
+
+        return contacts;
+    },
+
+    _extractVCardName(raw) {
+        if (raw['FN']) return raw['FN'];
+        if (raw['N']) {
+            const parts = raw['N'].split(';').filter(p => p.trim());
+            return parts.join(' ').trim();
+        }
+        return '';
+    },
+
     // === Lead CSV Export/Import ===
     async exportLeadsCSV() {
         let leads;
@@ -1771,7 +1924,7 @@ const App = {
             `"${(l.company || '').replace(/"/g, '""')}"`,
             `"${(l.email || '').replace(/"/g, '""')}"`,
             `"${(l.phone || '').replace(/"/g, '""')}"`,
-            `"${(l.value || 0).replace(/"/g, '""')}"`,
+            `"${String(l.value || '').replace(/"/g, '""')}"`,
             `"${(l.stage || 'new').replace(/"/g, '""')}"`,
             `"${(l.source || '').replace(/"/g, '""')}"`,
             `"${(l.notes || '').replace(/"/g, '""')}"`
@@ -1937,7 +2090,7 @@ const App = {
         return {
             source: { 'website': 5, 'referral': 15, 'social': 10, 'cold-call': 5, 'event': 10 },
             stage: { 'new': 0, 'contacted': 10, 'qualified': 25, 'proposal': 40, 'won': 50, 'lost': 0 },
-            valueThresholds: [10000, 50000, 100000, Infinity],
+            valueThresholds: [10000, 50000, 100000, 500000],
             valueScores: [5, 15, 25, 35],
             engagement: { email: 5, phone: 5, company: 10, notes: 5 }
         };
@@ -2199,20 +2352,36 @@ const App = {
                 const currentStage = card.dataset.leadStage;
                 if (currentStage === newStage) return;
 
-                if ((newStage === 'won' || newStage === 'lost') && !confirm(`Move "${card.querySelector('.kanban-card-name').textContent}" to ${newStage}?`)) {
+                if (newStage === 'won' || newStage === 'lost') {
+                    const proceeded = await this._promptWinLossReason(
+                        leadId, card.querySelector('.kanban-card-name').textContent, newStage
+                    );
+                    if (!proceeded) return;
+                    // If the user skipped the reason, just proceed with the stage change
+                    card.style.opacity = '0.5';
+                    try {
+                        await ApiClient.updateLeadStageInApi(leadId, newStage);
+                        card.dataset.leadStage = newStage;
+                        this.renderKanbanBoard();
+                        this.showNotification(`Lead moved to ${newStage}`, 'success');
+                    } catch (err) {
+                        card.style.opacity = '1';
+                        console.error('Failed to update lead stage:', err);
+                        this.showNotification('Failed to update lead stage', 'error');
+                    }
                     return;
                 }
 
                 card.style.opacity = '0.5';
                 try {
-                    await this._api.updateLeadStageInApi(leadId, newStage);
+                    await ApiClient.updateLeadStageInApi(leadId, newStage);
                     card.dataset.leadStage = newStage;
                     this.renderKanbanBoard();
-                    this.showToast(`Lead moved to ${newStage}`, 'success');
+                    this.showNotification(`Lead moved to ${newStage}`, 'success');
                 } catch (err) {
                     card.style.opacity = '1';
                     console.error('Failed to update lead stage:', err);
-                    this.showToast('Failed to update lead stage', 'error');
+                    this.showNotification('Failed to update lead stage', 'error');
                 }
             });
         });
@@ -2226,19 +2395,33 @@ const App = {
 
                 if (card.dataset.leadStage === newStage) return;
 
-                if ((newStage === 'won' || newStage === 'lost') && !confirm(`Move lead to ${newStage}?`)) {
-                    this.renderKanbanBoard();
+                if (newStage === 'won' || newStage === 'lost') {
+                    const leadName = card.querySelector('.kanban-card-name').textContent;
+                    const proceeded = await this._promptWinLossReason(leadId, leadName, newStage);
+                    if (!proceeded) {
+                        this.renderKanbanBoard();
+                        return;
+                    }
+                    try {
+                        await ApiClient.updateLeadStageInApi(leadId, newStage);
+                        this.renderKanbanBoard();
+                        this.showNotification(`Lead moved to ${newStage}`, 'success');
+                    } catch (err) {
+                        this.renderKanbanBoard();
+                        console.error('Failed to update lead stage:', err);
+                        this.showNotification('Failed to update lead stage', 'error');
+                    }
                     return;
                 }
 
                 try {
-                    await this._api.updateLeadStageInApi(leadId, newStage);
+                    await ApiClient.updateLeadStageInApi(leadId, newStage);
                     this.renderKanbanBoard();
-                    this.showToast(`Lead moved to ${newStage}`, 'success');
+                    this.showNotification(`Lead moved to ${newStage}`, 'success');
                 } catch (err) {
                     this.renderKanbanBoard();
                     console.error('Failed to update lead stage:', err);
-                    this.showToast('Failed to update lead stage', 'error');
+                    this.showNotification('Failed to update lead stage', 'error');
                 }
             });
         });
@@ -2371,10 +2554,38 @@ const App = {
             await this.showActivityModal();
         });
 
-        document.getElementById('activity-filter-type').addEventListener('change', () => this.renderActivities());
+        document.getElementById('activity-filter-type').addEventListener('change', () => this._renderActivitiesView());
         const statusFilter = document.getElementById('activity-filter-status');
         if (statusFilter) {
-            statusFilter.addEventListener('change', () => this.renderActivities());
+            statusFilter.addEventListener('change', () => this._renderActivitiesView());
+        }
+
+        const calendarToggle = document.getElementById('btn-toggle-calendar');
+        if (calendarToggle) {
+            calendarToggle.addEventListener('click', () => this.toggleCalendarView());
+        }
+
+        const prevBtn = document.getElementById('calendar-prev-month');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => this._navigateCalendar(-1));
+        }
+
+        const nextBtn = document.getElementById('calendar-next-month');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => this._navigateCalendar(1));
+        }
+
+        const todayBtn = document.getElementById('calendar-today');
+        if (todayBtn) {
+            todayBtn.addEventListener('click', () => this._goToToday());
+        }
+    },
+
+    _renderActivitiesView() {
+        if (this._calendarViewActive) {
+            this.renderCalendar();
+        } else {
+            this.renderActivities();
         }
     },
 
@@ -2407,6 +2618,130 @@ const App = {
                 el.innerHTML = '<p class="empty-state">Failed to load analytics data.</p>';
             }
         }
+        this._renderActivityTrends();
+        this._bindTrendControls();
+    },
+
+    _bindTrendControls() {
+        const rangeSelect = document.getElementById('trend-range');
+        const groupSelect = document.getElementById('trend-group');
+        if (rangeSelect) {
+            rangeSelect.addEventListener('change', () => this._renderActivityTrends());
+        }
+        if (groupSelect) {
+            groupSelect.addEventListener('change', () => this._renderActivityTrends());
+        }
+    },
+
+    async _renderActivityTrends() {
+        const range = document.getElementById('trend-range')?.value || '30d';
+        const group = document.getElementById('trend-group')?.value || 'day';
+        const overviewEl = document.getElementById('activity-trend-overview');
+        const chartEl = document.getElementById('activity-trend-chart');
+        const legendEl = document.getElementById('activity-trend-legend');
+
+        try {
+            const data = await ApiClient.getActivityTrendsFromApi(range, group);
+            this._renderTrendOverview(data);
+            this._renderTrendChart(data);
+            this._renderTrendLegend(data);
+        } catch (err) {
+            console.error('Failed to load activity trends:', err);
+            if (overviewEl) overviewEl.innerHTML = '<p class="empty-state">Failed to load trend data.</p>';
+            if (chartEl) chartEl.innerHTML = '';
+            if (legendEl) legendEl.innerHTML = '';
+        }
+    },
+
+    _renderTrendOverview(data) {
+        const el = document.getElementById('activity-trend-overview');
+        if (!el) return;
+        const total = data.total_activities ?? 0;
+        const peak = data.peak_count ?? 0;
+        const peakLabel = data.peak_bucket ? new Date(data.peak_bucket).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+        const buckets = data.buckets || [];
+        const avgPerBucket = buckets.length ? (total / buckets.length).toFixed(1) : '0';
+
+        el.innerHTML = `
+            <div class="trend-stat">
+                <span class="trend-stat-label">Total Activities</span>
+                <span class="trend-stat-value">${total}</span>
+            </div>
+            <div class="trend-stat">
+                <span class="trend-stat-label">Peak Day</span>
+                <span class="trend-stat-value accent-text">${peak} <small>(${peakLabel})</small></span>
+            </div>
+            <div class="trend-stat">
+                <span class="trend-stat-label">Avg per ${data.group === 'week' ? 'Week' : 'Day'}</span>
+                <span class="trend-stat-value">${avgPerBucket}</span>
+            </div>
+        `;
+    },
+
+    _renderTrendChart(data) {
+        const el = document.getElementById('activity-trend-chart');
+        if (!el) return;
+        const buckets = data.buckets || [];
+
+        if (!buckets.length) {
+            el.innerHTML = '<p class="empty-state">No activity data for the selected period.</p>';
+            return;
+        }
+
+        const types = ['call', 'email', 'meeting', 'note', 'task'];
+        const maxTotal = Math.max(...buckets.map(b => b.total), 1);
+
+        let html = '<div class="trend-chart-scroll"><div class="trend-chart-grid">';
+
+        buckets.forEach(b => {
+            const dateLabel = new Date(b.bucket_date).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric'
+            });
+            const isPeak = b.bucket_date === data.peak_bucket;
+
+            html += `<div class="trend-bar-group ${isPeak ? 'trend-peak' : ''}">`;
+            html += `<div class="trend-bar-label">${dateLabel}</div>`;
+            html += `<div class="trend-bars">`;
+
+            types.forEach(type => {
+                const val = b[type] || 0;
+                if (val > 0) {
+                    const heightPct = (val / maxTotal) * 100;
+                    html += `<div class="trend-bar trend-bar-${type}" style="height: ${heightPct}%" title="${type}: ${val}"></div>`;
+                }
+            });
+
+            html += `</div>`;
+            html += `<div class="trend-bar-total">${b.total}</div>`;
+            html += `</div>`;
+        });
+
+        html += '</div></div>';
+        el.innerHTML = html;
+    },
+
+    _renderTrendLegend(data) {
+        const el = document.getElementById('activity-trend-legend');
+        if (!el) return;
+
+        const types = [
+            { key: 'call', label: 'Calls', icon: '📞' },
+            { key: 'email', label: 'Emails', icon: '📧' },
+            { key: 'meeting', label: 'Meetings', icon: '🤝' },
+            { key: 'note', label: 'Notes', icon: '📝' },
+            { key: 'task', label: 'Tasks', icon: '✅' },
+        ];
+
+        const buckets = data.buckets || [];
+        let html = '<div class="trend-legend-items">';
+        types.forEach(t => {
+            const total = buckets.reduce((sum, b) => sum + (b[t.key] || 0), 0);
+            if (total > 0) {
+                html += `<span class="trend-legend-item trend-bar-${t.key}"><span class="trend-legend-dot"></span>${t.icon} ${t.label} (${total})</span>`;
+            }
+        });
+        html += '</div>';
+        el.innerHTML = html;
     },
 
     _renderAnalyticsOverview(data) {
@@ -2585,6 +2920,211 @@ const App = {
         `}).join('');
     },
 
+    // === Calendar View State ===
+    _calendarDate: null,
+    _calendarViewActive: false,
+
+    toggleCalendarView() {
+        this._calendarViewActive = !this._calendarViewActive;
+        const timelineEl = document.getElementById('activities-list');
+        const calendarEl = document.getElementById('activities-calendar');
+        const toggleBtn = document.getElementById('btn-toggle-calendar');
+
+        if (this._calendarViewActive) {
+            timelineEl.style.display = 'none';
+            calendarEl.style.display = 'block';
+            toggleBtn.textContent = '📋 Timeline';
+            toggleBtn.classList.remove('btn-secondary');
+            toggleBtn.classList.add('btn-primary');
+            if (!this._calendarDate) {
+                this._calendarDate = new Date();
+            }
+            this.renderCalendar();
+        } else {
+            timelineEl.style.display = 'block';
+            calendarEl.style.display = 'none';
+            toggleBtn.textContent = '📅 Calendar';
+            toggleBtn.classList.remove('btn-primary');
+            toggleBtn.classList.add('btn-secondary');
+        }
+    },
+
+    _navigateCalendar(direction) {
+        if (!this._calendarDate) {
+            this._calendarDate = new Date();
+        }
+        this._calendarDate.setMonth(this._calendarDate.getMonth() + direction);
+        this.renderCalendar();
+    },
+
+    _goToToday() {
+        this._calendarDate = new Date();
+        this.renderCalendar();
+    },
+
+    async renderCalendar() {
+        if (!this._calendarDate) {
+            this._calendarDate = new Date();
+        }
+
+        let activities;
+        try {
+            activities = await ActivitiesDataSource.getActivities();
+        } catch (err) {
+            console.error('Failed to load activities for calendar:', err);
+            activities = [];
+        }
+        activities = this._normalizeActivities(activities);
+
+        const filterType = document.getElementById('activity-filter-type').value;
+        const filterStatus = document.getElementById('activity-filter-status') ? document.getElementById('activity-filter-status').value : '';
+
+        if (filterType) {
+            activities = activities.filter(a => a.type === filterType);
+        }
+        if (filterStatus === 'overdue') {
+            activities = activities.filter(a => a.dueDate && a.status !== 'completed' && this.isOverdue(a.dueDate));
+        } else if (filterStatus === 'completed') {
+            activities = activities.filter(a => a.status === 'completed');
+        } else if (filterStatus === 'active') {
+            activities = activities.filter(a => a.status !== 'completed');
+        }
+
+        this._renderCalendarHeader();
+        this._renderCalendarGrid(activities);
+    },
+
+    _renderCalendarHeader() {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'];
+        const header = document.getElementById('calendar-month-year');
+        header.textContent = `${monthNames[this._calendarDate.getMonth()]} ${this._calendarDate.getFullYear()}`;
+    },
+
+    _renderCalendarGrid(activities) {
+        const grid = document.getElementById('calendar-grid');
+        const year = this._calendarDate.getFullYear();
+        const month = this._calendarDate.getMonth();
+
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startDayOfWeek = firstDay.getDay();
+        const daysInMonth = lastDay.getDate();
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const activitiesByDate = {};
+        activities.forEach(a => {
+            const d = new Date(a.date);
+            if (d.getFullYear() === year && d.getMonth() === month) {
+                const dateKey = d.getDate();
+                if (!activitiesByDate[dateKey]) {
+                    activitiesByDate[dateKey] = [];
+                }
+                activitiesByDate[dateKey].push(a);
+            }
+        });
+
+        let html = '';
+
+        for (let i = 0; i < startDayOfWeek; i++) {
+            html += '<div class="calendar-day calendar-day-empty"></div>';
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayDate = new Date(year, month, day);
+            const isToday = dayDate.getTime() === today.getTime();
+            const dayActivities = activitiesByDate[day] || [];
+
+            const eventsHtml = dayActivities.slice(0, 3).map(a => {
+                const isCompleted = a.status === 'completed';
+                const isOverdue = a.dueDate && !isCompleted && this.isOverdue(a.dueDate);
+                let cls = `calendar-event calendar-event-${a.type}`;
+                if (isCompleted) cls += ' calendar-event-completed';
+                if (isOverdue) cls += ' calendar-event-overdue';
+                return `<div class="${cls}" title="${this.escapeHtml(a.description)}">${this.getActivityIcon(a.type)} ${this.escapeHtml(a.description.length > 20 ? a.description.slice(0, 20) + '...' : a.description)}</div>`;
+            }).join('');
+
+            const overflowHtml = dayActivities.length > 3
+                ? `<div class="calendar-event-more">+${dayActivities.length - 3} more</div>` : '';
+
+            html += `
+                <div class="calendar-day ${isToday ? 'calendar-day-today' : ''}" data-date="${dateStr}">
+                    <div class="calendar-day-number">${day}</div>
+                    <div class="calendar-day-events">${eventsHtml}${overflowHtml}</div>
+                </div>
+            `;
+        }
+
+        grid.innerHTML = html;
+
+        this._bindCalendarDayClicks();
+        this._bindCalendarDrops(activities);
+    },
+
+    _bindCalendarDayClicks() {
+        document.querySelectorAll('.calendar-day:not(.calendar-day-empty)').forEach(dayEl => {
+            dayEl.addEventListener('dblclick', (e) => {
+                if (e.target.closest('.calendar-event')) return;
+                const date = dayEl.dataset.date;
+                this._createActivityForDate(date);
+            });
+        });
+    },
+
+    async _createActivityForDate(date) {
+        const modal = await this.showActivityModal(null, null, null, date);
+    },
+
+    _bindCalendarDrops(activities) {
+        const grid = document.getElementById('calendar-grid');
+        let draggedActivity = null;
+
+        grid.querySelectorAll('.calendar-event').forEach(eventEl => {
+            eventEl.draggable = true;
+            eventEl.addEventListener('dragstart', (e) => {
+                const title = e.target.title;
+                const allActivities = activities;
+                draggedActivity = allActivities.find(a => this.escapeHtml(a.description.length > 20 ? a.description.slice(0, 20) + '...' : a.description) === title.replace(/^[^\s]+\s/, ''));
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.style.opacity = '0.5';
+            });
+            eventEl.addEventListener('dragend', (e) => {
+                e.target.style.opacity = '1';
+                draggedActivity = null;
+                grid.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('calendar-drop-target'));
+            });
+        });
+
+        grid.querySelectorAll('.calendar-day:not(.calendar-day-empty)').forEach(dayEl => {
+            dayEl.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                dayEl.classList.add('calendar-drop-target');
+            });
+            dayEl.addEventListener('dragleave', () => {
+                dayEl.classList.remove('calendar-drop-target');
+            });
+            dayEl.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                dayEl.classList.remove('calendar-drop-target');
+                if (!draggedActivity) return;
+                const newDate = dayEl.dataset.date;
+                if (newDate && newDate !== new Date(draggedActivity.date).toISOString().split('T')[0]) {
+                    try {
+                        await ActivitiesDataSource.updateActivity(draggedActivity.id, { date: newDate });
+                        this.showNotification('Activity rescheduled', 'success');
+                        this.renderCalendar();
+                    } catch (err) {
+                        this.showNotification('Failed to reschedule activity.', 'error');
+                    }
+                }
+            });
+        });
+    },
+
     isOverdue(dueDate) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -2606,7 +3146,7 @@ const App = {
     async markActivityComplete(id) {
         try {
             await ActivitiesDataSource.updateActivity(id, { status: 'completed' });
-            await this.renderActivities();
+            await this._renderActivitiesView();
             await this.renderDashboard();
             await this.updateOverdueBadge();
             this.showNotification('Activity marked as complete', 'success');
@@ -2628,7 +3168,7 @@ const App = {
         }
     },
 
-    async showActivityModal(activity, prefillTypeOrContact, prefillContactName) {
+    async showActivityModal(activity, prefillTypeOrContact, prefillContactName, prefillDate) {
         document.getElementById('modal-title').textContent = activity ? 'Edit Activity' : 'Add Activity';
         let contacts;
         try {
@@ -2637,11 +3177,9 @@ const App = {
             console.error('Failed to load contacts for activity modal:', err);
             contacts = [];
         }
-        // Normalize activity fields for display
         if (activity) {
             activity = this._normalizeActivities([activity])[0];
         }
-        // Determine if prefillTypeOrContact is a type (call/email/meeting/note/task) or a contact name
         const validTypes = ['call', 'email', 'meeting', 'note', 'task'];
         const prefillContact = prefillContactName || (validTypes.includes(prefillTypeOrContact) ? null : prefillTypeOrContact);
         const prefillType = validTypes.includes(prefillTypeOrContact) ? prefillTypeOrContact : null;
@@ -2652,6 +3190,15 @@ const App = {
             else if (prefillContact && c.name === prefillContact) isSelected = 'selected';
             return `<option value="${c.name}" ${isSelected}>${this.escapeHtml(c.name)}</option>`;
         }).join('');
+
+        let defaultDateValue;
+        if (activity) {
+            defaultDateValue = this.toLocalDatetime(activity.date);
+        } else if (prefillDate) {
+            defaultDateValue = this.toLocalDatetime(new Date(prefillDate + 'T12:00:00').toISOString());
+        } else {
+            defaultDateValue = this.toLocalDatetime(new Date().toISOString());
+        }
 
         document.getElementById('modal-body').innerHTML = `
             <form id="activity-form">
@@ -2678,7 +3225,7 @@ const App = {
                 </div>
                 <div class="form-group">
                     <label for="activity-date">Date</label>
-                    <input type="datetime-local" id="activity-date" value="${activity ? this.toLocalDatetime(activity.date) : this.toLocalDatetime(new Date().toISOString())}">
+                    <input type="datetime-local" id="activity-date" value="${defaultDateValue}">
                 </div>
                 <div class="form-group">
                     <label for="activity-due-date">Due Date</label>
@@ -2730,7 +3277,7 @@ const App = {
                 }
             }
             this.closeModal();
-            await this.renderActivities();
+            await this._renderActivitiesView();
             await this.renderDashboard();
             await this.updateOverdueBadge();
             this.showNotification(existing ? 'Activity updated.' : 'Activity created.', 'success');
@@ -2744,7 +3291,7 @@ const App = {
         if (!confirm('Are you sure you want to delete this activity?')) return;
         try {
             await ActivitiesDataSource.deleteActivity(id);
-            await this.renderActivities();
+            await this._renderActivitiesView();
             await this.renderDashboard();
             await this.updateOverdueBadge();
             this.showNotification('Activity deleted.', 'success');
@@ -3445,8 +3992,17 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             // K toggles Kanban board view (only on leads page)
             if (e.key.toLowerCase() === 'k' && !isInput && !e.ctrlKey && !e.metaKey) {
                 e.preventDefault();
-                if (this._currentPage === 'leads') {
+                if (this.currentPage === 'leads') {
                     this.toggleKanbanView();
+                }
+                return;
+            }
+
+            // C toggles calendar view (only on activities page)
+            if (e.key.toLowerCase() === 'c' && !isInput && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                if (this.currentPage === 'activities') {
+                    this.toggleCalendarView();
                 }
                 return;
             }
@@ -3546,6 +4102,7 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
                     <h4>Actions</h4>
                     <div class="shortcut-row"><kbd>/</kbd><span>Focus search bar</span></div>
                     <div class="shortcut-row"><kbd>Q</kbd><span>Quick-add activity</span></div>
+                    <div class="shortcut-row"><kbd>C</kbd><span>Toggle calendar view (Activities)</span></div>
                     <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>N</kbd><span>New Contact</span></div>
                     <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>L</kbd><span>New Lead</span></div>
                     <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>E</kbd><span>Export CSV</span></div>
@@ -3812,7 +4369,554 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
-    }
+    },
+
+    // === Settings Page ===
+
+    renderSettings() {
+        // Bind settings export/import/reset buttons
+        const exportBtn = document.getElementById('btn-create-backup');
+        if (exportBtn) {
+            exportBtn.onclick = async () => {
+                try {
+                    const settings = await ApiClient.getSettingsFromApi();
+                    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `aicrm-settings-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showNotification('Settings exported', 'success');
+                } catch (err) {
+                    this.showNotification('Failed to export settings', 'error');
+                }
+            };
+        }
+
+        const importBtn = document.getElementById('btn-restore-backup');
+        if (importBtn) {
+            importBtn.onclick = () => {
+                document.getElementById('backup-file-input').click();
+            };
+        }
+
+        const fileInput = document.getElementById('backup-file-input');
+        if (fileInput) {
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    const text = await file.text();
+                    const settings = JSON.parse(text);
+                    await ApiClient.updateSettingsInApi(settings);
+                    this.showNotification('Settings restored', 'success');
+                    this.navigate('settings');
+                } catch (err) {
+                    this.showNotification('Failed to import settings', 'error');
+                }
+                fileInput.value = '';
+            };
+        }
+
+        const clearBtn = document.getElementById('btn-clear-data');
+        if (clearBtn) {
+            clearBtn.onclick = async () => {
+                if (!confirm('This will reset all settings to defaults. Continue?')) return;
+                try {
+                    await ApiClient.resetSettingsInApi();
+                    this.showNotification('Settings reset', 'success');
+                    this.navigate('settings');
+                } catch (err) {
+                    this.showNotification('Failed to reset settings', 'error');
+                }
+            };
+        }
+    },
+
+    // === Win/Loss Reason Tracking ===
+
+    /**
+     * Prompt the user for a win/loss reason when a lead moves to won/lost.
+     * Returns true if the user proceeded (with or without a reason), false if cancelled.
+     */
+    async _promptWinLossReason(leadId, leadName, outcome) {
+        return new Promise((resolve) => {
+            const label = outcome === 'won' ? 'Won' : 'Lost';
+            document.getElementById('modal-title').textContent = `Record ${label} Reason — ${leadName}`;
+            document.getElementById('modal-body').innerHTML = `
+                <form id="winloss-reason-form">
+                    <p class="winloss-intro">Why was this deal ${outcome}?</p>
+                    <div class="form-group">
+                        <label for="wl-reason-category">Reason Category</label>
+                        <select id="wl-reason-category">
+                            <option value="">— Skip (no reason recorded) —</option>
+                            <option value="budget">Budget / Pricing</option>
+                            <option value="competitor">Competitor</option>
+                            <option value="feature-gap">Feature Gap</option>
+                            <option value="timing">Timing</option>
+                            <option value="decision-changed">Decision Changed</option>
+                            <option value="internal-issues">Internal Issues</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="wl-reason-text">Details (optional)</label>
+                        <textarea id="wl-reason-text" rows="3" placeholder="Add any additional context..."></textarea>
+                    </div>
+                    <div class="form-group" id="wl-competitor-group" style="display:none;">
+                        <label for="wl-competitor-name">Competitor Name</label>
+                        <input type="text" id="wl-competitor-name" placeholder="e.g. CompetitorCorp">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="wl-cancel-btn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Confirm ${label}</button>
+                    </div>
+                </form>
+            `;
+            this.openModal();
+
+            // Show/hide competitor field
+            const categorySelect = document.getElementById('wl-reason-category');
+            const competitorGroup = document.getElementById('wl-competitor-group');
+            categorySelect.addEventListener('change', () => {
+                competitorGroup.style.display = categorySelect.value === 'competitor' ? 'block' : 'none';
+            });
+
+            // Cancel
+            document.getElementById('wl-cancel-btn').addEventListener('click', () => {
+                this.closeModal();
+                resolve(false);
+            });
+
+            // Submit
+            document.getElementById('winloss-reason-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const reasonCategory = document.getElementById('wl-reason-category').value;
+                const reasonText = document.getElementById('wl-reason-text').value.trim();
+                const competitorName = document.getElementById('wl-competitor-name').value.trim() || null;
+
+                if (reasonCategory) {
+                    try {
+                        await ApiClient.createDealOutcomeInApi({
+                            lead_id: leadId,
+                            outcome: outcome,
+                            reason_category: reasonCategory,
+                            reason_text: reasonText || null,
+                            competitor_name: competitorName,
+                        });
+                    } catch (err) {
+                        console.error('Failed to save deal outcome:', err);
+                        this.showNotification('Failed to save reason — stage will still update', 'warning');
+                    }
+                }
+                try {
+                    this.closeModal();
+                } catch (e) {
+                    console.error('Failed to close modal:', e);
+                }
+                resolve(true);
+            });
+        });
+    },
+
+    /**
+     * Render the Win/Loss Reasons page.
+     */
+    async renderWinLossPage() {
+        let analytics = null;
+        let outcomes = [];
+        try {
+            analytics = await ApiClient.getDealOutcomeAnalyticsFromApi();
+        } catch (err) {
+            console.error('Failed to load deal outcome analytics:', err);
+        }
+        try {
+            outcomes = await ApiClient.getDealOutcomesFromApi();
+        } catch (err) {
+            console.error('Failed to load deal outcomes:', err);
+        }
+
+        // Stats overview
+        const totalWon = analytics?.total_won || 0;
+        const totalLost = analytics?.total_lost || 0;
+        const winRate = analytics?.win_rate ?? 0;
+        document.getElementById('winloss-stats').innerHTML = `
+            <div class="analytics-overview">
+                <div class="analytics-stat-card">
+                    <div class="analytics-stat-label">Total Won</div>
+                    <div class="analytics-stat-value metric-positive">${totalWon}</div>
+                </div>
+                <div class="analytics-stat-card">
+                    <div class="analytics-stat-label">Total Lost</div>
+                    <div class="analytics-stat-value metric-negative">${totalLost}</div>
+                </div>
+                <div class="analytics-stat-card">
+                    <div class="analytics-stat-label">Win Rate</div>
+                    <div class="analytics-stat-value ${winRate >= 50 ? 'metric-positive' : 'metric-negative'}">${winRate.toFixed(1)}%</div>
+                </div>
+            </div>
+        `;
+
+        // Win reasons chart
+        const topWins = analytics?.top_win_reasons || [];
+        const maxWinCount = Math.max(...topWins.map(r => r.count), 1);
+        document.getElementById('win-reasons-chart').innerHTML = topWins.length ? topWins.map(r => `
+            <div class="winloss-bar-row">
+                <span class="winloss-bar-label">${this._formatReasonLabel(r.reason)}</span>
+                <div class="winloss-bar-track">
+                    <div class="winloss-bar-fill metric-positive" style="width:${(r.count / maxWinCount * 100).toFixed(0)}%"></div>
+                </div>
+                <span class="winloss-bar-count">${r.count}</span>
+            </div>
+        `).join('') : '<p class="empty-state">No win reasons recorded yet.</p>';
+
+        // Loss reasons chart
+        const topLosses = analytics?.top_loss_reasons || [];
+        const maxLossCount = Math.max(...topLosses.map(r => r.count), 1);
+        document.getElementById('loss-reasons-chart').innerHTML = topLosses.length ? topLosses.map(r => `
+            <div class="winloss-bar-row">
+                <span class="winloss-bar-label">${this._formatReasonLabel(r.reason)}</span>
+                <div class="winloss-bar-track">
+                    <div class="winloss-bar-fill metric-negative" style="width:${(r.count / maxLossCount * 100).toFixed(0)}%"></div>
+                </div>
+                <span class="winloss-bar-count">${r.count}</span>
+            </div>
+        `).join('') : '<p class="empty-state">No loss reasons recorded yet.</p>';
+
+        // Competitor mentions
+        const competitors = analytics?.competitor_mentions || [];
+        document.getElementById('competitor-chart').innerHTML = competitors.length ? competitors.map(c => `
+            <div class="winloss-bar-row">
+                <span class="winloss-bar-label">${c.competitor}</span>
+                <div class="winloss-bar-track">
+                    <div class="winloss-bar-fill accent-text" style="width:${(c.count / Math.max(...competitors.map(x => x.count), 1) * 100).toFixed(0)}%"></div>
+                </div>
+                <span class="winloss-bar-count">${c.count}</span>
+            </div>
+        `).join('') : '<p class="empty-state">No competitor mentions yet.</p>';
+
+        // Outcomes table
+        const sortedOutcomes = [...outcomes].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        document.getElementById('winloss-table').innerHTML = sortedOutcomes.length ? `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Lead</th>
+                        <th>Outcome</th>
+                        <th>Reason</th>
+                        <th>Details</th>
+                        <th>Competitor</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedOutcomes.map(o => `
+                        <tr>
+                            <td class="winloss-lead-name">${o.lead_name || o.lead_id}</td>
+                            <td><span class="outcome-badge outcome-${o.outcome}">${o.outcome === 'won' ? 'Won' : 'Lost'}</span></td>
+                            <td>${this._formatReasonLabel(o.reason_category)}</td>
+                            <td class="winloss-detail">${o.reason_text || '—'}</td>
+                            <td>${o.competitor_name || '—'}</td>
+                            <td>${this.formatDateTime(o.created_at)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        ` : '<p class="empty-state">No outcomes recorded yet. Move leads to Won/Lost to track reasons.</p>';
+    },
+
+    _formatReasonLabel(reason) {
+        const labels = {
+            'budget': 'Budget / Pricing',
+            'competitor': 'Competitor',
+            'feature-gap': 'Feature Gap',
+            'timing': 'Timing',
+            'decision-changed': 'Decision Changed',
+            'internal-issues': 'Internal Issues',
+            'other': 'Other',
+        };
+        return labels[reason] || reason || '—';
+    },
+
+    formatDateTime(isoString) {
+        if (!isoString) return '—';
+        const d = new Date(isoString);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
+               d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    },
+
+    // ── Sales Goals ──────────────────────────────────────────────────
+
+    async renderSalesGoals() {
+        const goals = await SalesGoalsDataSource.getGoals();
+        const progress = await SalesGoalsDataSource.getProgress();
+        this.renderSalesGoalsList(goals, progress);
+        this.renderSalesGoalsSummary(goals, progress);
+        this.bindSalesGoalsEvents();
+    },
+
+    renderSalesGoalsList(goals, progress) {
+        const container = document.getElementById('goals-list');
+        if (!container) return;
+
+        if (!goals || goals.length === 0) {
+            container.innerHTML = '<p class="empty-state">No sales goals defined yet. Click "Add Goal" to get started.</p>';
+            return;
+        }
+
+        // Build a lookup from the progress goals array (backend computes current_value + progress_percent)
+        const progressMap = {};
+        (progress.goals || []).forEach(g => { progressMap[g.id] = g; });
+
+        const sorted = [...goals].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+        container.innerHTML = sorted.map(goal => {
+            const pg = progressMap[goal.id] || {};
+            const currentValue = pg.currentValue || goal.currentValue || 0;
+            const pct = goal.targetValue > 0 ? Math.min(100, Math.round((currentValue / goal.targetValue) * 100)) : 0;
+            const isCompleted = pct >= 100;
+            const daysLeft = goal.endDate ? Math.max(0, Math.ceil((new Date(goal.endDate) - new Date()) / 86400000)) : '—';
+
+            return `
+                <div class="goal-card" data-id="${goal.id}">
+                    <div class="goal-card-header">
+                        <div class="goal-card-title">
+                            <span class="goal-type-badge ${goal.type}">${this._goalTypeLabel(goal.type)}</span>
+                            <span class="goal-name">${this._esc(goal.name)}</span>
+                            ${isCompleted ? '<span class="goal-completed-badge">✅ Completed</span>' : ''}
+                        </div>
+                        <div class="goal-card-actions">
+                            <button class="btn-icon btn-edit-goal" title="Edit" data-id="${goal.id}">✏️</button>
+                            <button class="btn-icon btn-delete-goal" title="Delete" data-id="${goal.id}">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="goal-card-body">
+                        <div class="goal-progress-section">
+                            <div class="goal-progress-label">
+                                <span>Progress</span>
+                                <span class="goal-progress-pct">${pct}%</span>
+                            </div>
+                            <div class="goal-progress-bar">
+                                <div class="goal-progress-fill ${isCompleted ? 'completed' : ''}" style="width: ${pct}%"></div>
+                            </div>
+                            <div class="goal-progress-values">
+                                <span>${this._goalValueLabel(currentValue, goal.type)} / ${this._goalValueLabel(goal.targetValue, goal.type)}</span>
+                            </div>
+                        </div>
+                        <div class="goal-meta">
+                            <span class="goal-meta-item">📅 ${this._fmtPeriod(goal.period)}</span>
+                            <span class="goal-meta-item">🗓️ ${this._fmtDate(goal.startDate)} → ${this._fmtDate(goal.endDate)}</span>
+                            <span class="goal-meta-item">⏰ ${daysLeft} days left</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    renderSalesGoalsSummary(goals, progress) {
+        // Active = end_date is in the future
+        const now = new Date();
+        const activeGoals = goals.filter(g => new Date(g.endDate) >= now);
+        const completedGoals = goals.filter(g => {
+            return g.targetValue > 0 && (g.progressPercent || 0) >= 100;
+        });
+
+        const totalTarget = activeGoals.reduce((s, g) => s + g.targetValue, 0);
+        const totalCurrent = activeGoals.reduce((s, g) => s + (g.currentValue || 0), 0);
+        const overallPct = totalTarget > 0 ? Math.round((totalCurrent / totalTarget) * 100) : 0;
+
+        const el = (id) => document.getElementById(id);
+        if (el('goal-overall-progress')) el('goal-overall-progress').textContent = overallPct + '%';
+        if (el('goal-active-count')) el('goal-active-count').textContent = activeGoals.length;
+        if (el('goal-completed-count')) el('goal-completed-count').textContent = completedGoals.length;
+    },
+
+    bindSalesGoalsEvents() {
+        const addBtn = document.getElementById('btn-add-goal');
+        const recalcBtn = document.getElementById('btn-recalculate-goals');
+
+        if (addBtn) {
+            addBtn.onclick = () => this.showGoalModal();
+        }
+        if (recalcBtn) {
+            recalcBtn.onclick = () => this.recalculateGoals();
+        }
+
+        const container = document.getElementById('goals-list');
+        if (!container) return;
+
+        container.querySelectorAll('.btn-edit-goal').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                this.showGoalModal(btn.dataset.id);
+            };
+        });
+
+        container.querySelectorAll('.btn-delete-goal').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                this.deleteGoal(btn.dataset.id);
+            };
+        });
+    },
+
+    async showGoalModal(goalId) {
+        const isEdit = !!goalId;
+        let goal = { name: '', type: 'revenue', targetValue: 0, period: 'quarterly', startDate: new Date().toISOString().slice(0, 10), endDate: '' };
+
+        if (isEdit) {
+            goal = await SalesGoalsDataSource.getGoal(goalId);
+            // Data is already normalized to camelCase by SalesGoalsDataSource
+            goal.targetValue = goal.targetValue || 0;
+            goal.startDate = (goal.startDate || '').slice(0, 10);
+            goal.endDate = (goal.endDate || '').slice(0, 10);
+        }
+
+        const modal = document.getElementById('modal-container');
+        const title = document.getElementById('modal-title');
+        title.textContent = isEdit ? 'Edit Sales Goal' : 'Add Sales Goal';
+
+        modal.innerHTML = `
+            <div class="modal-header">
+                <h3 id="modal-title">${isEdit ? 'Edit Sales Goal' : 'Add Sales Goal'}</h3>
+                <button id="modal-close" class="modal-close-btn" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="goal-name">Goal Name</label>
+                    <input type="text" id="goal-name" class="form-control" value="${this._esc(goal.name)}" placeholder="e.g. Q1 Revenue Target">
+                </div>
+                <div class="form-group">
+                    <label for="goal-type">Type</label>
+                    <select id="goal-type" class="form-control">
+                        <option value="revenue" ${goal.type === 'revenue' ? 'selected' : ''}>Revenue</option>
+                        <option value="deals" ${goal.type === 'deals' ? 'selected' : ''}>Deals Closed</option>
+                        <option value="contacts" ${goal.type === 'contacts' ? 'selected' : ''}>New Contacts</option>
+                        <option value="activities" ${goal.type === 'activities' ? 'selected' : ''}>Activities</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="goal-target">Target Value</label>
+                    <input type="number" id="goal-target" class="form-control" value="${goal.targetValue}" min="0" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="goal-period">Period</label>
+                    <select id="goal-period" class="form-control">
+                        <option value="monthly" ${goal.period === 'monthly' ? 'selected' : ''}>Monthly</option>
+                        <option value="quarterly" ${goal.period === 'quarterly' ? 'selected' : ''}>Quarterly</option>
+                        <option value="yearly" ${goal.period === 'yearly' ? 'selected' : ''}>Yearly</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="goal-start">Start Date</label>
+                        <input type="date" id="goal-start" class="form-control" value="${goal.startDate}">
+                    </div>
+                    <div class="form-group">
+                        <label for="goal-end">End Date</label>
+                        <input type="date" id="goal-end" class="form-control" value="${goal.endDate}">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-cancel-goal" class="btn btn-secondary">Cancel</button>
+                <button id="btn-save-goal" class="btn btn-primary">${isEdit ? 'Update' : 'Create'} Goal</button>
+            </div>
+        `;
+
+        this.showModal();
+
+        document.getElementById('modal-close').onclick = () => this.hideModal();
+        document.getElementById('btn-cancel-goal').onclick = () => this.hideModal();
+        document.getElementById('btn-save-goal').onclick = () => this.saveGoal(goalId);
+    },
+
+    async saveGoal(goalId) {
+        const name = document.getElementById('goal-name').value.trim();
+        const type = document.getElementById('goal-type').value;
+        const targetValue = parseFloat(document.getElementById('goal-target').value) || 0;
+        const period = document.getElementById('goal-period').value;
+        const startDate = document.getElementById('goal-start').value;
+        const endDate = document.getElementById('goal-end').value;
+
+        if (!name) { this.showToast('Please enter a goal name.', 'warning'); return; }
+        if (targetValue <= 0) { this.showToast('Target value must be greater than 0.', 'warning'); return; }
+        if (!startDate || !endDate) { this.showToast('Please select start and end dates.', 'warning'); return; }
+        if (endDate <= startDate) { this.showToast('End date must be after start date.', 'warning'); return; }
+
+        try {
+            const payload = { name, type, targetValue, period, startDate, endDate };
+            if (goalId) {
+                await SalesGoalsDataSource.updateGoal(goalId, payload);
+                this.showToast('Goal updated successfully.', 'success');
+            } else {
+                await SalesGoalsDataSource.createGoal(payload);
+                this.showToast('Goal created successfully.', 'success');
+            }
+            this.hideModal();
+            await this.renderSalesGoals();
+        } catch (e) {
+            this.showToast('Failed to save goal: ' + e.message, 'error');
+        }
+    },
+
+    async deleteGoal(goalId) {
+        if (!confirm('Are you sure you want to delete this sales goal?')) return;
+        try {
+            await SalesGoalsDataSource.deleteGoal(goalId);
+            this.showToast('Goal deleted.', 'success');
+            await this.renderSalesGoals();
+        } catch (e) {
+            this.showToast('Failed to delete goal: ' + e.message, 'error');
+        }
+    },
+
+    async recalculateGoals() {
+        try {
+            const btn = document.getElementById('btn-recalculate-goals');
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Calculating...'; }
+            await SalesGoalsDataSource.recalculateValues();
+            this.showToast('Goals recalculated.', 'success');
+            await this.renderSalesGoals();
+            if (btn) { btn.disabled = false; btn.textContent = '🔄 Recalculate'; }
+        } catch (e) {
+            this.showToast('Recalculation failed: ' + e.message, 'error');
+        }
+    },
+
+    // ── Sales Goals Helpers ──────────────────────────────────────────
+
+    _goalTypeLabel(type) {
+        const labels = { revenue: '💰 Revenue', deals: '🤝 Deals', contacts: '👤 Contacts', activities: '📋 Activities' };
+        return labels[type] || type;
+    },
+
+    _fmtPeriod(p) {
+        return p ? p.charAt(0).toUpperCase() + p.slice(1) : '—';
+    },
+
+    _fmtDate(d) {
+        if (!d) return '—';
+        return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    },
+
+    _fmtNum(n) {
+        return (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    },
+
+    _goalValueLabel(value, type) {
+        const v = Math.round(value || 0);
+        if (type === 'revenue') return '$' + v.toLocaleString('en-US');
+        return v.toLocaleString('en-US');
+    },
+
+    _esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    },
 };
 
 // Initialize app when DOM is ready

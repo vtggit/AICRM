@@ -306,25 +306,27 @@
 **Files Modified:** `app/index.html`, `app/js/app.js`, `app/css/styles.css`, `docs/testing/test-keyboard-shortcuts.js`
 **Tests:** 11/11 passing (button, modal, sections, `/` focus, keys 1-3 navigation, Ctrl+N, Ctrl+L, modal content, console errors)
 
-## Item 19: Contact Import from vCard (vCard/VCF Support)
-**Status:** Planned
+## Item 19: Contact Import from vCard (vCard/VCF Support) ✅ IMPLEMENTED
+**Status:** Implemented (v0.2.3)
 **Description:** Enable importing contacts from vCard (.vcf) files, the universal contact exchange format used by email clients, smartphones, and most CRM systems. This complements the existing CSV import by supporting the most common personal contact export format.
 **Features:**
-- Upload .vcf files containing one or more vCard contacts (vCard 3.0 and 4.0 formats)
-- Parse standard vCard fields: FN (full name), EMAIL, TEL, ORG (company), NOTE (notes)
-- Map vCard fields to AICRM contact fields (name, email, phone, company, notes)
-- Auto-detect and merge multi-value fields (multiple emails, multiple phones — use first value)
-- Toast notification showing imported vs. skipped count
-- Skip contacts that already exist (by exact email match) to prevent duplicates
-- "Import vCard" button in Contacts toolbar alongside CSV buttons
-**Implementation Approach:**
-- Add `importContactsVCard()` method that reads .vcf files line-by-line
-- Parse vCard BEGIN:VCARD/END:VCARD blocks, extracting FN, EMAIL, TEL, ORG, NOTE fields
-- Handle folded lines (RFC 6715 continuation lines starting with space/tab)
-- Create contact objects from parsed data and batch-save via Storage.set()
-- Add file input for .vcf files and wire to new toolbar button
-- Reuse existing `showNotification()` for feedback
-**Dependencies:** Contact Management (Item 0 - existing), Contact CSV Import/Export (Item 1 - implemented)
+- ✅ Upload .vcf files containing one or more vCard contacts (vCard 2.1, 3.0, and 4.0 formats)
+- ✅ Parse standard vCard fields: FN (full name), N (structured name), EMAIL, TEL, ORG (company), NOTE (notes), TITLE
+- ✅ Map vCard fields to AICRM contact fields (name, email, phone, company, notes)
+- ✅ Auto-detect and use first value for multi-value fields (multiple emails, multiple phones)
+- ✅ Toast notification showing imported vs. skipped count
+- ✅ "Import vCard" button (📇) in Contacts toolbar alongside CSV buttons
+- ✅ Handles vCard line folding (RFC 6715 continuation lines)
+- ✅ Escaped character handling (\n, \,, \;, \\)
+**Implementation Details:**
+- `importContactsVCard()` in `app/js/app.js` — reads .vcf file, parses vCards, creates contacts via API
+- `parseVCard()` in `app/js/app.js` — full vCard parser supporting BEGIN:VCARD/END:VCARD blocks
+- `_extractVCardName()` in `app/js/app.js` — extracts name from FN or N fields
+- File input `#vcard-file-input` with `accept=".vcf,.vcard"`
+- Reuses existing `ContactsDataSource.createContact()` for persistence
+**Files Modified:** `app/index.html`, `app/js/app.js`
+**Tests:** `docs/testing/test-vcard-import.js` (6/6 passed)
+**Dependencies:** Contact Management (existing), Contact CSV Import/Export (Item 1 - implemented)
 
 ## Item 20: Activity Due Date Tracking and Overdue Alerts ✅ IMPLEMENTED
 **Status:** Implemented (see also Item 27)
@@ -1692,3 +1694,363 @@
 - AI timing optimization: periodic batch job that analyzes completed deals vs follow-up patterns to suggest optimal cadences
 - Dark theme support
 **Dependencies:** Lead Management (existing); Activity Tracking (existing); Lead Scoring (existing); Dashboard (existing)
+
+## Item 77: Win/Loss Reason Tracking and Deal Post-Mortem Analysis ✅ IMPLEMENTED
+**Status:** Implemented (v0.1.9)
+**Description:** Capture structured win/loss reasons when leads transition to Won or Lost stages, enabling deal post-mortem analysis and pipeline optimization. Sales teams can identify patterns in why deals succeed or fail, surface common objections, and track competitor mentions across the organization.
+**Features:**
+- ✅ Win/loss reason selection modal when moving a lead to Won or Lost stage via Kanban board
+- ✅ Pre-configured reason categories: Budget / Pricing, Competitor, Feature Gap, Timing, Decision Changed, Other
+- ✅ Custom reason text field for detailed explanation
+- ✅ Competitor name capture when "Competitor" is selected as reason
+- ✅ Win/Loss analytics page with stats (Total Won, Total Lost, Win Rate %)
+- ✅ Win reasons chart, Loss reasons chart, Competitor chart (CSS bar charts)
+- ✅ Outcomes table showing lead, outcome, reason, details, competitor, and date
+- ✅ Filter by outcome type (All/Won/Lost)
+- ✅ Settings page integration: manage reason categories (add/delete custom categories)
+- ✅ Deal outcomes persist via backend API (`/api/deals/outcomes`)
+- ✅ Dark theme support
+**Implementation Approach:**
+- New database table: `deal_outcomes` (id, lead_id, outcome ENUM(won,lost), reason_category, reason_text, competitor_name, created_at)
+- Backend endpoints: `POST /api/deals/outcomes`, `GET /api/deals/outcomes`, `DELETE /api/deals/outcomes/{id}`, `GET /api/deals/outcomes/analytics`, `POST /api/deals/outcomes/reset`
+- Frontend: `.deal-outcome-modal` (reuses `#modal-container`) shown when stage changes to Won/Lost, with reason selector, text area, and competitor input
+- Win/Loss page: `#page-winloss` with stats cards, CSS bar charts, and outcomes table
+- CSS styles: `.winloss-stats`, `.winloss-chart`, `.winloss-table`, `.reason-chip`, `.competitor-input`
+- Dark theme support
+**Tests:** `test_winloss_e2e.js` — 11/11 E2E tests passing
+**Dependencies:** Lead Management (existing); Dashboard (existing); Kanban Board (existing)
+**Files Modified:** `app/index.html`, `app/js/app.js`, `app/js/api.js`, `app/css/styles.css`, `backend/app/api/deals.py`, `backend/app/models/deal_outcomes.py`, `backend/app/repositories/deal_outcomes_postgres_repository.py`, `backend/app/db/schema.py`
+
+## Item 78: Contact Communication Preferences and Do-Not-Contact List
+**Status:** Planned
+**Description:** Manage how and when each contact can be contacted, ensuring compliance with communication preferences and regulatory requirements (e.g., GDPR, TCPA). Prevent accidental outreach to contacts who have opted out, and respect individual channel preferences (email, phone, SMS, mail).
+**Features:**
+- Per-contact communication preferences: allowed channels (email, phone, SMS, mail) with opt-in/opt-out toggles
+- Global Do-Not-Contact list accessible from Settings page
+- Visual indicator on contact cards when contact has restricted preferences (⚠️ icon)
+- Blocking mechanism: prevent activity creation for disallowed channels (e.g., can't log a Call if phone is opted out)
+- Preference import from CSV (bulk upload of communication preferences)
+- Preference expiry dates: opt-outs can be temporary or permanent
+- Compliance log: track when and why a contact was added to Do-Not-Contact list
+- Dashboard stat showing count of contacts with restrictions
+- Activity reminders to respect preferences before outreach
+- AI-powered preference detection: analyze email/communication history to infer preferences (e.g., "Contact hasn't responded to emails in 6 months — suggest phone instead")
+- Keyboard shortcut `D` to toggle Do-Not-Contact for selected contact
+- Dark theme support
+**Implementation Approach:**
+- New database table: `communication_preferences` (id, contact_id, email_opt_in BOOLEAN, phone_opt_in BOOLEAN, sms_opt_in BOOLEAN, mail_opt_in BOOLEAN, do_not_contact BOOLEAN, do_not_contact_reason TEXT, do_not_contact_expiry DATE, updated_at)
+- Backend endpoints: `GET /api/contacts/{id}/preferences`, `PATCH /api/contacts/{id}/preferences`, `GET /api/contacts/dnc-list`, `POST /api/contacts/bulk-preferences`
+- Frontend: Communication preferences section in contact edit modal with toggle switches per channel
+- Settings page: `.dnc-list` table showing all Do-Not-Contact contacts with reason and expiry
+- Activity modal: channel availability check before saving, with warning toast if channel is restricted
+- CSS styles: `.comm-preferences`, `.comm-toggle`, `.comm-toggle-disabled`, `.dnc-badge`, `.dnc-list`, `.preference-warning`
+- Dark theme support
+**Dependencies:** Contact Management (existing); Activity Tracking (existing); Dashboard (existing)
+
+## Item 79: Lead Funnel Visualization and Conversion Analytics
+**Status:** Planned
+**Description:** A visual sales funnel chart showing lead progression through pipeline stages with conversion rates between each stage, helping sales managers identify bottlenecks and optimize the sales process. Combines visual analytics with actionable insights to improve pipeline health.
+**Features:**
+- Interactive funnel chart showing lead count and value at each stage (New → Contacted → Qualified → Proposal → Won/Lost)
+- Conversion rate between each adjacent stage (e.g., "35% of New leads become Contacted")
+- Bottleneck detection: automatically flag stages with below-average conversion rates
+- Time-based filtering: view funnel for last 30/60/90 days or custom date range
+- Funnel comparison: compare current period vs previous period conversion rates
+- Per-stage average dwell time: how long leads typically stay in each stage before progressing
+- Click-through navigation: click any funnel stage to filter leads page to that stage
+- Export funnel snapshot as image or CSV
+- Dashboard widget: compact funnel overview on dashboard with key conversion metrics
+- AI-powered bottleneck analysis: AI identifies the stage with the biggest drop-off and suggests improvement strategies based on historical data patterns
+- Dark theme support
+**Implementation Approach:**
+- Frontend: `.funnel-chart` container with CSS-based trapezoid stages, `.funnel-stage` per stage showing count, value, and conversion rate
+- Backend endpoints: `GET /api/analytics/funnel` (returns per-stage counts, values, conversion rates, dwell times), `GET /api/analytics/funnel/comparison` (period-over-period comparison)
+- Funnel chart built with CSS clip-path trapezoids and flexbox layout, no external charting library
+- Date range filtering via query parameters on backend
+- AI bottleneck analysis: compare conversion rates across stages, flag any stage below 50th percentile of historical average
+- CSS styles: `.funnel-chart`, `.funnel-stage`, `.funnel-stage-bottleneck`, `.funnel-conversion-rate`, `.funnel-value`, `.funnel-comparison`, `.funnel-dashboard-widget`
+- Dark theme support
+**Dependencies:** Lead Management (existing); Dashboard (existing); Lead Scoring (existing)
+
+## Item 80: Contact Merge and Duplicate Detection
+**Status:** Planned
+**Description:** Intelligent duplicate detection and contact merging to maintain data quality. Automatically identifies potential duplicates based on email, phone, and name similarity, and provides a guided merge workflow that preserves all activities, notes, and relationships from both records.
+**Features:**
+- Automatic duplicate detection on contact creation/edit: warns if a contact with matching email or phone already exists
+- Fuzzy name matching: detects contacts with similar names (e.g., "Jon Smith" vs "John Smith") even with typos
+- Duplicate candidates page: periodic scan surface all potential duplicates grouped by match confidence (High/Medium/Low)
+- Side-by-side comparison view: display both contact records with all fields, activities, and tags for informed merge decisions
+- Guided merge workflow: select which fields to keep from each contact when values differ
+- Activity preservation: all activities from both contacts are retained and linked to the surviving record
+- Tag merging: combines tags from both contacts without duplicates
+- Lead association transfer: leads linked to the removed contact are re-linked to the surviving contact
+- Merge history audit log: track when and by whom contacts were merged, with rollback capability
+- Bulk duplicate resolution: select multiple duplicate pairs and merge all at once
+- Dashboard stat: count of detected duplicates and merge success rate
+- Keyboard shortcut `M` to open merge dialog when viewing a contact
+- AI-powered deduplication: ML-based similarity scoring that considers email domain, phone area code, company name, and interaction patterns to reduce false positives
+- Dark theme support
+**Implementation Approach:**
+- Backend endpoints: `GET /api/contacts/duplicates` (scan for potential duplicates with match scores), `POST /api/contacts/merge` (merge two contacts, preserving all data), `GET /api/contacts/{id}/merge-history`
+- Duplicate detection algorithm: exact match on email/phone, Levenshtein distance on names, company name similarity
+- Merge operation: transactional — all-or-nothing. Creates audit log entry, transfers activities/tags/leads, soft-deletes the removed contact
+- Frontend: `.duplicate-detector` modal shown on creation conflict, `.merge-comparison` view for side-by-side field comparison, `.merge-field-selector` for choosing which values to keep
+- CSS styles: `.duplicate-warning`, `.merge-comparison`, `.merge-field-selector`, `.merge-field-keep-left`, `.merge-field-keep-right`, `.merge-confidence-badge`, `.merge-audit-log`
+- Dark theme support
+**Dependencies:** Contact Management (existing); Activity Tracking (existing); Contact Tags (existing)
+
+## Item 81: AI-Powered Contact Insights and Next-Best-Action Recommendations
+**Status:** Planned
+**Description:** Leverage AI to analyze contact interaction history, engagement patterns, and deal context to surface actionable insights and recommend the next best action for each contact. Helps sales reps prioritize outreach and personalize their approach based on data-driven recommendations.
+**Features:**
+- Per-contact AI insight panel: summarizes contact engagement level, response patterns, and relationship health score
+- Next-best-action recommendation: AI suggests the optimal next step (e.g., "Schedule a follow-up call — contact hasn't been reached in 14 days")
+- Engagement trend analysis: tracks whether contact engagement is increasing, stable, or declining over time
+- Personalization suggestions: AI recommends email subject lines or talking points based on contact's industry, company, and past interactions
+- Churn risk indicator: flags contacts whose engagement has dropped significantly, suggesting re-engagement strategies
+- Deal context awareness: recommendations consider active leads, pipeline stage, and deal value
+- Insight cache: AI insights are cached and refreshed on a schedule to avoid redundant API calls
+- Dashboard widget: top 5 contacts needing attention based on AI priority scoring
+- Export insights report: generate a CSV summary of AI recommendations for all contacts
+- Keyboard shortcut `I` to open AI insights panel for selected contact
+- Dark theme support
+**Implementation Approach:**
+- Backend endpoints: `GET /api/ai/insights/contacts/{id}` (AI-powered insights for a single contact), `GET /api/ai/insights/priority` (top priority contacts), `POST /api/ai/insights/refresh` (force refresh of cached insights)
+- AI analysis uses contact activity history, lead data, email templates used, and engagement metrics to generate insights
+- Insight caching via PostgreSQL table: `ai_insights` (id, contact_id, engagement_score, relationship_health, next_best_action, churn_risk, insights_json, cached_at)
+- Frontend: `.ai-insights-panel` sidebar/modal with engagement score gauge, next-best-action card, and trend chart
+- CSS styles: `.ai-insights-panel`, `.engagement-gauge`, `.next-best-action`, `.churn-risk-badge`, `.insight-trend`, `.ai-priority-widget`
+- Dark theme support
+**Dependencies:** Contact Management (existing); Activity Tracking (existing); Lead Scoring (existing); Dashboard (existing)
+
+## Item 82: Automated Sales Playbooks and Workflow Templates
+**Status:** Planned
+**Description:** Create reusable, step-by-step sales playbooks that guide reps through proven processes for common scenarios (e.g., new lead follow-up, proposal renewal, re-engagement). Playbooks enforce consistency, reduce ramp time for new reps, and ensure no critical steps are missed.
+**Features:**
+- Playbook creator: build multi-step playbooks with conditional branches, deadlines, and assigned tasks
+- Pre-built templates: include default playbooks for common scenarios (New Lead Follow-Up, Proposal Follow-Up, Quarterly Business Review, Churn Prevention)
+- Step types: email send, call log, meeting schedule, note add, wait period, conditional branch (if lead stage = X then step Y)
+- Playbook activation: start a playbook for a contact/lead with one click, auto-creating the first step as an activity
+- Progress tracking: visual progress bar showing completed vs remaining steps, with per-step status indicators
+- Deadline enforcement: each step has a suggested deadline; overdue steps are highlighted with reminders
+- Playbook analytics: track completion rates, average time per step, and win rate for contacts that followed a playbook
+- Team sharing: playbooks can be marked as team-wide or personal
+- AI playbook suggestions: AI recommends which playbook to use based on contact profile, lead stage, and deal value
+- Playbook versioning: track changes to playbooks over time with ability to revert
+- Keyboard shortcut `P` to open playbook selector when viewing a contact or lead
+- Dark theme support
+**Implementation Approach:**
+- New database tables: `playbooks` (id, name, description, is_team_wide, created_by, version, updated_at), `playbook_steps` (id, playbook_id, step_order, step_type, title, description, deadline_hours, condition_json), `playbook_instances` (id, playbook_id, contact_id, lead_id, started_at, completed_at, status), `playbook_instance_steps` (id, instance_id, step_id, status, completed_at, activity_id)
+- Backend endpoints: `GET /api/playbooks` (list), `POST /api/playbooks` (create), `PUT /api/playbooks/{id}` (update), `DELETE /api/playbooks/{id}` (delete), `POST /api/playbooks/{id}/activate` (start instance), `GET /api/playbooks/instances` (active instances), `PATCH /api/playbooks/instances/{id}/steps/{step_id}/complete`
+- Frontend: `.playbook-library` page for browsing/creating playbooks, `.playbook-instance` tracker showing active playbook progress, `.playbook-wizard` modal for step-by-step creation with drag-and-drop reordering
+- CSS styles: `.playbook-card`, `.playbook-step`, `.playbook-step-completed`, `.playbook-step-overdue`, `.playbook-progress-bar`, `.playbook-wizard`, `.playbook-conditional`, `.playbook-instance-tracker`
+- Dark theme support
+**Dependencies:** Contact Management (existing); Lead Management (existing); Activity Tracking (existing); Email Templates (existing)
+
+## Item 83: Activity Trend Charts and Time-Based Analytics ✅ IMPLEMENTED
+**Status:** Implemented (v0.2.0 / Session 16)
+**Description:** Visual charts showing activity volume trends over time (daily, weekly, monthly) to help users understand their engagement patterns and identify productive or slow periods. Extends the existing Analytics page with time-series visualization to complement the funnel chart.
+**Features:**
+- ✅ Activity volume chart: CSS-based stacked bar chart showing activity count over time (grouped by day/week)
+- ✅ Activity type breakdown: stacked bars showing distribution of calls, emails, meetings, notes, tasks over time
+- ✅ Configurable date range: last 7 days, 30 days, 90 days, 1 year
+- ✅ Grouping toggle: By Day or By Week
+- ✅ Overview stats: Total Activities, Peak Day (with date label), Average per bucket
+- ✅ Peak activity identification: automatically highlights the busiest day/week with ▲ marker
+- ✅ Color-coded legend with activity type totals
+- ✅ Responsive design with horizontal scroll for wide datasets
+- ✅ Dark theme support
+- ⏳ Trend comparison: compare current period vs previous period — planned
+- ⏳ Trend direction indicators: up/down arrows with percentage change — planned
+- ⏳ Per-contact activity trend — planned
+- ⏳ Correlation with deals — planned
+- ⏳ Export trend data as CSV — planned
+- ⏳ AI-powered trend insights — planned
+**Implementation:**
+- `backend/app/api/analytics.py` — `GET /api/analytics/activity-trends?range=7d|30d|90d|1y&group=day|week` endpoint with PostgreSQL aggregation
+- `app/js/api.js` — `getActivityTrendsFromApi(range, group)` method
+- `app/index.html` — Activity Trends dashboard card with controls, overview, chart, and legend containers
+- `app/js/app.js` — `renderActivityTrends()`, `_bindTrendControls()`, `_renderTrendOverview()`, `_renderTrendChart()`, `_renderTrendLegend()`
+- `app/css/styles.css` — `.activity-trend-overview`, `.trend-chart-grid`, `.trend-bar-group`, `.trend-bar-{type}`, `.trend-legend-items`, responsive media queries
+**Tests:** Browser automation verified all range/grouping combinations (7d/30d/90d/1y × day/week), peak highlighting, legend rendering, and responsive layout.
+
+## Item 84: Custom Dashboard Widgets and Layout Builder
+**Status:** Planned
+**Description:** Allow users to personalize their dashboard by adding, removing, resizing, and reordering widgets. Users can build a dashboard that matches their workflow priorities, surfacing the metrics and data that matter most to them.
+**Features:**
+- Widget marketplace: sidebar panel showing available widgets to add (stat cards, charts, lists, quick actions)
+- Drag-and-drop reordering: rearrange widgets on the dashboard via drag handles
+- Widget resize: toggle between small, medium, and large sizes for each widget
+- Widget removal: remove widgets from the dashboard (with option to restore from marketplace)
+- Preset layouts: include default layouts (Executive, Sales Rep, Manager) that users can apply with one click
+- Widget visibility toggles: show/hide individual widgets without removal
+- Persistent layout: save widget positions, sizes, and visibility to user settings via backend
+- New widget types: top contacts list, upcoming activities, recent leads, goal progress ring, activity mini-chart, revenue sparkline
+- Widget refresh: manual refresh button per widget, with last-updated timestamp
+- AI widget recommendation: AI suggests widgets based on user role and data patterns
+- Keyboard shortcut `D` to open dashboard customization mode
+- Dark theme support
+**Implementation Approach:**
+- New database table: `dashboard_layouts` (id, user_id, layout_json, created_at, updated_at) storing widget configuration as JSON
+- Backend endpoints: `GET /api/settings/dashboard-layout` (get current layout), `PUT /api/settings/dashboard-layout` (save layout), `GET /api/settings/dashboard-presets` (list preset layouts), `POST /api/settings/dashboard-layout/reset` (reset to default)
+- Frontend: `.dashboard-widget-grid` container with CSS Grid, `.widget` per card with drag handle, resize buttons, and remove button. Customization mode toggled via `.dashboard-customizing` body class.
+- Widget registry in JS: `WidgetRegistry` object maps widget IDs to render functions, sizes, and metadata
+- Drag-and-drop via HTML5 Drag API with visual drop indicators
+- CSS styles: `.dashboard-widget-grid`, `.widget`, `.widget-header`, `.widget-drag-handle`, `.widget-resize-btn`, `.widget-remove-btn`, `.widget-small`, `.widget-medium`, `.widget-large`, `.widget-marketplace`, `.dashboard-customizing`, `.widget-drop-indicator`
+- Dark theme support
+**Dependencies:** Dashboard (existing); Settings backend (existing); Analytics (existing for chart widgets); Sales Goals (existing for goal widget)
+
+## Item 85: Contact Communication Timeline View
+**Status:** Planned
+**Description:** A unified chronological timeline view for each contact that consolidates all interactions (calls, emails, meetings, notes, tasks, stage changes, tag updates) into a single visual feed. This gives users a complete interaction history at a glance, similar to the "activity feed" in modern CRMs like Salesforce or HubSpot.
+**Features:**
+- Unified timeline: chronological feed of all contact interactions with visual connectors and timestamps
+- Interaction types: calls, emails, meetings, notes, tasks, lead stage changes, tag additions/removals, deal value changes
+- Visual grouping: group events by date (e.g., "Today", "Yesterday", "Last Week") with collapsible sections
+- Rich event cards: each event shows type icon, timestamp, summary text, and expandable details
+- Quick-reply actions: reply to calls (schedule follow-up call), reply to emails (open email template), convert notes to tasks
+- Search within timeline: filter timeline events by type, date range, or keyword search in event descriptions
+- AI conversation summary: AI-generated summary of the relationship history ("You've had 12 interactions with this contact over 6 months. Last contact was 3 weeks ago via email.")
+- AI next-step suggestions: AI recommends the next best action based on interaction patterns ("Schedule a follow-up call — it's been 3 weeks since last contact")
+- Export timeline: export the timeline as a PDF or CSV for sharing with team members
+- Responsive design: timeline scrolls vertically on mobile, with sticky date headers
+- Keyboard shortcut `T` to open timeline view when viewing a contact
+- Dark theme support
+**Implementation Approach:**
+- Backend endpoint: `GET /api/contacts/{id}/timeline?from=YYYY-MM-DD&to=YYYY-MM-DD&type=call|email|meeting|note|task|stage|tag` — aggregates activities, audit log entries, and tag changes into a unified chronological array
+- Frontend: `.contact-timeline` container with `.timeline-event` cards, `.timeline-date-group` collapsible sections, `.timeline-summary` for AI summary
+- Event card rendering: each event type has a distinct icon, color accent, and detail layout
+- AI integration: call existing AI recommendation endpoint with contact interaction history to generate summary and next-step suggestions
+- CSS styles: `.contact-timeline`, `.timeline-event`, `.timeline-event-{type}`, `.timeline-date-group`, `.timeline-summary`, `.timeline-ai-suggestion`, `.timeline-search`, `.timeline-connector`
+- Dark theme support
+**Dependencies:** Contact Management (existing); Activity Tracking (existing); Contact Tags (existing); Lead Management (existing); AI Recommendations (existing infrastructure)
+
+## Item 86: Automated Lead Follow-Up Scheduler
+**Status:** Planned
+**Description:** Intelligent follow-up scheduling system that automatically creates follow-up activities based on configurable cadence templates, ensuring no lead falls through the cracks. The system learns from user behavior to optimize timing and suggests the best follow-up approach.
+**Features:**
+- Cadence templates: pre-built follow-up sequences (e.g., "New Lead Nurture": Day 1 call, Day 3 email, Day 7 meeting invite, Day 14 follow-up)
+- Template creator: build custom cadences with configurable steps (type, delay, message template, priority)
+- Auto-activation: automatically start a cadence when a lead enters a specific stage or matches criteria
+- Manual activation: start any cadence for any lead with one click from the lead detail view
+- Follow-up calendar view: see all scheduled follow-ups across all leads in a calendar/timeline view
+- Smart rescheduling: if a follow-up is missed, automatically reschedule with notification to the user
+- AI-optimized timing: AI analyzes which days/times get the best response rates and suggests optimal follow-up times
+- Follow-up analytics: track cadence completion rates, average response time per step, and conversion rate by cadence
+- Skip and complete: mark follow-ups as completed or skip with reason logging
+- Conflict detection: prevent duplicate follow-ups for the same contact within a configurable window
+- Integration with email templates: pre-fill follow-up emails with relevant templates
+- Keyboard shortcut `F` to open follow-up scheduler when viewing a lead
+- Dark theme support
+**Implementation Approach:**
+- New database tables: `cadence_templates` (id, name, description, is_active, created_by), `cadence_steps` (id, template_id, step_order, activity_type, delay_days, message_template_id, priority), `cadence_instances` (id, template_id, lead_id, started_at, status, completed_at), `cadence_instance_steps` (id, instance_id, step_id, scheduled_date, status, completed_at, activity_id, skip_reason)
+- Backend endpoints: `GET /api/cadences` (list templates), `POST /api/cadences` (create template), `PUT /api/cadences/{id}` (update), `DELETE /api/cadences/{id}` (delete), `POST /api/cadences/{id}/activate` (start for lead), `GET /api/cadences/instances` (active instances), `PATCH /api/cadences/instances/{id}/steps/{step_id}/complete`, `PATCH /api/cadences/instances/{id}/steps/{step_id}/skip`
+- Cron job: daily job to check for due follow-ups and create activities
+- Frontend: `.cadence-library` page for browsing/creating templates, `.cadence-instance` tracker on lead detail view, `.follow-up-scheduler` modal for manual activation
+- AI timing optimization: analyze historical activity response data to recommend optimal follow-up days/times
+- CSS styles: `.cadence-card`, `.cadence-step`, `.cadence-step-completed`, `.cadence-step-due`, `.cadence-step-overdue`, `.cadence-progress-bar`, `.cadence-wizard`, `.follow-up-calendar`
+- Dark theme support
+**Dependencies:** Lead Management (existing); Activity Tracking (existing); Email Templates (existing); Backend cron infrastructure (existing for reminders)
+
+## Item 87: Activity Calendar View
+**Status:** Planned
+**Description:** A monthly and weekly calendar visualization for activities, providing an intuitive overview of scheduled tasks, meetings, calls, and follow-ups. Complements the existing timeline view by giving users a bird's-eye view of their schedule, making it easy to identify busy periods, gaps in outreach, and upcoming deadlines.
+**Features:**
+- Monthly calendar grid showing all activities color-coded by type (Call, Email, Meeting, Note, Task)
+- Week view for detailed daily planning with time slots
+- Click a day cell to see all activities for that day in a popup
+- Drag-and-drop to reschedule activities to different dates
+- Today indicator with highlighted date
+- Navigation: previous/next month, jump to today
+- Toggle between month and week views
+- Filter calendar by activity type
+- Integration with Activity Due Date Tracking: activities with due dates appear on calendar
+- Overdue activities shown with red indicator
+- Completed activities shown with strikethrough or reduced opacity
+- Quick activity creation from calendar: click empty day to create activity with date pre-filled
+- Dashboard widget: compact 7-day upcoming activities strip
+- Keyboard shortcut `C` to toggle calendar view on Activities page
+- Dark theme support
+**Implementation Approach:**
+- Frontend: `.activities-calendar` container with `.calendar-header` (month/year + nav), `.calendar-grid` (7-column grid for days), `.calendar-day` cells, `.calendar-event` pills
+- Week view: `.calendar-week` with `.week-day-column` and `.week-time-slot`
+- CSS-based calendar grid using CSS Grid (7 columns for days)
+- No new backend endpoints needed — reuses existing `GET /api/activities` with client-side date filtering
+- Drag-and-drop via HTML5 Drag API for date rescheduling, calls existing `PATCH /api/activities/{id}` endpoint
+- Event pills: `.calendar-event` with left border color per type, truncated text, and count badge for overflow
+- CSS styles: `.activities-calendar`, `.calendar-header`, `.calendar-nav`, `.calendar-grid`, `.calendar-day`, `.calendar-day-today`, `.calendar-event`, `.calendar-event-call`, `.calendar-event-email`, `.calendar-event-meeting`, `.calendar-event-note`, `.calendar-event-task`, `.calendar-day-popup`, `.calendar-week`, `.week-day-column`, `.week-time-slot`, `.calendar-filter-bar`
+- Dark theme support
+**Dependencies:** Activity Tracking (existing); Activity Due Date Tracking (existing); Dashboard (existing)
+
+## Item 88: Contact Engagement Score and Health Monitoring
+**Status:** Planned
+**Description:** A composite engagement score (0-100) for each contact that measures relationship health based on interaction patterns. Unlike lead scoring (which predicts deal probability), engagement scoring measures actual interaction velocity and quality — helping users identify at-risk relationships before they go cold.
+**Features:**
+- Composite engagement score calculated from: recency of last interaction (30%), frequency over last 30/60/90 days (25%), diversity of interaction types (20%), reciprocity ratio (15%), trend direction (10%)
+- Visual health indicators on contact cards: Healthy (70-100), Cooling (40-69), At Risk (0-39)
+- Engagement score badge alongside existing tag badges on contact cards
+- Engagement trend sparkline in contact detail view showing 90-day interaction history
+- "At Risk" filter on contacts page to surface disengaged contacts
+- Dashboard stat card showing count of at-risk contacts
+- Automated alerts: toast notification when a VIP contact drops below threshold
+- Comparison view: "Top 10 Most Engaged" and "Top 10 Least Engaged" contacts
+- Export engagement report as CSV
+- Keyboard shortcut `H` to sort contacts by health score
+- Dark theme support
+**Implementation Approach:**
+- Score computed client-side from existing activity data (no new database tables initially)
+- Backend endpoint: `GET /api/contacts/{id}/engagement` returns score breakdown and trend data
+- Backend endpoint: `GET /api/contacts/engagement-summary` returns at-risk count and top/bottom lists
+- Frontend: engagement badge on contact cards, trend sparkline in detail modal
+- Sparkline: SVG-based mini chart showing daily interaction count over 90 days
+- Score calculation runs on contacts page load and caches results; re-computed after activity CRUD
+- CSS styles: `.engagement-badge`, `.engagement-healthy`, `.engagement-cooling`, `.engagement-at-risk`, `.engagement-sparkline`, `.engagement-breakdown`
+- Dark theme support
+**Dependencies:** Contact Management (existing); Activity Tracking (existing); Contact Tags (existing); Dashboard (existing)
+
+## Item 89: Contact Social Media Links and Profiles
+**Status:** Planned
+**Description:** Allow storing and managing social media profile links (LinkedIn, Twitter/X, GitHub, personal website) on contact records, enabling richer contact profiles and one-click access to external professional profiles. This helps sales reps research contacts before meetings and maintain a complete picture of professional relationships.
+**Features:**
+- Social media link fields on contact edit form: LinkedIn, Twitter/X, GitHub, Website, other custom URL
+- Clickable social media icons on contact cards and detail view, opening profiles in new tabs
+- LinkedIn profile enrichment — auto-fetch name and title from LinkedIn public profile URL
+- Visual social media chips on contact cards showing platform icons
+- Filter contacts by social media presence (e.g., "has LinkedIn", "has Twitter")
+- Quick-add social link button from contact card (dropdown with platform options)
+- Social media link validation — detects valid URLs and assigns platform type automatically
+- "Open All Profiles" button in contact detail view to open all linked profiles at once
+- Dark theme support for social media icon styling
+**Implementation Approach:**
+- Add `social_links` JSONB column to `contacts` table: `{ linkedin: string, twitter: string, github: string, website: string, custom: [{ platform: string, url: string }] }`
+- Backend: Update contact CRUD endpoints to accept and return `social_links`
+- Frontend: Add social media input fields to contact edit modal with platform-specific icons and URL validation
+- Render social media icon chips on contact cards using SVG icons or emoji (🔗💼🐦)
+- Add filter option to contacts page for social media presence
+- CSS styles: `.social-links`, `.social-link-chip`, `.social-link-icon`, `.social-input-group`
+- Dark theme support
+**Dependencies:** Contact Management (existing)
+
+## Item 90: Notes Templates and Standardized Documentation
+**Status:** Planned
+**Description:** A library of reusable note templates for common interaction scenarios (e.g., "Initial Discovery Call", "Product Demo Follow-up", "Quarterly Business Review"), enabling consistent documentation across the team and reducing time spent writing notes from scratch.
+**Features:**
+- Create, edit, and delete note templates with name, category, and pre-written content
+- Template categories: Discovery, Follow-up, Demo, QBR, Complaint, Upsell, Onboarding
+- Variable substitution in templates: {{contact_name}}, {{company}}, {{date}}, {{last_activity}}, {{lead_stage}}
+- Quick-apply template button in activity creation form (Note type) — inserts template with resolved variables
+- Template preview showing resolved variables for a selected contact
+- "My Templates" and "Shared Templates" tabs (shared when multi-user is implemented)
+- Usage analytics — most-used templates and templates that could be improved
+- Template import/export as JSON
+- Keyboard shortcut `Shift+T` to open template selector from activity form
+- Dark theme support
+**Implementation Approach:**
+- New `note_templates` table: id, name, category, content, is_active, created_at, updated_at
+- Backend endpoints: `GET/POST /api/note-templates`, `GET/PATCH/DELETE /api/note-templates/{id}`, `GET /api/note-templates/resolve` (resolves variables for a contact)
+- Frontend: "Note Templates" page accessible from navigation with template cards and CRUD modals
+- Activity creation form (Note type) gains a "Apply Template" dropdown that populates the description field with resolved template content
+- Variable resolution: replace `{{variable}}` patterns with contact/lead data on the backend
+- CSS styles: `.template-card`, `.template-list`, `.template-preview`, `.template-variable`, `.template-category-badge`
+- Dark theme support
+**Dependencies:** Contact Management, Activity Tracking, Email Templates (all existing); variable substitution pattern shared with email templates

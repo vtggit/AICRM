@@ -76,7 +76,19 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Proper CSV escaping for special characters and commas in field values
 - Dashboard stats updated after import
 
-### 11. Dashboard Revenue Summary (COMPLETED)
+### 11. vCard Import (COMPLETED)
+- Import contacts from vCard (.vcf) files supporting vCard 2.1, 3.0, and 4.0 formats
+- "Import vCard" button (📇) in Contacts toolbar alongside CSV import/export buttons
+- Parses standard vCard fields: FN (full name), N (structured name), EMAIL, TEL, ORG (company), NOTE (notes), TITLE
+- Maps vCard fields to AICRM contact fields: name, email, phone, company, status (defaults to active), notes
+- Handles multi-value fields by using the first value (multiple emails, multiple phone numbers)
+- Supports vCard line folding (RFC 6715 continuation lines starting with space/tab)
+- Handles escaped characters (\n, \,, \;, \\) in vCard field values
+- Toast notification showing count of successfully imported vs. skipped contacts
+- Dashboard stats automatically updated after import
+- Skips vCard records with empty names
+
+### 12. Dashboard Revenue Summary (COMPLETED)
 - Total Pipeline Value stat card (sum of active lead values, excludes won/lost)
 - Won Revenue stat card (sum of all won lead values)
 - Average Deal Size calculation (won revenue / won lead count, $0.00 if none)
@@ -85,7 +97,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Revenue cards styled with green left border for visual distinction
 - Revenue calculated dynamically on dashboard render (not stored)
 
-### 12. Email Templates (COMPLETED)
+### 13. Email Templates (COMPLETED)
 - Create, edit, and delete reusable email templates
 - Template fields: name, category, subject, body
 - Category options: Sales, Support, Follow-up, Onboarding, Newsletter
@@ -93,7 +105,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Filter by category
 - Toast notifications for save/delete operations
 
-### 13. AI-Powered Lead Recommendations (COMPLETED)
+### 14. AI-Powered Lead Recommendations (COMPLETED)
 - Dashboard card showing prioritized lead recommendations
 - Scores active leads using existing lead scoring algorithm (0-100)
 - Detects stale leads (14+ days = urgent, 7-13 days = high priority)
@@ -101,7 +113,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Maximum 3 recommendations displayed, sorted by score
 - Click-to-navigate to individual leads
 
-### 14. Keyboard Shortcuts (COMPLETED)
+### 15. Keyboard Shortcuts (COMPLETED)
 - Number keys (1-5) navigate to Dashboard, Contacts, Leads, Activities, Templates
 - `/` focuses global search bar
 - `?` opens keyboard shortcuts help modal
@@ -112,7 +124,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Shortcuts disabled while typing in input fields (except `/`, `?`, `Escape`)
 - Keyboard icon button in header opens shortcuts help modal
 
-### 15. Activity Due Date Tracking (COMPLETED)
+### 16. Activity Due Date Tracking (COMPLETED)
 - Optional due date field on activity creation/edit forms (date input)
 - Overdue activities highlighted with red left border and red timeline dot
 - Overdue due dates displayed with ⚠️ warning icon and red text
@@ -125,7 +137,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Completed activities hidden from overdue count and overdue filter
 - Due date tracking persisted in PostgreSQL with activity data
 
-### 16. Contact Tags (COMPLETED)
+### 17. Contact Tags (COMPLETED)
 - Manage Tags modal accessible from Contacts page ("Manage Tags" button)
 - Tag CRUD operations: create, edit, delete tags via modal UI
 - Each tag has a name (unique, required) and color (hex color code, default: #6b7280)
@@ -138,6 +150,23 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Tags pre-selected when re-editing a contact
 - Backend: `contact_tags` and `contact_tag_mapping` tables in PostgreSQL
 - Dark theme support for all tag UI components
+
+### 18. Activity Calendar View (COMPLETED)
+- Monthly calendar view toggleable from Activities page via toolbar button or `C` keyboard shortcut
+- Calendar header with month/year display, previous/next month navigation, and "Today" button
+- 7-column grid layout with weekday headers (Sun, Mon, Tue, Wed, Thu, Fri, Sat)
+- Day cells display date number with activities rendered as color-coded pills below
+- Today's date highlighted with blue accent background and blue circle on day number
+- Activities color-coded by type: Call (blue), Email (green), Meeting (yellow), Note (purple), Task (red)
+- Overdue activities shown with red border and bold text for visibility
+- Completed activities displayed with reduced opacity and strikethrough text
+- HTML5 drag-and-drop support to move activities between days (updates due_date)
+- Click on empty day cell to open activity modal with date pre-filled
+- Type and status filters apply to calendar view, updating displayed activities in real-time
+- Responsive design: events hidden on small screens with dots indicating activity presence
+- Dark theme support with adjusted alpha values for event backgrounds
+- View state preserved when navigating away and returning to Activities page
+- Calendar renders with proper first-day-of-week alignment and empty cell padding
 
 ## Technical Requirements
 - Single Page Application (SPA) frontend architecture

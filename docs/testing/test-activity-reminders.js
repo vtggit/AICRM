@@ -186,6 +186,7 @@ function log(test, ok, detail = '') {
     // --- Screenshot ---
     await page.click('.nav-item[data-page="settings"]');
     await page.waitForTimeout(500);
+    fs.mkdirSync('test-results', { recursive: true });
     await page.screenshot({ path: 'test-results/activity-reminders.png', fullPage: true });
     console.log('\n  Screenshot saved: test-results/activity-reminders.png');
 
@@ -195,7 +196,6 @@ function log(test, ok, detail = '') {
     console.log(`\n=== Results: ${passed} passed, ${failed} failed, ${passed + failed} total ===\n`);
 
     // Save results
-    fs.mkdirSync('test-results', { recursive: true });
     fs.writeFileSync('test-results/activity-reminders-results.json', JSON.stringify(results, null, 2));
 
     process.exit(failed > 0 ? 1 : 0);

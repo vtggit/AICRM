@@ -1,0 +1,50 @@
+
+TEST 1: Shortcuts button exists
+  Button visible: true
+
+TEST 2: Click shortcuts button opens modal
+  Modal visible: true, Title: "Keyboard Shortcuts"
+
+TEST 3: Shortcuts modal can be opened
+  Modal open: true, Nav section: true, Actions section: true
+
+TEST 4: Press / focuses search bar
+  Search focused: true
+
+TEST 5: Number key 1 navigates to Dashboard
+  Dashboard active: true, Title: "Dashboard"
+
+TEST 6: Number key 2 navigates to Contacts
+  Contacts active: true, Title: "Contacts"
+
+TEST 7: Number key 3 navigates to Leads
+  Leads active: true, Title: "Leads"
+
+TEST 8: Ctrl+N opens new contact modal
+  Modal title: "Add Contact", Form visible: true
+
+TEST 9: Ctrl+L opens new lead modal
+  Modal title: "Add Lead", Form visible: true
+
+TEST 10: Shortcuts modal contains all expected shortcuts
+  All shortcuts found: true
+
+TEST 11: No console errors
+  Console errors: 0
+
+Screenshot saved to test-results/keyboard-shortcuts.png
+
+=== KEYBOARD SHORTCUTS TEST RESULTS ===
+  ✅ PASS: Shortcuts button visible
+  ✅ PASS: Shortcuts modal opens on button click
+  ✅ PASS: Shortcuts modal has Navigation and Actions sections
+  ✅ PASS: / focuses search bar
+  ✅ PASS: Key 1 navigates to Dashboard
+  ✅ PASS: Key 2 navigates to Contacts
+  ✅ PASS: Key 3 navigates to Leads
+  ✅ PASS: Ctrl+N opens new contact modal
+  ✅ PASS: Ctrl+L opens new lead modal
+  ✅ PASS: All shortcuts listed in modal
+  ✅ PASS: No console errors
+
+Total: 11 | Passed: 11 | Failed: 0

@@ -1,0 +1,28 @@
+SETUP: Add a contact for export testing
+TEST 1: Verify Export/Import buttons exist
+  Export button: 1, Import button: 1
+TEST 2: Export CSV
+  Downloaded: contacts_2026-05-18.csv
+  Has header: true, Has test data: true
+TEST 3: Import CSV
+  Notification: "Imported 3 contacts."
+  Correct count: true
+TEST 4: Verify imported contacts visible
+  Total contact cards: 4
+TEST 5: Verify specific imported data
+  Jane Doe: true, Bob Smith: true, Alice Johnson: true
+TEST 6: Dashboard stats updated
+  Dashboard total contacts: 4
+TEST 7: Notification system styling
+  Notification visible: true
+
+=== CSV IMPORT/EXPORT TEST RESULTS ===
+  ✅ PASS: Export/Import buttons visible
+  ✅ PASS: CSV export downloads correctly
+  ✅ PASS: CSV import works with notification
+  ✅ PASS: Imported contacts visible
+  ✅ PASS: Imported contact data correct
+  ✅ PASS: Dashboard stats reflect imported contacts
+  ✅ PASS: Notification system displays correctly
+
+Total: 7 | Passed: 7 | Failed: 0

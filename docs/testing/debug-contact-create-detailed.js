@@ -62,7 +62,7 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     console.log('Modal body buttons:', modalButtons);
 
     // Click the primary submit button
-    await page.click('#contact-form .btn-primary');
+    await page.click('#contact-form button[type="submit"]');
 
     console.log('Submit clicked, waiting...');
     await page.waitForTimeout(3000);

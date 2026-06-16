@@ -11,23 +11,22 @@
  * 7. Mark activity complete from detail modal works
  */
 
-const { chromium } = require('playwright');
 const { createAuthSession } = require('./auth-helper');
 
 (async () => {
-    const { browser, context, page } = await createAuthSession();
-    await page.goto('http://localhost:8000');
-    await page.waitForSelector('.page[data-page="dashboard"]', { timeout: 10000 }).catch(async () => {
-        await page.waitForTimeout(3000);
-    });
+    const { browser, page } = await createAuthSession();
+    await page.goto('http://localhost:8080');
+    await page.waitForTimeout(3000);
     let passed = 0;
     let failed = 0;
-    const results = [];
 
     try {
+        // Navigate to contacts first
+        await page.click('.nav-item[data-page="contacts"]');
+        await page.waitForTimeout(2000);
+
         // ===== Test 1: Create a contact =====
     console.log('\n=== Test 1: Create test contact ===');
-    try {
         const timestamp = Date.now();
         const contactName = `Timeline Test ${timestamp}`;
 
@@ -38,12 +37,8 @@ const { createAuthSession } = require('./auth-helper');
         await page.fill('#contact-phone', '555-TIMELINE');
         await page.fill('#contact-company', 'Timeline Corp');
         await page.fill('#contact-notes', 'Test contact for timeline feature');
-        await page.press('#contact-name', 'Enter');
-        // Wait for modal to close and contact to appear
-        await page.waitForSelector('#modal-overlay.hidden', { timeout: 5000 }).catch(async () => {
-            // If hidden class doesn't appear, wait for modal to be gone
-            await page.waitForTimeout(2000);
-        });
+        await page.click('#contact-form button[type="submit"]');
+        await page.waitForTimeout(2000);
 
         // Verify contact was created
         const contactFound = await page.locator('.contact-card').filter({ hasText: contactName }).first().isVisible().catch(() => false);
@@ -57,37 +52,24 @@ const { createAuthSession } = require('./auth-helper');
 
         // ===== Test 2: Create activities linked to this contact =====
         console.log('\n=== Test 2: Create activities for contact ===');
-        await page.click('nav a[href="#activities"], nav a[data-page="activities"]');
+        await page.click('.nav-item[data-page="activities"]');
         await page.waitForTimeout(1000);
 
         const activityCountBefore = await page.locator('.timeline-item').count().catch(() => 0);
 
-        // Create activity 1
-        await page.click('#btn-add-activity');
-        await page.waitForSelector('#activity-form', { timeout: 5000 });
-        await page.selectOption('#activity-type', 'call');
-        await page.fill('#activity-description', 'Timeline test call activity 1');
-        await page.selectOption('#activity-contact', contactName);
-        await page.press('#activity-description', 'Enter');
-        await page.waitForTimeout(1500);
-
-        // Create activity 2
-        await page.click('#btn-add-activity');
-        await page.waitForSelector('#activity-form', { timeout: 5000 });
-        await page.selectOption('#activity-type', 'meeting');
-        await page.fill('#activity-description', 'Timeline test meeting activity 2');
-        await page.selectOption('#activity-contact', contactName);
-        await page.press('#activity-description', 'Enter');
-        await page.waitForTimeout(1500);
-
-        // Create activity 3
-        await page.click('#btn-add-activity');
-        await page.waitForSelector('#activity-form', { timeout: 5000 });
-        await page.selectOption('#activity-type', 'email');
-        await page.fill('#activity-description', 'Timeline test email activity 3');
-        await page.selectOption('#activity-contact', contactName);
-        await page.press('#activity-description', 'Enter');
-        await page.waitForTimeout(1500);
+        for (const [type, desc] of [
+            ['call', 'Timeline test call activity 1'],
+            ['meeting', 'Timeline test meeting activity 2'],
+            ['email', 'Timeline test email activity 3'],
+        ]) {
+            await page.click('#btn-add-activity');
+            await page.waitForSelector('#activity-form', { timeout: 5000 });
+            await page.selectOption('#activity-type', type);
+            await page.fill('#activity-description', desc);
+            await page.selectOption('#activity-contact', contactName);
+            await page.click('#activity-form button[type="submit"]');
+            await page.waitForTimeout(1000);
+        }
 
         const activityCountAfter = await page.locator('.timeline-item').count().catch(() => 0);
         if (activityCountAfter >= activityCountBefore + 3) {
@@ -100,7 +82,7 @@ const { createAuthSession } = require('./auth-helper');
 
         // ===== Test 3: Activity count badge on contact card =====
         console.log('\n=== Test 3: Activity count badge on contact card ===');
-        await page.click('nav a[href="#contacts"], nav a[data-page="contacts"]');
+        await page.click('.nav-item[data-page="contacts"]');
         await page.waitForTimeout(2000);
 
         const contactCard = page.locator('.contact-card').filter({ hasText: contactName }).first();
@@ -134,8 +116,8 @@ const { createAuthSession } = require('./auth-helper');
         // ===== Test 5: Contact detail shows info fields =====
         console.log('\n=== Test 5: Contact detail shows info fields ===');
         const detailViewVisible = await page.locator('.contact-detail-view').isVisible().catch(() => false);
-        const emailVisible = await page.locator('.field-value:has-text("timeline")').isVisible().catch(() => false);
-        const companyVisible = await page.locator('.field-value:has-text("Timeline Corp")').isVisible().catch(() => false);
+        const emailVisible = await page.locator('.detail-field:has-text("timeline")').isVisible().catch(() => false);
+        const companyVisible = await page.locator('.detail-field:has-text("Timeline Corp")').isVisible().catch(() => false);
 
         if (detailViewVisible && emailVisible && companyVisible) {
             console.log('PASS: Test 5 - Contact detail fields visible (email, company)');
@@ -239,7 +221,7 @@ const { createAuthSession } = require('./auth-helper');
         }
 
         // Screenshot for visual verification
-        await page.screenshot({ path: 'docs/testing/screenshots/test-contact-timeline.png', fullPage: false });
+        await page.screenshot({ path: '/home/aicrm/workspace/AICRM/docs/testing/screenshots/test-contact-timeline.png', fullPage: false });
         console.log('\nScreenshot saved: docs/testing/screenshots/test-contact-timeline.png');
     } catch (err) {
         console.error('Test error:', err.message);

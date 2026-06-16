@@ -30,6 +30,9 @@ docs/
     ├── test-quick-activity-logging.js  # Quick Activity Logging from Contact Cards tests
     ├── test-activity-reminders.js      # Activity Reminders and Notifications tests
     ├── test-pdf-export.js             # Dashboard PDF Report Export tests
+    ├── test-activity-trends.js        # Activity Trend Charts tests
+    ├── test-calendar-view.js          # Activity Calendar View tests
+    ├── test-vcard-import.js           # vCard Import tests
     └── test-*.js                  # Feature-specific tests
 ```
 

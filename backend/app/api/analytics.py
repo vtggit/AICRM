@@ -1,13 +1,14 @@
-"""Analytics API routes for lead conversion funnel and pipeline metrics."""
+"""Analytics API routes for lead conversion funnel, pipeline metrics, and activity trends."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.auth.authorization import ROLE_ADMIN
 from app.auth.dependencies import require_authenticated_user
 from app.auth.models import AuthUser
+from app.db.connection import get_cursor
 from app.repositories.leads_postgres_repository import LeadsPostgresRepository
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
@@ -145,5 +146,82 @@ def get_funnel_analytics(
         "total_pipeline_value": round(total_pipeline_value, 2),
         "won_value": round(won_value, 2),
         "funnel_steps": funnel_steps,
+        "generated_at": now.isoformat(),
+    }
+
+
+# Allowed query parameter values
+_VALID_RANGES: dict[str, int] = {"7d": 7, "30d": 30, "90d": 90}
+_VALID_GROUPS: set[str] = {"day", "week"}
+_ACTIVITY_TYPES: set[str] = {"call", "email", "meeting", "note", "task"}
+
+
+@router.get("/activity-trends")
+def get_activity_trends(
+    _user: AuthUser = Depends(require_authenticated_user),
+    range: str = Query(default="30d", alias="range"),
+    group: str = Query(default="day"),
+):
+    """Return time-bucketed activity volume trends.
+
+    Groups activities by day or week within the requested date range and
+    returns per-bucket totals broken down by activity type.
+    """
+    days = _VALID_RANGES.get(range, 30)
+    if group not in _VALID_GROUPS:
+        group = "day"
+
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=days)
+
+    # Build date bucket expression
+    if group == "week":
+        date_expr = "DATE_TRUNC('week', occurred_at)::date"
+    else:
+        date_expr = "DATE_TRUNC('day', occurred_at)::date"
+
+    # Query: total count per bucket + count per type
+    query = f"""
+        SELECT
+            {date_expr} AS bucket_date,
+            COUNT(*) AS total,
+            COALESCE(SUM(CASE WHEN type = 'call' THEN 1 ELSE 0 END), 0) AS call,
+            COALESCE(SUM(CASE WHEN type = 'email' THEN 1 ELSE 0 END), 0) AS email,
+            COALESCE(SUM(CASE WHEN type = 'meeting' THEN 1 ELSE 0 END), 0) AS meeting,
+            COALESCE(SUM(CASE WHEN type = 'note' THEN 1 ELSE 0 END), 0) AS note,
+            COALESCE(SUM(CASE WHEN type = 'task' THEN 1 ELSE 0 END), 0) AS task
+        FROM activities
+        WHERE occurred_at >= %s AND occurred_at <= %s
+        GROUP BY bucket_date
+        ORDER BY bucket_date ASC
+    """
+
+    with get_cursor() as cur:
+        cur.execute(query, (start, now))
+        rows = cur.fetchall()
+
+    buckets = []
+    for row in rows:
+        d = dict(row)
+        d["bucket_date"] = d["bucket_date"].isoformat()
+        buckets.append(d)
+
+    # Find peak bucket
+    peak_bucket = None
+    peak_count = 0
+    for b in buckets:
+        if b["total"] > peak_count:
+            peak_count = b["total"]
+            peak_bucket = b["bucket_date"]
+
+    return {
+        "range": range,
+        "group": group,
+        "start_date": start.isoformat(),
+        "end_date": now.isoformat(),
+        "total_activities": sum(b["total"] for b in buckets),
+        "buckets": buckets,
+        "peak_bucket": peak_bucket,
+        "peak_count": peak_count,
         "generated_at": now.isoformat(),
     }

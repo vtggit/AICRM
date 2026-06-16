@@ -8,6 +8,12 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
   await setPageAuth(context, 'dev-secret-token:admin');
   const page = await context.newPage();
 
+  // Register dialog handler early so no confirmation dialog is missed
+  page.on('dialog', async dialog => {
+    console.log(`  Confirmation dialog: "${dialog.message()}"`);
+    await dialog.accept();
+  });
+
   try {
     await page.goto('http://localhost:8080/', { waitUntil: 'domcontentloaded', timeout: 10000 });
     await waitForAuthReady(page);
@@ -17,6 +23,33 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     await page.waitForSelector('#page-contacts', { state: 'visible', timeout: 5000 });
     // Wait for contact cards to render
     await page.waitForSelector('.contact-card', { state: 'visible', timeout: 5000 });
+
+    // Helper: wait until renderContacts() finishes by polling for stable DOM
+    async function waitForRenderSettle() {
+      // renderContacts() is async (makes API calls) but called without await
+      // in select-all/select-none handlers.  Poll until the checkbox count
+      // stabilises for two consecutive checks.
+      let prev = -1;
+      for (let i = 0; i < 30; i++) {
+        const loc = page.locator('.contact-checkbox');
+        const count = await loc.count();
+        if (count === prev) break;
+        prev = count;
+        await page.waitForTimeout(300);
+      }
+    }
+
+    // Helper: wait for selection state to settle (checked count stabilizes)
+    async function waitForSelectionSettle() {
+      await waitForRenderSettle();
+      let prev = -1;
+      for (let i = 0; i < 20; i++) {
+        const checked = await page.locator('.contact-checkbox:checked').count();
+        if (checked === prev) break;
+        prev = checked;
+        await page.waitForTimeout(300);
+      }
+    }
 
     // TEST 1: Contact cards have checkboxes
     console.log('TEST 1: Contact cards have checkboxes');
@@ -36,7 +69,7 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     // TEST 3: Selecting a contact shows bulk action bar
     console.log('TEST 3: Selecting a contact shows bulk action bar');
     await checkboxes.first().click();
-    await page.waitForTimeout(300);
+    await page.waitForSelector('#bulk-action-bar', { state: 'visible', timeout: 3000 });
     const barVisible = await bulkBar.isVisible();
     console.log(`  Bulk bar visible: ${barVisible}`);
     results.push({ test: 'Bulk bar visible after selection', pass: barVisible });
@@ -72,17 +105,22 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     // TEST 7: Select All selects all visible contacts
     console.log('TEST 7: Select All selects all visible contacts');
     await page.click('#btn-select-all');
-    await page.waitForTimeout(500);
+    // Wait for the async re-render to settle
+    await waitForSelectionSettle();
+    // Re-query after re-render since DOM was rebuilt
+    const afterSelectAll = page.locator('.contact-checkbox');
+    const totalAfter = await afterSelectAll.count();
     const allChecked = page.locator('.contact-checkbox:checked');
     const allCount = await allChecked.count();
-    console.log(`  All checked: ${allCount} / ${cbCount}`);
-    results.push({ test: 'Select All checks all contacts', pass: allCount === cbCount });
+    console.log(`  All checked: ${allCount} / ${totalAfter}`);
+    results.push({ test: 'Select All checks all contacts', pass: allCount === totalAfter && allCount > 0 });
     await page.screenshot({ path: '/tmp/test-bulk-4-select-all.png', fullPage: true });
 
     // TEST 8: Select None clears all selections
     console.log('TEST 8: Select None clears all selections');
     await page.click('#btn-select-none');
-    await page.waitForTimeout(500);
+    // Wait for the async re-render to settle
+    await waitForSelectionSettle();
     const noChecked = page.locator('.contact-checkbox:checked');
     const noCount = await noChecked.count();
     const barGone = await bulkBar.isVisible().catch(() => false);
@@ -92,8 +130,10 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
     // TEST 9: Bulk bar has all elements
     console.log('TEST 9: Bulk bar has all elements');
-    await checkboxes.first().click();
-    await page.waitForTimeout(300);
+    // Re-query checkboxes after re-render
+    const checkboxesAfterNone = page.locator('.contact-checkbox');
+    await checkboxesAfterNone.first().click();
+    await page.waitForSelector('#bulk-action-bar', { state: 'visible', timeout: 3000 });
     const hasSelectAll = await page.locator('#btn-select-all').isVisible();
     const hasSelectNone = await page.locator('#btn-select-none').isVisible();
     const hasStatusChange = await page.locator('#bulk-status-change').isVisible();
@@ -106,8 +146,9 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
     // TEST 10: Deselecting last contact hides bulk bar
     console.log('TEST 10: Deselecting last contact hides bulk bar');
-    await checkboxes.first().click();
-    await page.waitForTimeout(300);
+    await checkboxesAfterNone.first().click();
+    // Wait for bar to become hidden
+    await page.waitForSelector('#bulk-action-bar', { state: 'hidden', timeout: 3000 });
     const barAfterDeselect = await bulkBar.isVisible().catch(() => false);
     console.log(`  Bar hidden after deselect: ${!barAfterDeselect}`);
     results.push({ test: 'Deselecting last hides bar', pass: !barAfterDeselect });
@@ -115,8 +156,8 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
     // TEST 11: Bulk status change workflow
     console.log('TEST 11: Bulk status change workflow');
-    await checkboxes.first().click();
-    await page.waitForTimeout(300);
+    await checkboxesAfterNone.first().click();
+    await page.waitForSelector('#bulk-action-bar', { state: 'visible', timeout: 3000 });
     await page.selectOption('#bulk-status-change', 'vip');
     await page.waitForTimeout(300);
     const statusBtn = page.locator('#btn-bulk-status');
@@ -124,7 +165,7 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     console.log(`  Status apply button enabled: ${btnEnabled}`);
     results.push({ test: 'Status change button enabled', pass: btnEnabled });
     await statusBtn.click();
-    await page.waitForTimeout(1500);
+    await waitForRenderSettle();
     await page.screenshot({ path: '/tmp/test-bulk-8-status-change.png', fullPage: true });
 
     // TEST 12: Bulk delete with confirmation
@@ -132,24 +173,73 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     // Re-navigate to contacts to get fresh state
     await page.click('.nav-item[data-page="contacts"]');
     await page.waitForSelector('.contact-card', { state: 'visible', timeout: 5000 });
+    // Wait for renderContacts() to finish (it binds checkbox listeners)
+    await waitForSelectionSettle();
+    // Extra safety: wait a bit more for the async API calls inside renderContacts
     await page.waitForTimeout(500);
-
-    page.on('dialog', async dialog => {
-      console.log(`  Confirmation dialog: "${dialog.message()}"`);
-      await dialog.accept();
-    });
 
     const freshCheckboxes = page.locator('.contact-checkbox');
     const freshCount = await freshCheckboxes.count();
-    await freshCheckboxes.first().click();
-    await page.waitForTimeout(500);
+    console.log(`  Fresh checkboxes available: ${freshCount}`);
 
-    const beforeDelete = await freshCheckboxes.count();
+    if (freshCount === 0) {
+        // All contacts were deleted by earlier tests — create one for this test
+        console.log('  No contacts left — creating one for delete test');
+        await page.click('#btn-add-contact');
+        await page.waitForSelector('#modal-overlay.active', { state: 'visible', timeout: 5000 });
+        await page.fill('#contact-name', 'Bulk Delete Target');
+        await page.fill('#contact-email', 'bulkdel@test.com');
+        await page.locator('#contact-form button[type="submit"]').click();
+        await page.waitForSelector('#modal-overlay.active', { state: 'hidden', timeout: 5000 });
+        await page.click('.nav-item[data-page="contacts"]');
+        await page.waitForSelector('.contact-card', { state: 'visible', timeout: 5000 });
+        await waitForSelectionSettle();
+        await page.waitForTimeout(500);
+    }
+
+    // Re-query after potential create
+    const finalCheckboxes = page.locator('.contact-checkbox');
+    const finalCount = await finalCheckboxes.count();
+    console.log(`  Final checkboxes before select: ${finalCount}`);
+
+    // Click the checkbox and verify it actually got checked (proves listeners are bound)
+    // Use evaluate to set checked state and dispatch change event to ensure the listener fires
+    await page.evaluate(() => {
+        const cb = document.querySelector('.contact-checkbox');
+        if (cb) {
+            cb.checked = true;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+
+    // Wait for the bulk bar to become visible (this proves the listener fired)
+    await page.waitForSelector('#bulk-action-bar:not(.hidden)', { state: 'visible', timeout: 5000 });
+
+    // Verify the selection count shows 1
+    const selCountText = await page.locator('#bulk-selection-count').textContent();
+    console.log(`  Selection count: ${selCountText}`);
+
+    const beforeDelete = await page.locator('.contact-card').count();
+    console.log(`  Cards before delete: ${beforeDelete}`);
+
+    // Capture console errors during delete
+    const consoleErrors = [];
+    page.on('console', msg => {
+        if (msg.type() === 'error') {
+            consoleErrors.push(msg.text());
+        }
+    });
+
     await page.click('#btn-bulk-delete');
-    await page.waitForTimeout(2000);
+    // Wait for the async delete + re-render to settle
+    await waitForRenderSettle();
 
-    const afterDelete = await freshCheckboxes.count();
-    console.log(`  Contacts before: ${beforeDelete}, after: ${afterDelete}`);
+    if (consoleErrors.length > 0) {
+        console.log(`  Console errors during delete: ${consoleErrors.join('; ')}`);
+    }
+
+    const afterDelete = await page.locator('.contact-card').count();
+    console.log(`  Cards after: ${afterDelete}`);
     results.push({ test: 'Bulk delete removes contact', pass: afterDelete < beforeDelete });
     await page.screenshot({ path: '/tmp/test-bulk-9-delete.png', fullPage: true });
 

@@ -1,0 +1,26 @@
+SETUP: Navigate to Leads
+TEST 1: Add high-scoring lead
+  Score badge text: "95 Critical"
+TEST 2: Add low-scoring lead
+  Cold score badges found: 0
+TEST 3: Filter leads by score tier
+  Critical leads after filter: 1
+  Cold leads after filter: 1
+TEST 4: Sort leads by score
+  Lead cards visible: 2
+  First lead after score sort: "Enterprise Corp"
+TEST 5: Combined stage + score filter
+  Combined filter results: 1
+TEST 6: Score badge tooltip
+  Score badge tooltip: "Score: 90/100"
+
+=== LEAD SCORING TEST RESULTS ===
+  ✅ PASS: High-scoring lead shows Critical tier
+  ❌ FAIL: Low-scoring lead shows Cold tier
+  ✅ PASS: Score filter (Critical) works
+  ✅ PASS: Score filter (Cold) works
+  ✅ PASS: Sort by score (highest first) works
+  ✅ PASS: Combined stage + score filter works
+  ✅ PASS: Score badge has tooltip with score value
+
+Total: 7 | Passed: 6 | Failed: 1

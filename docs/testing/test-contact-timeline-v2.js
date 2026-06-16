@@ -29,8 +29,10 @@ const { createAuthSession } = require('./auth-helper');
         await page.fill('#contact-phone', '555-TIMELINE');
         await page.fill('#contact-company', 'Timeline Corp');
         await page.fill('#contact-notes', 'Test contact for timeline feature');
-        await page.click('#contact-form button.btn-primary');
-        await page.waitForTimeout(2000);
+        await page.click('#contact-form button[type="submit"]');
+        // Wait for the API response and modal to close
+        await page.waitForSelector('#modal-overlay.active', { state: 'hidden', timeout: 8000 });
+        await page.waitForTimeout(1000);
 
         const contactCard = page.locator('.contact-card').filter({ hasText: contactName }).first();
         const contactFound = await contactCard.isVisible().catch(() => false);
@@ -54,7 +56,7 @@ const { createAuthSession } = require('./auth-helper');
             await page.selectOption('#activity-type', type);
             await page.fill('#activity-description', desc);
             await page.selectOption('#activity-contact', contactName);
-            await page.click('#activity-form button.btn-primary');
+            await page.click('#activity-form button[type="submit"]');
             await page.waitForTimeout(1000);
         }
 
@@ -189,12 +191,12 @@ const { createAuthSession } = require('./auth-helper');
             failed++;
         }
 
-        await page.screenshot({ path: 'docs/testing/screenshots/test-contact-timeline.png', fullPage: false });
+        await page.screenshot({ path: '/home/aicrm/workspace/AICRM/docs/testing/screenshots/test-contact-timeline.png', fullPage: false });
         console.log('\nScreenshot: docs/testing/screenshots/test-contact-timeline.png');
 
     } catch (err) {
         console.error('Test error:', err.message);
-        await page.screenshot({ path: 'docs/testing/screenshots/test-contact-timeline-error.png', fullPage: false });
+        await page.screenshot({ path: '/home/aicrm/workspace/AICRM/docs/testing/screenshots/test-contact-timeline-error.png', fullPage: false });
     }
 
     console.log(`\n========================================`);

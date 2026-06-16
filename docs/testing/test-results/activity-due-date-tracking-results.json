@@ -22,7 +22,7 @@
   {
     "test": "Overdue badge visible on nav",
     "status": "PASS",
-    "detail": "badge=1"
+    "detail": "badge=7"
   },
   {
     "test": "Future due date displayed without warning",
@@ -46,28 +46,28 @@
   },
   {
     "test": "Overdue badge hidden after completing overdue",
-    "status": "PASS",
-    "detail": ""
+    "status": "FAIL",
+    "detail": "badge=8 (may have pre-existing overdue activities)"
   },
   {
     "test": "Overdue filter shows only overdue activities",
     "status": "PASS",
-    "detail": "count=0 (expected 0 since we completed it)"
+    "detail": "count=7 (includes pre-existing overdue)"
   },
   {
     "test": "Completed filter shows only completed activities",
     "status": "PASS",
-    "detail": "count=1"
+    "detail": "count=8 (includes pre-existing completed)"
   },
   {
     "test": "Active filter shows only active activities",
     "status": "PASS",
-    "detail": "count=1"
+    "detail": "count=44 (includes pre-existing active)"
   },
   {
     "test": "Dashboard shows overdue count",
     "status": "PASS",
-    "detail": "stat=0"
+    "detail": "stat=7"
   },
   {
     "test": "No console errors",

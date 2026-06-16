@@ -1601,3 +1601,136 @@
 - **Test infrastructure**: Playwright + Chromium, 19+ test files in `docs/testing/`.
 - **Admin auth**: Use `dev-secret-token:admin` bearer token for admin-level access in development.
 
+
+---
+
+## Session 0.2.1 - 2026-05-16 21:28
+**Agent Role:** Application Development Agent (Session 0.2.1)
+**Objective:** Fix Activity Trends test failures, update version, and improve project foundation
+
+### Tasks Completed
+
+#### 1. Project Specification Review
+- Read `docs/README.md` and `docs/product/core-requirements.md`
+- Project at version 0.2.0 with 20+ features implemented
+- Backend: FastAPI + PostgreSQL, Frontend: Vanilla SPA served via nginx
+- Docker Compose stack: frontend (nginx), backend (FastAPI), database (PostgreSQL)
+
+#### 2. Known Issues Review
+- Reviewed `docs/operations/known-issues.md` — no blocking issues found
+
+#### 3. Future Enhancements Added
+- Added **Item 85: Contact Communication Timeline View** — Unified chronological timeline showing all contact interactions (calls, emails, meetings, notes, tasks, stage changes, tag updates) with AI-powered conversation summary and next-step suggestions
+- Added **Item 86: Automated Lead Follow-Up Scheduler** — Intelligent follow-up scheduling with configurable cadence templates, AI-optimized timing, auto-activity creation, missed follow-up recovery, and follow-up analytics
+
+#### 4. Verification Tests (Activity Trends Feature)
+- Ran verification tests on Activity Trends feature (Item 83)
+- **Discovered and fixed 2 test failures:**
+  - **Auth Context Bug:** Test 4 was using `page.request.get()` which doesn't share the page's sessionStorage auth token. Fixed by using `page.evaluate(async () => ApiClient.get(...))` which runs in the page context where `ApiClient._headers()` automatically injects the `Authorization: Bearer` header from `Auth.getAuthorizationHeader()`.
+  - **Wrong Data Shape Assertion:** Test 4 was checking for `result.data.trends` but the backend returns `result.data.buckets`. Fixed assertion to check `Array.isArray(result.data.buckets)` and `result.data.buckets.length > 0`.
+- **Result: 8/8 tests passing** ✅
+  - T1: Dashboard loads with Activity Trends card ✅
+  - T2: Range selector with options ✅
+  - T3: Grouping selector with options ✅
+  - T4: API endpoint returns data (fixed auth + assertion) ✅
+  - T5: Chart grid renders ✅
+  - T6: Activity type legend renders ✅
+  - T7: Range change triggers data refresh ✅
+  - T8: Dashboard screenshot ✅
+
+#### 5. Version Update
+- Updated `VERSION` file from `0.2.0` to `0.2.1`
+
+#### 6. Documentation Updates
+- Updated `docs/README.md` — added Activity Trend Charts to Implemented features list
+- Updated `docs/DOCUMENTATION_STANDARD.md` — added `test-activity-trends.js` to test file listing
+- Session tracking updated
+
+### Key Technical Learnings
+- **Auth mechanism:** Frontend uses sessionStorage-based token auth. `ApiClient._headers()` auto-injects `Authorization: Bearer` header via `Auth.getAuthorizationHeader()`. Playwright's `page.request.get()` doesn't share sessionStorage — must use `page.evaluate()` to run API calls in page context.
+- **Activity Trends API:** Backend returns `{ buckets: [{ bucket_date, total, call, email, meeting, note, task }], total_activities, peak_bucket, peak_count }` — not a flat array.
+- **Auth helper:** `setPageAuth(context, token)` injects token into sessionStorage via `context.addInitScript()` BEFORE page load, so `Auth.init()` picks it up automatically.
+
+### Current State
+- Activity Trends feature fully working and tested (8/8 tests passing)
+- Version: v0.2.1
+- No known issues or regressions
+
+### Next Steps for Future Agents
+1. **Item 68: Smart Contact Notes with AI Summarization** — Multi-note system with rich text, pinning, search, and AI summarization
+2. **Item 75: Contact Communication Timeline View** — Unified chronological timeline for all contact interactions
+3. **Item 76: Automated Lead Follow-Up Scheduler** — Intelligent follow-up scheduling with AI-optimized timing
+4. **Item 84: Custom Dashboard Widgets and Layout Builder** — Personalizable dashboard with drag-and-drop widget management
+5. Run verification tests before any new feature implementation
+
+### Critical Context
+- **Activity Trends**: Implemented via `.activity-trend-overview`, `.trend-chart-grid`, `.trend-bar-group` CSS. Controls via `#trend-range-select` and `#trend-grouping-select`. Data fetched via `ApiClient.getActivityTrendsFromApi(range, group)`. Rendered by `renderActivityTrends()` in app.js.
+- **Docker rebuild**: Use `docker compose up --build frontend -d` to rebuild after frontend changes.
+- **Version is now 0.2.1** — stored in `VERSION` file.
+- **Backend runs on port 8000**, frontend on port 8080 via Docker Compose.
+- **Test infrastructure**: Playwright + Chromium, 20+ test files in `docs/testing/`.
+- **Admin auth**: Use `dev-secret-token:admin` bearer token for admin-level access in development.
+
+## Session 0.2.3 - 2026-05-19 00:00
+**Agent Role:** Application Development Agent (Session 0.2.3)
+**Objective:** Continuously improve the foundation for all future coding agents
+
+### Tasks Completed
+
+#### 1. Project Specification Review
+- Read `docs/README.md` and `docs/product/core-requirements.md`
+- Reviewed current project state: v0.2.2, 17 implemented features
+
+#### 2. Known Issues Review
+- `docs/operations/known-issues.md` was empty - no existing issues
+
+#### 3. Future Enhancements Added
+- Added **Item 89: Contact Social Media Links and Profiles** — Store and manage social media profile links (LinkedIn, Twitter, GitHub, Website) on contact records
+- Added **Item 90: Notes Templates and Standardized Documentation** — Reusable note templates with variable substitution for common interaction scenarios
+
+#### 4. Verification Tests (Core Features)
+- Ran `docs/testing/test-verification-core.js` — **10/10 API tests passed**
+- Ran `docs/testing/verify-session-start.js` — **9/9 browser tests passed**
+- No regressions detected
+
+#### 5. Implemented vCard Import (Item 19)
+- **Result: 6/6 tests passed**
+  - Import vCard button exists ✅
+  - Contacts imported from .vcf file ✅
+  - vCard 3.0 format (John Doe, Jane Smith) ✅
+  - vCard 2.1 format (Bob Wilson) ✅
+  - Proper field mapping (name, email, phone, company, notes) ✅
+  - Screenshot captured ✅
+
+**Files Modified:**
+- `app/index.html` — Added Import vCard button, hidden vCard file input
+- `app/js/app.js` — Added `importContactsVCard()`, `parseVCard()`, `_extractVCardName()` methods; wired event listeners
+- `docs/roadmap/future-enhancements.md` — Marked Item 19 as implemented, added Items 89 and 90
+- `docs/product/core-requirements.md` — Added vCard Import as feature #11, renumbered remaining items
+- `docs/DOCUMENTATION_STANDARD.md` — Added test-vcard-import.js to test file listing
+- `docs/README.md` — Added vCard Import to implemented features list
+- `VERSION` — Updated from 0.2.2 to 0.2.3
+- `docs/testing/test-vcard-import.js` — New Playwright E2E test suite (6 tests)
+
+### Issues Encountered
+- **const reassignment bug**: Initial implementation had `const notes` that was reassigned, causing "Assignment to constant variable" error. Fixed by changing to `let notes`.
+- **Docker container rebuild required**: Frontend changes require `docker compose build frontend && docker compose up -d frontend` to take effect.
+
+### Current State
+- vCard Import feature fully working and tested (6/6 tests passing)
+- Version: v0.2.3
+- No known issues or regressions
+
+### Next Steps for Future Agents
+1. **Item 4: Calendar Integration** — Full calendar integration with external calendar services
+2. **Item 5: Advanced Reporting Dashboard** — Custom reports with date ranges, filtering, and export
+3. **Item 22: Dashboard Widget Customization** — Personalizable dashboard with drag-and-drop widgets
+4. Run verification tests before any new feature implementation
+
+### Critical Context
+- **vCard Import**: Implemented via `importContactsVCard()`, `parseVCard()`, `_extractVCardName()` in app.js. Button `#btn-import-vcard` triggers hidden file input `#vcard-file-input`. Supports vCard 2.1, 3.0, 4.0 formats.
+- **Docker rebuild**: Use `docker compose build frontend && docker compose up -d frontend` to rebuild after frontend changes.
+- **Version is now 0.2.3** — stored in `VERSION` file.
+- **Backend runs on port 9000**, frontend on port 8080 via Docker Compose.
+- **Test infrastructure**: Playwright + Chromium, 21+ test files in `docs/testing/`.
+- **Admin auth**: Use `dev-secret-token:admin` bearer token for admin-level access in development.

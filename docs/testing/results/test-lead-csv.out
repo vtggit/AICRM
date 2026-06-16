@@ -1,0 +1,31 @@
+SETUP: Creating test leads for CSV export...
+  Created 3 test leads
+TEST 1: Verify Export/Import buttons exist
+  Export button visible: true, Import button visible: true
+TEST 2: Export CSV
+  First line raw: [Name,Company,Email,Phone,Value,Stage,Source,Notes]
+  Downloaded: leads_2026-05-18.csv
+  Has header: true, Has test data: true
+TEST 3: Import CSV
+  Notification: "Imported 3 leads."
+TEST 4: Verify imported leads visible
+  Total lead cards: 3
+TEST 5: Verify specific imported data
+  Enterprise Corp: true, Startup Inc: true, Global Tech: true
+TEST 6: Dashboard stats updated
+  Dashboard total leads: 3
+TEST 7: Import with invalid stage defaults to new
+  Notification: "Imported 1 leads."
+TEST 8: No console errors
+
+=== LEAD CSV IMPORT/EXPORT TEST RESULTS ===
+  ✅ PASS: Export/Import buttons visible
+  ✅ PASS: CSV export downloads correctly
+  ✅ PASS: CSV import works with notification
+  ✅ PASS: Imported leads visible
+  ✅ PASS: Imported lead data correct
+  ✅ PASS: Dashboard stats reflect imported leads
+  ✅ PASS: Invalid stage defaults to new
+  ✅ PASS: No console errors
+
+Total: 8 | Passed: 8 | Failed: 0
