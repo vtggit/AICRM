@@ -1,0 +1,24 @@
+TEST 1: Recommendation card exists on dashboard
+TEST 2: Empty state shows when no active leads
+TEST 3: Create test leads for recommendations
+TEST 4: Recommendation items have correct structure
+TEST 5: Urgency indicators work correctly
+TEST 6: Recommendation values display correctly
+TEST 7: Score badges appear on recommendations
+TEST 8: Clicking recommendation navigates to leads
+TEST 9: No console errors
+
+Screenshot saved to test-results/ai-recommendations.png
+
+=== AI-POWERED LEAD RECOMMENDATIONS TEST RESULTS ===
+  ✅ PASS: Recommendation card exists - #recommended-actions is visible
+  ✅ PASS: Empty state shown - Text: "No recommendations yet"
+  ✅ PASS: Recommendations appear for active leads - Found 3 recommendations
+  ✅ PASS: Recommendation structure correct - Has header, body, name, and suggestion
+  ✅ PASS: Urgency indicators present - Found 2 urgent recommendations (new leads may not be stale)
+  ✅ PASS: Values display correctly - First value: $500,000
+  ✅ PASS: Score badges on recommendations - 3 badges found
+  ✅ PASS: Navigate to leads on click - Clicked recommendation name -> leads page visible
+  ✅ PASS: No console errors - Zero errors
+
+Total: 9 | Passed: 9 | Failed: 0

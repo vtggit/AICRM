@@ -1,0 +1,53 @@
+=======================================================
+  AICRM Verification Test Session
+=======================================================
+
+Step 1: Navigate to dashboard
+
+Step 2: Wait for auth ready
+  [PASS] Auth initialized - user: {"sub":"dev-admin-1","username":"admin","email":"admin@aicrm.local","roles":["admin","user"],"groups":[],"raw_claims":{"
+Step 3: Wait for dashboard content
+  [PASS] Dashboard page visible - title=Dashboard
+Step 4: Dashboard screenshot
+  [PASS] Dashboard screenshot saved
+Step 5: Verify stat cards
+  [PASS] Stat cards present - found 7 stat-card elements
+  [PASS] Stat cards have content - 7 cards with text
+Step 6: Navigate to Contacts
+Step 7: Contacts screenshot
+  [PASS] Contacts screenshot saved
+Step 8: Verify contact cards
+  [PASS] Contact cards visible - found 8 contact-card elements
+  [PASS] Contacts page title - title=Contacts
+
+Step 9: Visual issue checks
+  [PASS] No white-on-white text
+  [PASS] No garbled characters
+  [PASS] No layout overflow
+
+Step 10: Console errors
+  [PASS] No console errors
+  [PASS] No console warnings
+  [PASS] No unhandled page errors
+
+=======================================================
+  RESULTS SUMMARY
+=======================================================
+  PASS  Auth initialized - user: {"sub":"dev-admin-1","username":"admin","email":"admin@aicrm.local","roles":["admin","user"],"groups":[],"raw_claims":{"
+  PASS  Dashboard page visible - title=Dashboard
+  PASS  Dashboard screenshot saved
+  PASS  Stat cards present - found 7 stat-card elements
+  PASS  Stat cards have content - 7 cards with text
+  PASS  Contacts screenshot saved
+  PASS  Contact cards visible - found 8 contact-card elements
+  PASS  Contacts page title - title=Contacts
+  PASS  No white-on-white text
+  PASS  No garbled characters
+  PASS  No layout overflow
+  PASS  No console errors
+  PASS  No console warnings
+  PASS  No unhandled page errors
+
+  Total: 14  |  Passed: 14  |  Failed: 0
+=======================================================
+

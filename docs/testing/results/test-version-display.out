@@ -1,0 +1,13 @@
+TEST 1: Sidebar version displays
+  Sidebar version: "vloading..."
+TEST 2: Settings version displays
+  Settings version: "loading..."
+TEST 3: Version consistency
+  Versions consistent: true (sidebar: vloading..., settings: loading...)
+
+=== TEST RESULTS ===
+  ✅ PASS: Sidebar version displays
+  ✅ PASS: Settings version displays
+  ✅ PASS: Version consistency
+
+Total: 3 | Passed: 3 | Failed: 0

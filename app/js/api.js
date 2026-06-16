@@ -391,7 +391,10 @@ const ApiClient = {
 
     async bulkDeleteContactsInApi(ids) {
         const result = await this.post('/contacts/bulk-delete', { ids });
-        return this.assertEntity(result);
+        if (!result.ok) {
+            throw ApiError.fromResult(result);
+        }
+        return result.data;
     },
 
     async bulkUpdateContactsStatusInApi(ids, status) {
@@ -405,7 +408,7 @@ const ApiClient = {
      */
     async findDuplicateContactsInApi() {
         const result = await this.get('/contacts/duplicates');
-        return this.assertEntity(result);
+        return this.assertObject(result);
     },
 
     // === Tags ===
@@ -657,6 +660,14 @@ const ApiClient = {
         return this.assertObject(result);
     },
 
+    /**
+     * Reset all settings to defaults via the backend API.
+     */
+    async resetSettingsInApi() {
+        const result = await this.delete('/settings');
+        return this.assertObject(result);
+    },
+
     // === Analytics ===
 
     /**
@@ -667,5 +678,122 @@ const ApiClient = {
     async getFunnelAnalyticsFromApi() {
         const result = await this.get('/analytics/funnel');
         return this.assertObject(result);
+    },
+
+    /**
+     * Fetch activity trend data from the backend API.
+     * @param {string} range - '7d', '30d', or '90d'
+     * @param {string} group - 'day' or 'week'
+     */
+    async getActivityTrendsFromApi(range = '30d', group = 'day') {
+        const result = await this.get(`/analytics/activity-trends?range=${encodeURIComponent(range)}&group=${encodeURIComponent(group)}`);
+        return this.assertObject(result);
+    },
+
+    // === Deal Outcomes (Win/Loss Reasons) ===
+
+    /**
+     * Fetch all deal outcomes from the backend API.
+     */
+    async getDealOutcomesFromApi() {
+        const result = await this.get('/deal-outcomes');
+        return this.assertList(result);
+    },
+
+    /**
+     * Create a deal outcome via the backend API.
+     */
+    async createDealOutcomeInApi(payload) {
+        const result = await this.post('/deal-outcomes', payload);
+        return this.assertObject(result);
+    },
+
+    /**
+     * Fetch win/loss analytics summary from the backend API.
+     */
+    async getDealOutcomeAnalyticsFromApi() {
+        const result = await this.get('/deal-outcomes/analytics');
+        return this.assertObject(result);
+    },
+
+    /**
+     * Fetch the deal outcome for a specific lead.
+     */
+    async getOutcomeForLeadInApi(leadId) {
+        const result = await this.get(`/deal-outcomes/leads/${leadId}`);
+        if (result.status === 204 || result.data === null) {
+            return null;
+        }
+        return this.assertObject(result);
+    },
+
+    // ── Sales Goals ──────────────────────────────────────────────────
+
+    /**
+     * Fetch all sales goals from the backend API.
+     */
+    async getSalesGoals(activeOnly = '') {
+        const result = await this.get('/sales-goals' + activeOnly);
+        return Array.isArray(result) ? result : [];
+    },
+
+    /**
+     * Fetch a single sales goal by ID.
+     */
+    async getSalesGoal(id) {
+        const result = await this.get(`/sales-goals/${id}`);
+        return this.assertObject(result);
+    },
+
+    /**
+     * Create a new sales goal.
+     */
+    async createSalesGoal(goal) {
+        const payload = {
+            name: goal.name,
+            type: goal.type,
+            target_value: goal.targetValue,
+            period: goal.period,
+            start_date: goal.startDate,
+            end_date: goal.endDate,
+        };
+        const result = await this.post('/sales-goals', payload);
+        return this.assertObject(result);
+    },
+
+    /**
+     * Update an existing sales goal.
+     */
+    async updateSalesGoal(id, goal) {
+        const payload = {};
+        if (goal.name !== undefined) payload.name = goal.name;
+        if (goal.targetValue !== undefined) payload.target_value = goal.targetValue;
+        if (goal.startDate !== undefined) payload.start_date = goal.startDate;
+        if (goal.endDate !== undefined) payload.end_date = goal.endDate;
+        const result = await this.patch(`/sales-goals/${id}`, payload);
+        return this.assertObject(result);
+    },
+
+    /**
+     * Delete a sales goal.
+     */
+    async deleteSalesGoal(id) {
+        await this.delete(`/sales-goals/${id}`);
+    },
+
+    /**
+     * Fetch progress summary for all active goals.
+     */
+    async getSalesGoalsProgress() {
+        const result = await this.get('/sales-goals/progress');
+        return this.assertObject(result);
+    },
+
+    /**
+     * Recalculate current values from CRM data.
+     */
+    async recalculateSalesGoals() {
+        const result = await this.post('/sales-goals/recalculate', {});
+        return Array.isArray(result) ? result : [];
     },
 };

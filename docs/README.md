@@ -12,6 +12,7 @@ AICRM is a AI First browser-based Customer Relationship Management (CRM) applica
 - **Email Templates** — Create, edit, and manage reusable email templates with variable substitution and category filtering
 - **CSV Import/Export (Contacts)** — Import and export contact data via CSV files
 - **CSV Import/Export (Leads)** — Import and export lead data via CSV files (with stage/source validation)
+- **vCard Import** — Import contacts from vCard (.vcf) files supporting vCard 2.1, 3.0, and 4.0 formats with automatic field mapping (name, email, phone, company, notes)
 - **Dashboard Revenue Summary** — Pipeline value, won revenue, average deal size, and per-stage revenue breakdown
 - **Dark/Light Theme** — Toggle between light and dark themes
 - **Global Search** — Search across contacts, leads, and activities
@@ -27,6 +28,8 @@ AICRM is a AI First browser-based Customer Relationship Management (CRM) applica
 - **Activity Reminders and Notifications** — Browser-based notification system for upcoming and overdue activities. Configurable reminder settings (enable/disable, daily reminder time, advance notice 0-3 days, overdue notifications). Supports both in-app toast notifications (click-to-navigate) and native browser notifications. Periodic background checker (every 5 minutes) scans for due/overdue activities and alerts the user. Settings persist via backend.
 - **Sales Pipeline Kanban Board View** — Visual Kanban board for leads with 6 stage columns (New, Contacted, Qualified, Proposal, Won, Lost), HTML5 drag-and-drop to move leads between stages, stage-specific PATCH API endpoint, column headers showing lead count and total pipeline value, per-card stage selector dropdown, lead scoring badges, days-in-stage aging indicators, and keyboard shortcut `K` to toggle between grid and Kanban views.
 - **Dashboard PDF Report Export** — One-click "Export PDF Report" button on the dashboard that generates a clean, shareable one-page PDF of all dashboard metrics (stat cards, pipeline breakdown, recent activities, revenue summary) using native browser `window.print()` with dedicated `@media print` CSS. No external dependencies required.
+- **Activity Trend Charts** — Visual stacked bar charts on the dashboard showing activity volume trends over time (calls, emails, meetings, notes, tasks). Supports configurable date ranges (7d, 30d, 90d, 1y) and grouping (by day or by week). Includes overview stats (total activities, peak day, average per period), peak activity highlighting, color-coded legend, responsive design, and dark theme support.
+- **Activity Calendar View** — Monthly calendar view for activities with month navigation, today highlighting, color-coded activity types (call/email/meeting/note/task), overdue indicators, completed activity styling, drag-and-drop date changes, click-to-add activity on any date, keyboard shortcut `C` to toggle between timeline and calendar views, responsive design with mobile support, and dark theme support.
 
 ### Planned 📋
 - Calendar Integration
@@ -174,6 +177,9 @@ node docs/testing/test-quick-activity-logging.js
 
 # Run activity reminders and notifications tests
 node docs/testing/test-activity-reminders.js
+
+# Run calendar view tests
+node docs/testing/test-calendar-view.js
 ```
 
 ## Architecture
@@ -322,6 +328,9 @@ Full keyboard navigation for power users. A keyboard icon button in the header o
 | `Ctrl+N` | Open new contact modal |
 | `Ctrl+L` | Open new lead modal |
 | `Ctrl+E` | Export current page to CSV |
+| `Q` | Toggle Quick-Add FAB |
+| `K` | Toggle Kanban view (Leads page) |
+| `C` | Toggle Calendar view (Activities page) |
 | `Escape` | Close modals |
 
 Shortcuts are disabled while typing in input fields (except `/`, `?`, `Escape`).
@@ -460,6 +469,38 @@ Browser-based notification system that alerts users about upcoming and overdue a
 - `app/js/app.js` — Reminder settings management, browser notifications, periodic checker, in-app reminders
 - `app/css/styles.css` — Styles for reminder settings UI, notification toasts, and dark theme support
 - `docs/testing/test-activity-reminders.js` — 15-test Playwright E2E suite
+
+### Activity Calendar View
+
+Monthly calendar view for visualizing and managing activities, providing an alternative to the linear timeline view.
+
+**Features:**
+- **Toggle View** — "📅 Calendar" button in activities toolbar switches between timeline and calendar views; keyboard shortcut `C` toggles view
+- **Month Navigation** — Previous/Next month buttons and "Today" button for quick navigation; month/year header displays current view period
+- **Today Highlighting** — Current day cell highlighted with blue accent; day number shown in a blue circle
+- **Color-Coded Activities** — Activities displayed as colored pills by type: Call (blue), Email (green), Meeting (yellow), Note (purple), Task (red)
+- **Overdue Indicators** — Overdue activities shown with red border and bold text for visibility
+- **Completed Styling** — Completed activities displayed with reduced opacity and strikethrough text
+- **Drag-and-Drop** — HTML5 drag-and-drop to move activities between days; drop target highlighted with dashed border
+- **Click-to-Add** — Click any empty day cell to open the activity modal with the date pre-filled
+- **Filter Support** — Type and status filters apply to calendar view, updating displayed activities in real-time
+- **Responsive Design** — Calendar adapts to screen size; on small screens, events are hidden and dots indicate activity presence
+- **Dark Theme Support** — Calendar colors and backgrounds adapt to dark/light theme automatically
+
+**Implementation:**
+- Calendar HTML structure in `app/index.html` with header controls and grid container
+- `toggleCalendarView()`, `renderCalendar()`, `_navigateCalendar()`, `_goToToday()` methods in `app/js/app.js`
+- `_renderActivitiesView()` helper renders either timeline or calendar based on `_calendarViewActive` state
+- `bindCalendarDragDrop()` handles HTML5 drag-and-drop for moving activities between days
+- Calendar grid generated dynamically with proper day alignment, today highlighting, and event rendering
+- CSS styles for `.activities-calendar`, `.calendar-grid`, `.calendar-day`, `.calendar-event`, and responsive breakpoints
+- Keyboard shortcut `C` integrated into `bindKeyboardShortcuts()` method
+
+**Files Modified:**
+- `app/index.html` — Calendar toggle button, calendar container HTML with header and grid
+- `app/js/app.js` — Calendar view rendering, navigation, drag-and-drop, keyboard shortcut, view state management
+- `app/css/styles.css` — Calendar layout, day cells, event pills, navigation, responsive, dark theme
+- `docs/testing/test-calendar-view.js` — 12-test Playwright E2E suite
 
 ## Project Milestones
 

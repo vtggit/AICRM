@@ -1,0 +1,77 @@
+[
+  {
+    "test": "Navigate to Settings page",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Reminder settings card exists",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Reminder enabled checkbox exists",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Reminder time input exists with default value",
+    "status": "PASS",
+    "detail": "value=09:00"
+  },
+  {
+    "test": "Reminder advance notice select exists",
+    "status": "PASS",
+    "detail": "value=2"
+  },
+  {
+    "test": "Overdue notification checkbox exists",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Save reminder settings button exists",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Test notification button exists",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Notification permission display exists",
+    "status": "PASS",
+    "detail": "text=\"Blocked — enable in browser settings\""
+  },
+  {
+    "test": "Save reminder settings shows success notification",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Reminder settings persist after reload",
+    "status": "PASS",
+    "detail": "enabled=true, advance=2"
+  },
+  {
+    "test": "Disable reminders shows success notification",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Test notification button produces feedback",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Reminder status element has correct class",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "Activity with today due date created",
+    "status": "PASS",
+    "detail": ""
+  }
+]

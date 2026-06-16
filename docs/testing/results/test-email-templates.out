@@ -1,0 +1,39 @@
+TEST 1: Navigate to Templates
+  Page title: "Email Templates"
+TEST 2: Empty state
+  Empty text: "No templates found."
+TEST 3: Add a template
+  Template cards after add: 1
+TEST 4: Template card data
+  Name: "Welcome Email", Badge: "introduction", Subject: "Welcome to {{contact_company}}!"
+TEST 5: Add second template
+  Template cards: 2
+TEST 6: Filter by category
+  Follow-up count: 1, Introduction count: 1
+TEST 7: Edit template
+  Updated name: "Welcome Email v2"
+  [dialog] Are you sure you want to delete this template?
+TEST 8: Delete template
+  Template cards after delete: 1
+TEST 9: Variable chips
+  Variable chips found: 7
+TEST 10: Preview text
+  Preview: "Hi [var],
+
+Just following up on our last call. Please let me know if you have any questions.
+
+Phone: [var]"
+
+=== EMAIL TEMPLATES TEST RESULTS ===
+  ✅ PASS: Templates page loads
+  ✅ PASS: Empty state shows
+  ✅ PASS: Template created
+  ✅ PASS: Template card shows correct data
+  ✅ PASS: Second template created
+  ✅ PASS: Category filter works
+  ✅ PASS: Template edited
+  ✅ PASS: Template deleted
+  ✅ PASS: Variable chips present
+  ✅ PASS: Preview truncates variables
+
+Total: 10 | Passed: 10 | Failed: 0

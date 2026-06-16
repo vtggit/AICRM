@@ -32,6 +32,33 @@ def list_contacts(_user: AuthUser = Depends(require_role(ROLE_ADMIN))):
     return _service.list_contacts()
 
 
+@router.get("/duplicates", response_model=DuplicateDetectionResponse)
+def find_duplicate_contacts(_user: AuthUser = Depends(require_role(ROLE_ADMIN))):
+    """Find duplicate contacts grouped by email, phone, and name+company. Requires admin role."""
+    groups = _repository.find_duplicates()
+    total_duplicates = sum(len(g["contacts"]) for g in groups)
+    return DuplicateDetectionResponse(
+        total_groups=len(groups),
+        total_duplicates=total_duplicates,
+        groups=groups,
+    )
+
+
+@router.get("/{contact_id}", response_model=ContactResponse)
+def get_contact(
+    contact_id: str,
+    _user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+):
+    """Get a contact by ID. Requires admin role."""
+    contact = _repository.get_by_id(contact_id)
+    if not contact:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Contact {contact_id} not found",
+        )
+    return contact
+
+
 @router.post("", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
 def create_contact(
     payload: ContactCreate,
@@ -101,16 +128,4 @@ def bulk_update_status(
     return BulkOperationResult(
         success_count=count,
         message=f"Successfully updated status to '{payload.status}' for {count} contact(s).",
-    )
-
-
-@router.get("/duplicates", response_model=DuplicateDetectionResponse)
-def find_duplicate_contacts(_user: AuthUser = Depends(require_role(ROLE_ADMIN))):
-    """Find duplicate contacts grouped by email, phone, and name+company. Requires admin role."""
-    groups = _repository.find_duplicates()
-    total_duplicates = sum(len(g["contacts"]) for g in groups)
-    return DuplicateDetectionResponse(
-        total_groups=len(groups),
-        total_duplicates=total_duplicates,
-        groups=groups,
     )

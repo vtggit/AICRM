@@ -1,0 +1,27 @@
+TEST 1: Dashboard loads with Activity Trends card
+  Activity Trends section visible: true
+TEST 2: Range selector exists
+  Range selector visible: true, options: ["Last 7 days","Last 30 days","Last 90 days","Last 1 year"]
+TEST 3: Grouping selector exists
+  Grouping selector visible: true, options: ["By Day","By Week"]
+TEST 4: API endpoint returns data
+  API ok: true, buckets: 10, total activities: 139
+TEST 5: Chart grid renders
+  Chart grid visible: true
+TEST 6: Activity type legend renders
+  Legend items found: 4
+TEST 7: Range change triggers data refresh
+  Bars after range change (7d): 15
+TEST 8: Full dashboard screenshot
+
+=== TEST RESULTS ===
+  ✅ PASS: Activity Trends section visible on dashboard
+  ✅ PASS: Range selector with options
+  ✅ PASS: Grouping selector with options
+  ✅ PASS: Activity trends API returns data
+  ✅ PASS: Chart grid renders
+  ✅ PASS: Activity type legend renders
+  ✅ PASS: Range change updates chart
+  ✅ PASS: Dashboard screenshot captured
+
+Total: 8 | Passed: 8 | Failed: 0

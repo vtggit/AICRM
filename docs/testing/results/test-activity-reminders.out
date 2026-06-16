@@ -1,0 +1,23 @@
+
+=== Activity Reminders and Notifications Tests ===
+
+  [PASS] Navigate to Settings page
+  [PASS] Reminder settings card exists
+  [PASS] Reminder enabled checkbox exists
+  [PASS] Reminder time input exists with default value - value=09:00
+  [PASS] Reminder advance notice select exists - value=2
+  [PASS] Overdue notification checkbox exists
+  [PASS] Save reminder settings button exists
+  [PASS] Test notification button exists
+  [PASS] Notification permission display exists - text="Blocked — enable in browser settings"
+  [PASS] Save reminder settings shows success notification
+  [PASS] Reminder settings persist after reload - enabled=true, advance=2
+  [PASS] Disable reminders shows success notification
+  [PASS] Test notification button produces feedback
+  [PASS] Reminder status element has correct class
+  [PASS] Activity with today due date created
+
+  Screenshot saved: test-results/activity-reminders.png
+
+=== Results: 15 passed, 0 failed, 15 total ===
+

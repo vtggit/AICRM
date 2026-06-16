@@ -1,0 +1,16 @@
+T1: Leads page loaded: PASS
+T2: Kanban toggle button exists: PASS
+T3: Kanban board visible after toggle: PASS
+T4: Grid view hidden in kanban mode: PASS
+T5: Button text changed to Grid: PASS
+T6: 6 Kanban columns exist: PASS
+T7: Kanban cards rendered: PASS (11 cards)
+T8: Column counts match cards: PASS (11)
+T9: Column values displayed: PASS
+T10: Stage select dropdowns on cards: PASS
+T11: Toggle back to grid view: PASS
+T12: Score badges on kanban cards: PASS (11)
+
+Screenshot saved: kanban-board-test.png
+
+=== Results: 12/12 passed ===

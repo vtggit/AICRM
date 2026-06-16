@@ -1,0 +1,23 @@
+TEST 1: PDF Export Button Exists
+  Button visible: true, text: "📄 Export PDF Report"
+TEST 2: Button Styling
+  Classes: "btn btn-secondary"
+TEST 3: Dashboard Header Actions Container
+  Header actions visible: true
+TEST 4: Print Class Toggle on Body
+  Body class before: ""
+  Body class after: "printing-report", print called: true
+TEST 5: Print CSS Media Queries Present
+  Print styles present: true
+TEST 6: Screenshot Verification
+  Screenshot saved to /tmp/test-pdf-export.png
+
+========== RESULTS ==========
+  ✅ PDF export button exists
+  ✅ Button has correct classes
+  ✅ Dashboard header actions container exists
+  ✅ Print class added and window.print() called
+  ✅ Print CSS media queries present
+  ✅ Screenshot captured
+
+  6/6 tests passed

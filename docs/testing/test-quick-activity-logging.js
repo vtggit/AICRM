@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const { setPageAuth, waitForAuthReady } = require('./auth-helper');
 
-const BASE_URL = 'http://localhost:8080/app/index.html';
+const BASE_URL = 'http://localhost:8080/';
 
 (async () => {
     const browser = await chromium.launch({ headless: true });
@@ -31,7 +31,7 @@ const BASE_URL = 'http://localhost:8080/app/index.html';
     if (contactCards.length === 0) {
         console.log('TEST 1: Quick activity buttons on cards - ❌ FAIL (no contact cards)');
         failed++;
-        await page.screenshot({ path: 'screenshots/debug-no-contacts.png', fullPage: true });
+        await page.screenshot({ path: '/home/aicrm/workspace/AICRM/docs/testing/screenshots/debug-no-contacts.png', fullPage: true });
     } else {
         const quickBtns = await page.$$('.quick-activity-btn');
         if (quickBtns.length > 0) {
@@ -197,7 +197,7 @@ const BASE_URL = 'http://localhost:8080/app/index.html';
     }
 
     // Screenshot
-    await page.screenshot({ path: 'screenshots/quick-activity-logging.png', fullPage: false });
+    await page.screenshot({ path: '/home/aicrm/workspace/AICRM/docs/testing/screenshots/quick-activity-logging.png', fullPage: false });
     console.log('Screenshot saved to screenshots/quick-activity-logging.png');
 
     console.log('\n=== QUICK ACTIVITY LOGGING TEST RESULTS ===');

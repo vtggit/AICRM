@@ -11,6 +11,12 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await setPageAuth(context, 'dev-secret-token:admin');
   const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+
+  // Prevent unhandled page errors from crashing the test
+  page.on('pageerror', (err) => {
+    console.log('Page error (non-fatal):', err.message);
+  });
 
   try {
     // Test 1: PDF Export Button Exists
@@ -83,7 +89,9 @@ const { setPageAuth, waitForAuthReady } = require('./auth-helper');
     console.error('Test error:', err.message);
     results.push({ test: 'No errors during test', pass: false, error: err.message });
   } finally {
-    await browser.close();
+    try {
+      await browser.close();
+    } catch { /* ignore close errors */ }
   }
 
   // Summary

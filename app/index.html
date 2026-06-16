@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AICRM - Customer Relationship Management</title>
-    <link rel="stylesheet" href="css/styles.css?v=0.1.8">
+    <link rel="stylesheet" href="css/styles.css?v=0.2.3">
 </head>
 <body>
     <div id="app">
@@ -38,6 +38,14 @@
                 <li class="nav-item" data-page="templates">
                     <span class="nav-icon">📝</span>
                     <span class="nav-label">Templates</span>
+                </li>
+                <li class="nav-item" data-page="winloss">
+                    <span class="nav-icon">🏆</span>
+                    <span class="nav-label">Win/Loss</span>
+                </li>
+                <li class="nav-item" data-page="salesgoals">
+                    <span class="nav-icon">📐</span>
+                    <span class="nav-label">Sales Goals</span>
                 </li>
                 <li class="nav-item" data-page="settings">
                     <span class="nav-icon">⚙️</span>
@@ -200,6 +208,33 @@
                                 <p class="empty-state">No recent leads</p>
                             </div>
                         </div>
+
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-header-row">
+                                <h3>Activity Trends</h3>
+                                <div class="trend-controls">
+                                    <select id="trend-range" class="filter-select" title="Time range">
+                                        <option value="7d">Last 7 days</option>
+                                        <option value="30d" selected>Last 30 days</option>
+                                        <option value="90d">Last 90 days</option>
+                                        <option value="1y">Last 1 year</option>
+                                    </select>
+                                    <select id="trend-group" class="filter-select" title="Group by">
+                                        <option value="day" selected>By Day</option>
+                                        <option value="week">By Week</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="activity-trend-overview" class="activity-trend-overview">
+                                <!-- Summary stats rendered by JS -->
+                            </div>
+                            <div id="activity-trend-chart" class="activity-trend-chart">
+                                <!-- Bar chart rendered by JS -->
+                            </div>
+                            <div id="activity-trend-legend" class="activity-trend-legend">
+                                <!-- Legend rendered by JS -->
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -211,6 +246,7 @@
                         <div class="filter-controls">
                             <button id="btn-export-csv" class="btn btn-secondary" title="Export contacts to CSV">📥 Export CSV</button>
                             <button id="btn-import-csv" class="btn btn-secondary" title="Import contacts from CSV" data-admin-only="true">📤 Import CSV</button>
+                            <button id="btn-import-vcard" class="btn btn-secondary" title="Import contacts from vCard (VCF)" data-admin-only="true">📇 Import vCard</button>
                             <button id="btn-find-duplicates" class="btn btn-secondary" title="Find duplicate contacts">🔍 Find Duplicates</button>
                             <select id="contact-filter-status" class="filter-select">
                                 <option value="">All Statuses</option>
@@ -226,6 +262,7 @@
                         </div>
                     </div>
                     <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                    <input type="file" id="vcard-file-input" accept=".vcf,.vcard" style="display: none;">
                     <div id="contacts-list" class="contacts-grid">
                         <div class="empty-state-card">
                             <p>No contacts yet. Click "Add Contact" to get started.</p>
@@ -380,6 +417,7 @@
                                 <!-- Breakdown table rendered by JS -->
                             </div>
                         </div>
+
                     </div>
                 </div>
 
@@ -402,12 +440,25 @@
                                 <option value="overdue">Overdue</option>
                                 <option value="completed">Completed</option>
                             </select>
+                            <button id="btn-toggle-calendar" class="btn btn-secondary" title="Toggle Calendar View (C)">📅 Calendar</button>
                         </div>
                     </div>
                     <div id="activities-list" class="activities-timeline">
                         <div class="empty-state-card">
                             <p>No activities recorded yet.</p>
                         </div>
+                    </div>
+                    <div id="activities-calendar" class="activities-calendar" style="display: none;">
+                        <div class="calendar-header">
+                            <button id="calendar-prev-month" class="btn btn-secondary" title="Previous Month">◀</button>
+                            <button id="calendar-today" class="btn btn-secondary" title="Go to Today">Today</button>
+                            <h3 id="calendar-month-year"></h3>
+                            <button id="calendar-next-month" class="btn btn-secondary" title="Next Month">▶</button>
+                        </div>
+                        <div class="calendar-weekdays">
+                            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                        </div>
+                        <div id="calendar-grid" class="calendar-grid"></div>
                     </div>
                 </div>
 
@@ -441,6 +492,31 @@
                         <div class="empty-state-card">
                             <p>No templates yet. Click "Add Template" to get started.</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Win/Loss Reasons Page -->
+                <div id="page-winloss" class="page">
+                    <div class="winloss-overview" id="winloss-stats"></div>
+                    <div class="winloss-grid">
+                        <div class="dashboard-card winloss-card">
+                            <h3>Win Reasons</h3>
+                            <div id="win-reasons-chart" class="winloss-chart"></div>
+                        </div>
+                        <div class="dashboard-card winloss-card">
+                            <h3>Loss Reasons</h3>
+                            <div id="loss-reasons-chart" class="winloss-chart"></div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Competitor Mentions</h3>
+                        <div id="competitor-chart" class="winloss-chart"></div>
+                    </div>
+                    <div class="dashboard-card">
+                        <div class="page-actions">
+                            <h3>All Outcomes</h3>
+                        </div>
+                        <div id="winloss-table" class="data-table-container"></div>
                     </div>
                 </div>
 
@@ -516,6 +592,44 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Sales Goals Page -->
+                <div id="page-salesgoals" class="page">
+                    <div class="sales-goals-container">
+                        <div class="sales-goals-header">
+                            <div class="sales-goals-summary">
+                                <div class="goal-summary-card">
+                                    <div class="goal-summary-icon">📊</div>
+                                    <div class="goal-summary-info">
+                                        <h3 id="goal-overall-progress">0%</h3>
+                                        <p>Overall Progress</p>
+                                    </div>
+                                </div>
+                                <div class="goal-summary-card">
+                                    <div class="goal-summary-icon">🎯</div>
+                                    <div class="goal-summary-info">
+                                        <h3 id="goal-active-count">0</h3>
+                                        <p>Active Goals</p>
+                                    </div>
+                                </div>
+                                <div class="goal-summary-card">
+                                    <div class="goal-summary-icon">✅</div>
+                                    <div class="goal-summary-info">
+                                        <h3 id="goal-completed-count">0</h3>
+                                        <p>Completed</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="sales-goals-actions">
+                                <button id="btn-recalculate-goals" class="btn btn-secondary">🔄 Recalculate</button>
+                                <button id="btn-add-goal" class="btn btn-primary">+ Add Goal</button>
+                            </div>
+                        </div>
+                        <div id="goals-list" class="goals-list">
+                            <p class="empty-state">No sales goals defined yet. Click "Add Goal" to get started.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
@@ -557,6 +671,7 @@
     <script src="js/leads-data-source.js"></script>
     <script src="js/activities-data-source.js"></script>
     <script src="js/settings-data-source.js"></script>
-    <script src="js/app.js?v=0.1.8"></script>
+    <script src="js/sales-goals-data-source.js"></script>
+    <script src="js/app.js?v=0.1.9"></script>
 </body>
 </html>

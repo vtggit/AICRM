@@ -1,0 +1,17 @@
+Contact cards found: 4
+TEST 1: Quick activity buttons on cards - ✅ PASS (16 buttons found)
+  First contact: Alice Johnson
+TEST 3: Modal opens as "Add Activity" - ✅ PASS
+TEST 4: Activity type pre-filled to "call" - ✅ PASS
+TEST 5: Contact pre-selected correctly - ✅ PASS
+TEST 6: Activity created successfully - ✅ PASS
+TEST 7: Email quick button pre-fills type - ✅ PASS
+TEST 8: Meeting quick button pre-fills type - ✅ PASS
+TEST 9: Note quick button pre-fills type - ✅ PASS
+TEST 10: Quick buttons visible in dark theme - ✅ PASS
+
+JS Errors (non-auth): 0
+Screenshot saved to screenshots/quick-activity-logging.png
+
+=== QUICK ACTIVITY LOGGING TEST RESULTS ===
+Total: 9 | Passed: 9 | Failed: 0

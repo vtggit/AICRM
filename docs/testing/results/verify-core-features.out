@@ -1,0 +1,34 @@
+TEST 1: Load Dashboard
+  Dashboard title: "Dashboard"
+TEST 2: Check stat cards
+  Stat cards found: 7
+TEST 3: Navigate to Contacts
+  Contacts title: "Contacts"
+TEST 4: Add a Contact
+  Contact cards after add: 9 (was 8)
+TEST 5: Navigate to Leads and Add a Lead
+  Lead cards after add: 6 (was 5)
+TEST 6: Navigate to Activities and Add Activity
+  Timeline items after add: 136 (was 135)
+TEST 7: Verify Dashboard Stats Updated
+  Total contacts: 9, Total leads: 6
+TEST 8: Search functionality
+  After search, page: "Dashboard"
+TEST 9: Theme toggle
+  Theme changed from "light" to "dark"
+TEST 10: Filter contacts by status
+  Filtered cards (active): 9
+
+=== TEST RESULTS ===
+  ✅ PASS: Dashboard loads
+  ✅ PASS: Stat cards visible
+  ✅ PASS: Contacts page loads
+  ✅ PASS: Contact created
+  ✅ PASS: Lead created
+  ✅ PASS: Activity created
+  ✅ PASS: Dashboard stats updated
+  ❌ FAIL: Search navigates to contacts
+  ✅ PASS: Theme toggle works
+  ✅ PASS: Filter by status works
+
+Total: 10 | Passed: 9 | Failed: 1
