@@ -316,3 +316,23 @@ def test_cli_enforcing_exits_nonzero_on_fail(tmp_path, monkeypatch, capsys):
     rc = chk.main(["--pr-body-file", str(tmp_path / "pr.md"), "--junit", str(tmp_path / "r.xml"),
                    "--repo-root", str(tmp_path)])
     assert rc == 1
+
+
+def test_cli_strips_repo_root_prefix_from_junit_nodeids(tmp_path, monkeypatch, capsys):
+    """When pytest's rootdir is the repo root, a backend test collects as
+    ``backend/tests/x.py::t``. The proof-map is backend-relative (``tests/x.py::t``),
+    so main() must strip the --repo-root prefix from junit nodeids — else every
+    mapped test reads as "not collected" (the bug the first live P4b.0 run hit)."""
+    pm = [entry("AC-1", "do X", ["tests/test_x.py::test_a"]),
+          entry("AC-2", "do Y", ["tests/test_x.py::test_b"])]
+    (tmp_path / "pr.md").write_text(pr_body(pm), encoding="utf-8")
+    (tmp_path / "r.xml").write_text(
+        '<testsuite>'
+        '<testcase classname="backend.tests.test_x" name="test_a"/>'
+        '<testcase classname="backend.tests.test_x" name="test_b"/>'
+        '</testsuite>', encoding="utf-8")
+    monkeypatch.setattr(chk, "fetch_issue_body", lambda repo, n: _issue_body(issue_contract()))
+    rc = chk.main(["--pr-body-file", str(tmp_path / "pr.md"), "--junit", str(tmp_path / "r.xml"),
+                   "--repo-root", "backend", "--report-only"])
+    out = capsys.readouterr().out
+    assert rc == 0 and "PASS" in out and "not collected" not in out
