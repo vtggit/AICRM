@@ -1,0 +1,84 @@
+# CodeAgent contract merge-gate — REPORT-ONLY (contract-v2 Phase 4a.3).
+#
+# Resolves a PR's codeagent-pr-contract against the linked issue's
+# codeagent-contract + a real backend test run, and posts a per-AC verdict to the
+# job summary. In this phase the checker runs with --report-only, so the job
+# ALWAYS succeeds and never blocks merge — it exists to validate the gate and
+# gather data before it becomes a required check (Phase 4a.4).
+name: CodeAgent merge gate (report-only)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: ca-merge-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  contract-gate:
+    name: CodeAgent contract gate (report-only)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: aicrm
+          POSTGRES_USER: aicrm
+          POSTGRES_PASSWORD: change-me-in-production
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend deps + tooling
+        run: |
+          python -m pip install -U pip pytest alembic
+          pip install -r backend/requirements.txt
+
+      - name: ca_gate self-tests (no DB)
+        run: python -m pytest tests/ca_gate/ -q || true   # report-only: never block
+
+      - name: Fetch PR body
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json body -q .body > "${RUNNER_TEMP}/pr_body.md"
+
+      - name: Run backend suite -> junitxml
+        env:
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DB_NAME: aicrm
+          DB_USER: aicrm
+          DB_PASSWORD: change-me-in-production
+          AUTH_MODE: development
+          AUTH_DEV_TOKEN: dev-secret-token
+        run: |
+          cd backend
+          python -m alembic upgrade head || true
+          python -m pytest tests/ -q --junitxml="${RUNNER_TEMP}/report.xml" || true
+
+      - name: Contract gate (report-only)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python scripts/ca_gate/check_pr_contract.py \
+            --pr-body-file "${RUNNER_TEMP}/pr_body.md" \
+            --junit "${RUNNER_TEMP}/report.xml" \
+            --repo-root backend \
+            --report-only
