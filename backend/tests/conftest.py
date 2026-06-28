@@ -305,11 +305,7 @@ def clean_database(client):
                 "settings",
                 "audit_log",
             ]
-            cur.execute(
-                "TRUNCATE TABLE "
-                + ", ".join(tables)
-                + " RESTART IDENTITY;"
-            )
+            cur.execute("TRUNCATE TABLE " + ", ".join(tables) + " RESTART IDENTITY;")
         conn.commit()
     except Exception:
         conn.rollback()

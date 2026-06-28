@@ -1,7 +1,9 @@
 """Service layer for sales goals and quota tracking."""
 
 from app.models.sales_goals import SalesGoalCreate, SalesGoalUpdate
-from app.repositories.sales_goals_postgres_repository import SalesGoalsPostgresRepository
+from app.repositories.sales_goals_postgres_repository import (
+    SalesGoalsPostgresRepository,
+)
 
 
 class SalesGoalsService:

@@ -2,7 +2,9 @@
 
 from app.auth.models import AuthUser
 from app.models.deal_outcomes import DealOutcomeCreate, DealOutcomeUpdate
-from app.repositories.deal_outcomes_postgres_repository import DealOutcomesPostgresRepository
+from app.repositories.deal_outcomes_postgres_repository import (
+    DealOutcomesPostgresRepository,
+)
 
 
 class DealOutcomesService:
@@ -25,7 +27,9 @@ class DealOutcomesService:
     def list_outcomes(self) -> list[dict]:
         return self.repository.list_all()
 
-    def update_outcome(self, outcome_id: str, payload: DealOutcomeUpdate) -> dict | None:
+    def update_outcome(
+        self, outcome_id: str, payload: DealOutcomeUpdate
+    ) -> dict | None:
         data = payload.model_dump(exclude_unset=True)
         return self.repository.update(outcome_id, data)
 

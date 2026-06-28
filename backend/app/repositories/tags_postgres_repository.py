@@ -74,7 +74,7 @@ class TagsPostgresRepository:
                 cur.execute(sql, values)
         except Exception as exc:
             if "duplicate" in str(exc).lower():
-                raise ValueError(f"Tag with this name already exists.") from exc
+                raise ValueError("Tag with this name already exists.") from exc
             raise
         return self.get_by_id(tag_id)
 
@@ -110,6 +110,7 @@ class TagsPostgresRepository:
     def get_contacts_for_tag(self, tag_id: str) -> list[str]:
         with get_cursor() as cur:
             cur.execute(
-                "SELECT contact_id FROM contact_tag_mapping WHERE tag_id = %s", (tag_id,)
+                "SELECT contact_id FROM contact_tag_mapping WHERE tag_id = %s",
+                (tag_id,),
             )
             return [row[0] for row in cur.fetchall()]

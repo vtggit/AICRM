@@ -11,7 +11,9 @@ from app.models.deal_outcomes import (
     DealOutcomeResponse,
     DealOutcomeUpdate,
 )
-from app.repositories.deal_outcomes_postgres_repository import DealOutcomesPostgresRepository
+from app.repositories.deal_outcomes_postgres_repository import (
+    DealOutcomesPostgresRepository,
+)
 from app.services.deal_outcomes_service import DealOutcomesService
 
 router = APIRouter(prefix="/api/deal-outcomes", tags=["deal-outcomes"])
@@ -33,7 +35,9 @@ def list_outcomes(
     return service.list_outcomes()
 
 
-@router.post("", response_model=DealOutcomeResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=DealOutcomeResponse, status_code=status.HTTP_201_CREATED
+)
 def create_outcome(
     payload: DealOutcomeCreate,
     _user: AuthUser = Depends(require_authenticated_user),

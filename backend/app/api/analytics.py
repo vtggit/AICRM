@@ -5,7 +5,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
-from app.auth.authorization import ROLE_ADMIN
 from app.auth.dependencies import require_authenticated_user
 from app.auth.models import AuthUser
 from app.db.connection import get_cursor
@@ -68,7 +67,9 @@ def get_funnel_analytics(
     rates, drop-off counts, and average time spent per stage.
     """
     leads = _repository.list_all()
-    lead_dicts = [lead.model_dump() if hasattr(lead, "model_dump") else lead for lead in leads]
+    lead_dicts = [
+        lead.model_dump() if hasattr(lead, "model_dump") else lead for lead in leads
+    ]
 
     total_leads = len(lead_dicts)
     now = datetime.now(timezone.utc)
@@ -77,26 +78,22 @@ def get_funnel_analytics(
     stage_counts: dict[str, int] = {}
     stage_values: dict[str, float] = {}
     for stage in FUNNEL_STAGES:
-        stage_leads = [l for l in lead_dicts if l.get("stage") == stage]
+        stage_leads = [lead for lead in lead_dicts if lead.get("stage") == stage]
         stage_counts[stage] = len(stage_leads)
-        stage_values[stage] = sum(l.get("value") or 0 for l in stage_leads)
+        stage_values[stage] = sum(lead.get("value") or 0 for lead in stage_leads)
 
     # Count terminal "lost" leads
-    lost_count = sum(1 for l in lead_dicts if l.get("stage") == "lost")
+    lost_count = sum(1 for lead in lead_dicts if lead.get("stage") == "lost")
 
     # Build funnel steps with conversion metrics
     funnel_steps: list[dict[str, Any]] = []
-    cumulative = total_leads  # Total leads entering the funnel
 
     for i, stage in enumerate(FUNNEL_STAGES):
         count = stage_counts[stage]
         value = stage_values[stage]
 
         # Conversion rate from previous stage
-        if i == 0:
-            prev_count = total_leads
-        else:
-            prev_count = stage_counts[FUNNEL_STAGES[i - 1]]
+        prev_count = total_leads if i == 0 else stage_counts[FUNNEL_STAGES[i - 1]]
 
         conversion_rate = (count / prev_count * 100) if prev_count > 0 else 0.0
 
@@ -105,10 +102,10 @@ def get_funnel_analytics(
         drop_off_rate = (drop_off / prev_count * 100) if prev_count > 0 else 0.0
 
         # Average days in this stage
-        stage_lead_list = [l for l in lead_dicts if l.get("stage") == stage]
+        stage_lead_list = [lead for lead in lead_dicts if lead.get("stage") == stage]
         days_list: list[float] = []
-        for l in stage_lead_list:
-            d = _compute_avg_days(l, stage)
+        for lead in stage_lead_list:
+            d = _compute_avg_days(lead, stage)
             if d is not None and d >= 0:
                 days_list.append(d)
         avg_days = sum(days_list) / len(days_list) if days_list else None
@@ -126,9 +123,13 @@ def get_funnel_analytics(
                 "conversion_rate": round(conversion_rate, 1),
                 "drop_off": drop_off,
                 "drop_off_rate": round(drop_off_rate, 1),
-                "avg_days_in_stage": round(avg_days, 1) if avg_days is not None else None,
+                "avg_days_in_stage": (
+                    round(avg_days, 1) if avg_days is not None else None
+                ),
                 "value_percentage": round(value_pct, 1),
-                "of_total": round(count / total_leads * 100, 1) if total_leads > 0 else 0.0,
+                "of_total": (
+                    round(count / total_leads * 100, 1) if total_leads > 0 else 0.0
+                ),
             }
         )
 

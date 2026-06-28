@@ -11,7 +11,9 @@ from app.models.sales_goals import (
     SalesGoalResponse,
     SalesGoalUpdate,
 )
-from app.repositories.sales_goals_postgres_repository import SalesGoalsPostgresRepository
+from app.repositories.sales_goals_postgres_repository import (
+    SalesGoalsPostgresRepository,
+)
 from app.services.sales_goals_service import SalesGoalsService
 
 router = APIRouter(prefix="/api/sales-goals", tags=["sales-goals"])

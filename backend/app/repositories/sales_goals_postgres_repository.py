@@ -98,20 +98,22 @@ class SalesGoalsPostgresRepository:
     def get_progress(self) -> dict:
         """Get progress summary for all active goals."""
         with get_cursor() as cur:
-            cur.execute(
-                """SELECT g.*,
+            cur.execute("""SELECT g.*,
                    CASE WHEN g.target_value > 0
                         THEN ROUND((g.current_value / g.target_value) * 100, 1)
                         ELSE 0 END AS progress_percent
                    FROM sales_goals g
                    WHERE g.end_date >= CURRENT_DATE
-                   ORDER BY g.start_date DESC"""
-            )
+                   ORDER BY g.start_date DESC""")
             goals = []
             for r in cur.fetchall():
                 d = _row_to_dict(r)
-                d["progress_percent"] = float(r["progress_percent"]) if r["progress_percent"] else 0.0
+                d["progress_percent"] = (
+                    float(r["progress_percent"]) if r["progress_percent"] else 0.0
+                )
                 goals.append(d)
 
-            total_progress = sum(g["progress_percent"] for g in goals) / len(goals) if goals else 0.0
+            total_progress = (
+                sum(g["progress_percent"] for g in goals) / len(goals) if goals else 0.0
+            )
             return {"goals": goals, "overall_progress": round(total_progress, 1)}

@@ -72,6 +72,7 @@ def delete_tag(
 
 # ---- Contact-tag assignment endpoint (also accessible via /api/contacts) ----
 
+
 @router.put("/contacts/{contact_id}/tags", status_code=status.HTTP_204_NO_CONTENT)
 def set_contact_tags(
     contact_id: str,
