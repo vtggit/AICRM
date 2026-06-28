@@ -312,6 +312,17 @@ def main(argv=None) -> int:
         changed = {(p[len(prefix):] if prefix and p.startswith(prefix) else p) for p in raw}
 
     junit = parse_junit(args.junit)
+    # junit nodeids are relative to pytest's rootdir. When the repo has a
+    # root-level pyproject.toml, rootdir is the REPO ROOT, so a backend test
+    # collects as "backend/tests/x.py::t". The proof-map and changed-files are
+    # repo_root-relative ("tests/x.py::t"), so strip the SAME --repo-root prefix
+    # from junit nodeids to compare apples-to-apples (otherwise every mapped
+    # test reads as "not collected").
+    _prefix = args.repo_root.rstrip("/") + "/" if args.repo_root not in (".", "") else ""
+    if _prefix:
+        junit = {k: {(n[len(_prefix):] if n.startswith(_prefix) else n) for n in v}
+                 for k, v in junit.items()}
+
     r = evaluate(pr_body, target, prose_links, junit,
                  lambda n: ast_test_is_nontrivial(args.repo_root, n),
                  any_contracted=any_contracted, changed_files=changed)
