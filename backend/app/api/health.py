@@ -130,3 +130,19 @@ def readiness_check():
     if BUILD_TIMESTAMP:
         payload["build_timestamp"] = BUILD_TIMESTAMP
     return payload
+
+
+class VersionResponse(BaseModel):
+    """Response model for the minimal version endpoint."""
+
+    version: str = Field(..., description="Application version string")
+
+
+@router.get("/api/health/version", response_model=VersionResponse)
+def version_check():
+    """Minimal version endpoint — returns only the running application version.
+
+    Unlike GET /api/health (a fuller liveness payload), this returns just the
+    version string for lightweight clients and deploy tooling.
+    """
+    return {"version": APP_VERSION}
