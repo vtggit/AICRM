@@ -22,8 +22,13 @@ class DealOutcomeCreate(BaseModel):
     lead_id: str = Field(..., min_length=1)
     outcome: Literal["won", "lost"] = Field(...)
     reason_category: Literal[
-        "budget", "competitor", "feature-gap",
-        "timing", "decision-changed", "internal-issues", "other",
+        "budget",
+        "competitor",
+        "feature-gap",
+        "timing",
+        "decision-changed",
+        "internal-issues",
+        "other",
     ] = Field(...)
     reason_text: str | None = Field(default=None, max_length=2000)
     competitor_name: str | None = Field(default=None, max_length=200)
@@ -32,10 +37,18 @@ class DealOutcomeCreate(BaseModel):
 class DealOutcomeUpdate(BaseModel):
     """Request model for updating a deal outcome."""
 
-    reason_category: Literal[
-        "budget", "competitor", "feature-gap",
-        "timing", "decision-changed", "internal-issues", "other",
-    ] | None = Field(default=None)
+    reason_category: (
+        Literal[
+            "budget",
+            "competitor",
+            "feature-gap",
+            "timing",
+            "decision-changed",
+            "internal-issues",
+            "other",
+        ]
+        | None
+    ) = Field(default=None)
     reason_text: str | None = Field(default=None, max_length=2000)
     competitor_name: str | None = Field(default=None, max_length=200)
 

@@ -90,10 +90,8 @@ class DealOutcomesPostgresRepository:
         """Get win/loss analytics summary."""
         with get_cursor() as cur:
             # Total won/lost
-            cur.execute(
-                """SELECT outcome, COUNT(*) as count
-                   FROM deal_outcomes GROUP BY outcome"""
-            )
+            cur.execute("""SELECT outcome, COUNT(*) as count
+                   FROM deal_outcomes GROUP BY outcome""")
             outcome_counts = {row["outcome"]: row["count"] for row in cur.fetchall()}
             total_won = outcome_counts.get("won", 0)
             total_lost = outcome_counts.get("lost", 0)
@@ -101,34 +99,28 @@ class DealOutcomesPostgresRepository:
             win_rate = round((total_won / total * 100), 1) if total > 0 else 0.0
 
             # Top win reasons
-            cur.execute(
-                """SELECT reason_category, COUNT(*) as count
+            cur.execute("""SELECT reason_category, COUNT(*) as count
                    FROM deal_outcomes WHERE outcome = 'won'
-                   GROUP BY reason_category ORDER BY count DESC LIMIT 3"""
-            )
+                   GROUP BY reason_category ORDER BY count DESC LIMIT 3""")
             top_win_reasons = [
                 {"reason": r["reason_category"], "count": r["count"]}
                 for r in cur.fetchall()
             ]
 
             # Top loss reasons
-            cur.execute(
-                """SELECT reason_category, COUNT(*) as count
+            cur.execute("""SELECT reason_category, COUNT(*) as count
                    FROM deal_outcomes WHERE outcome = 'lost'
-                   GROUP BY reason_category ORDER BY count DESC LIMIT 3"""
-            )
+                   GROUP BY reason_category ORDER BY count DESC LIMIT 3""")
             top_loss_reasons = [
                 {"reason": r["reason_category"], "count": r["count"]}
                 for r in cur.fetchall()
             ]
 
             # Competitor mentions
-            cur.execute(
-                """SELECT competitor_name, COUNT(*) as count
+            cur.execute("""SELECT competitor_name, COUNT(*) as count
                    FROM deal_outcomes
                    WHERE competitor_name IS NOT NULL AND competitor_name != ''
-                   GROUP BY competitor_name ORDER BY count DESC LIMIT 5"""
-            )
+                   GROUP BY competitor_name ORDER BY count DESC LIMIT 5""")
             competitor_mentions = [
                 {"name": r["competitor_name"], "count": r["count"]}
                 for r in cur.fetchall()

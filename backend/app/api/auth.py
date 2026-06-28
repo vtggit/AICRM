@@ -1,6 +1,7 @@
 # Authentication-facing API endpoints
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
 
 from app.auth.config import (
     AUTH_ALGORITHMS,
@@ -13,7 +14,6 @@ from app.auth.config import (
 )
 from app.auth.dependencies import require_authenticated_user
 from app.auth.models import AuthUser, MeResponse
-from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

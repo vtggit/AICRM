@@ -206,11 +206,9 @@ class ContactsPostgresRepository:
 
         # --- Email duplicates ---
         with get_cursor() as cur:
-            cur.execute(
-                """SELECT email, COUNT(*) AS cnt
+            cur.execute("""SELECT email, COUNT(*) AS cnt
                    FROM contacts WHERE email IS NOT NULL AND email != ''
-                   GROUP BY email HAVING COUNT(*) > 1"""
-            )
+                   GROUP BY email HAVING COUNT(*) > 1""")
             for row in cur.fetchall():
                 group_id += 1
                 contacts = []
@@ -223,15 +221,15 @@ class ContactsPostgresRepository:
                         d = _row_to_dict(r)
                         d["tags"] = self._tags_repo.get_tags_for_contact(d["id"])
                         contacts.append(d)
-                groups.append({"group_id": group_id, "match_type": "email", "contacts": contacts})
+                groups.append(
+                    {"group_id": group_id, "match_type": "email", "contacts": contacts}
+                )
 
         # --- Phone duplicates ---
         with get_cursor() as cur:
-            cur.execute(
-                """SELECT phone, COUNT(*) AS cnt
+            cur.execute("""SELECT phone, COUNT(*) AS cnt
                    FROM contacts WHERE phone IS NOT NULL AND phone != ''
-                   GROUP BY phone HAVING COUNT(*) > 1"""
-            )
+                   GROUP BY phone HAVING COUNT(*) > 1""")
             for row in cur.fetchall():
                 group_id += 1
                 contacts = []
@@ -244,7 +242,9 @@ class ContactsPostgresRepository:
                         d = _row_to_dict(r)
                         d["tags"] = self._tags_repo.get_tags_for_contact(d["id"])
                         contacts.append(d)
-                groups.append({"group_id": group_id, "match_type": "phone", "contacts": contacts})
+                groups.append(
+                    {"group_id": group_id, "match_type": "phone", "contacts": contacts}
+                )
 
         # --- Name + Company duplicates ---
         with get_cursor() as cur:
@@ -268,6 +268,12 @@ class ContactsPostgresRepository:
                         d = _row_to_dict(r)
                         d["tags"] = self._tags_repo.get_tags_for_contact(d["id"])
                         contacts.append(d)
-                groups.append({"group_id": group_id, "match_type": "name_company", "contacts": contacts})
+                groups.append(
+                    {
+                        "group_id": group_id,
+                        "match_type": "name_company",
+                        "contacts": contacts,
+                    }
+                )
 
         return groups

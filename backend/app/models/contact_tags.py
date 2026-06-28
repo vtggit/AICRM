@@ -1,7 +1,5 @@
 """Contact tag data models."""
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -19,8 +17,8 @@ class TagCreate(BaseModel):
 class TagUpdate(BaseModel):
     """Request model for updating a tag."""
 
-    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    color: Optional[str] = Field(default=None, max_length=20)
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    color: str | None = Field(default=None, max_length=20)
 
 
 class TagResponse(BaseModel):
