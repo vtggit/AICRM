@@ -1,11 +1,12 @@
-# CodeAgent contract merge-gate — REPORT-ONLY (contract-v2 Phase 4a.3).
+# CodeAgent contract merge-gate — ENFORCING (contract-v2 Phase 4a.4).
 #
 # Resolves a PR's codeagent-pr-contract against the linked issue's
 # codeagent-contract + a real backend test run, and posts a per-AC verdict to the
-# job summary. In this phase the checker runs with --report-only, so the job
-# ALWAYS succeeds and never blocks merge — it exists to validate the gate and
-# gather data before it becomes a required check (Phase 4a.4).
-name: CodeAgent merge gate (report-only)
+# job summary. The checker now uses real exit codes, so a failing verdict FAILS
+# this job (a red check). It only BLOCKS merge once a maintainer marks the
+# "CodeAgent contract gate" check REQUIRED in branch protection — see
+# docs/branch-protection.md. Soak it as enforcing-but-not-required first.
+name: CodeAgent merge gate
 
 on:
   pull_request:
@@ -22,7 +23,7 @@ concurrency:
 
 jobs:
   contract-gate:
-    name: CodeAgent contract gate (report-only)
+    name: CodeAgent contract gate
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -53,10 +54,13 @@ jobs:
       - name: ca_gate self-tests (no DB)
         run: python -m pytest tests/ca_gate/ -q || true   # report-only: never block
 
-      - name: Fetch PR body
+      - name: Fetch PR body + changed files
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json body -q .body > "${RUNNER_TEMP}/pr_body.md"
+        run: |
+          PR="${{ github.event.pull_request.number }}"
+          gh pr view "$PR" --repo "${{ github.repository }}" --json body -q .body > "${RUNNER_TEMP}/pr_body.md"
+          gh pr diff "$PR" --repo "${{ github.repository }}" --name-only > "${RUNNER_TEMP}/changed.txt"
 
       - name: Run backend suite -> junitxml
         env:
@@ -72,7 +76,7 @@ jobs:
           python -m alembic upgrade head || true
           python -m pytest tests/ -q --junitxml="${RUNNER_TEMP}/report.xml" || true
 
-      - name: Contract gate (report-only)
+      - name: Contract gate (enforcing)
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -80,5 +84,5 @@ jobs:
           python scripts/ca_gate/check_pr_contract.py \
             --pr-body-file "${RUNNER_TEMP}/pr_body.md" \
             --junit "${RUNNER_TEMP}/report.xml" \
-            --repo-root backend \
-            --report-only
+            --changed-files-file "${RUNNER_TEMP}/changed.txt" \
+            --repo-root backend

@@ -64,7 +64,7 @@ def extract_prose_issue_links(pr_body: str) -> set[int]:
 
 
 def evaluate(pr_body, issue_contract, prose_links, junit, nontrivial,
-             any_contracted=None) -> Result:
+             any_contracted=None, changed_files=None) -> Result:
     """Pure verdict. ``junit`` = {"passed","present","skipped"[, "failed"]} sets of
     nodeids; ``nontrivial`` = callable(nodeid)->bool; ``issue_contract`` is the
     contract of the issue the PR IMPLEMENTS (or None); ``any_contracted`` is True
@@ -145,6 +145,9 @@ def evaluate(pr_body, issue_contract, prose_links, junit, nontrivial,
                 bad.append("%s did not pass" % n)
             elif not nontrivial(n):
                 bad.append("%s is trivial (no real assertion)" % n)
+            elif changed_files is not None and nb.split("::")[0] not in changed_files:
+                bad.append("%s not added/modified in this PR (an AC must be proven "
+                           "by a test in the diff)" % n)
         if bad:
             row["reason"] = "; ".join(bad)
             r.fail("%s: %s" % (acid, row["reason"])); r.ac_rows.append(row); continue
@@ -283,6 +286,9 @@ def main(argv=None) -> int:
     ap.add_argument("--repo-root", default=".")
     ap.add_argument("--report-only", action="store_true",
                     help="compute + render the verdict but always exit 0")
+    ap.add_argument("--changed-files-file",
+                    help="file of PR changed paths (gh pr diff --name-only); when "
+                         "given, every mapped test must live in a changed file")
     args = ap.parse_args(argv)
 
     pr_body = open(args.pr_body_file, encoding="utf-8").read()
@@ -299,10 +305,16 @@ def main(argv=None) -> int:
     any_contracted = any(c is not None for c in contracts.values())
     target = contracts.get(int(pr["implements_issue"])) if (pr and pr.get("implements_issue") is not None) else None
 
+    changed = None
+    if args.changed_files_file and os.path.exists(args.changed_files_file):
+        prefix = args.repo_root.rstrip("/") + "/" if args.repo_root not in (".", "") else ""
+        raw = [ln.strip() for ln in open(args.changed_files_file, encoding="utf-8") if ln.strip()]
+        changed = {(p[len(prefix):] if prefix and p.startswith(prefix) else p) for p in raw}
+
     junit = parse_junit(args.junit)
     r = evaluate(pr_body, target, prose_links, junit,
                  lambda n: ast_test_is_nontrivial(args.repo_root, n),
-                 any_contracted=any_contracted)
+                 any_contracted=any_contracted, changed_files=changed)
 
     summary = render_summary(r)
     print(summary)

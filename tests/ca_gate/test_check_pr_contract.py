@@ -272,3 +272,47 @@ def test_cli_report_only_exits_zero_even_on_fail(tmp_path, monkeypatch, capsys):
     ])
     assert rc == 0
     assert "would FAIL" in capsys.readouterr().out
+
+
+# ── P4a.4: changed-files binding + enforcing exit codes ──
+
+_TWO = [{"id": "AC-1", "text": "do X", "status": "active", "checked": False, "retired_round": None},
+        {"id": "AC-2", "text": "do Y", "status": "active", "checked": False, "retired_round": None}]
+_JUNIT2 = {"passed": {"tests/test_x.py::test_a", "tests/test_y.py::test_b"},
+           "present": {"tests/test_x.py::test_a", "tests/test_y.py::test_b"}, "skipped": set()}
+
+
+def _pm2():
+    return [entry("AC-1", "do X", ["tests/test_x.py::test_a"]),
+            entry("AC-2", "do Y", ["tests/test_y.py::test_b"])]
+
+
+def test_changed_files_binding_requires_test_in_diff():
+    ic = issue_contract(acs=_TWO)
+    r = chk.evaluate(pr_body(_pm2()), ic, {42}, _JUNIT2, ALL_OK,
+                     changed_files={"tests/test_x.py"})   # test_y.py NOT in the diff
+    assert not r.ok and any("AC-2" in f and "not added/modified" in f for f in r.failures)
+    r2 = chk.evaluate(pr_body(_pm2()), ic, {42}, _JUNIT2, ALL_OK,
+                      changed_files={"tests/test_x.py", "tests/test_y.py"})
+    assert r2.ok
+
+
+def test_changed_files_none_skips_binding():
+    r = chk.evaluate(pr_body(_pm2()), issue_contract(acs=_TWO), {42}, _JUNIT2, ALL_OK,
+                     changed_files=None)
+    assert r.ok                                    # no diff provided -> binding off
+
+
+def test_cli_enforcing_exits_nonzero_on_fail(tmp_path, monkeypatch, capsys):
+    (tmp_path / "pr.md").write_text(pr_body([entry("AC-1", "do X", ["tests/test_x.py::test_a"])]),
+                                    encoding="utf-8")
+    (tmp_path / "r.xml").write_text(
+        '<testsuite><testcase classname="tests.test_x" name="test_a" file="tests/test_x.py"/></testsuite>',
+        encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_x.py").write_text("def test_a():\n    assert 1\n", encoding="utf-8")
+    monkeypatch.setattr(chk, "fetch_issue_body", lambda repo, n: _issue_body(issue_contract()))
+    # AC-2 unproven; no --report-only -> enforcing -> non-zero exit
+    rc = chk.main(["--pr-body-file", str(tmp_path / "pr.md"), "--junit", str(tmp_path / "r.xml"),
+                   "--repo-root", str(tmp_path)])
+    assert rc == 1
