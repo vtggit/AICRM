@@ -34,7 +34,7 @@ export DB_PASSWORD="${DB_PASSWORD:-change-me-in-production}"
 # Helpers
 # ---------------------------------------------------------------------------
 
-# shellcheck disable=SC2329  # invoked indirectly via the 'trap cleanup EXIT' below
+# shellcheck disable=SC2317,SC2329  # cleanup + its body run via the 'trap cleanup EXIT' below
 cleanup() {
     echo ""
     echo "==> Stopping test database container..."
