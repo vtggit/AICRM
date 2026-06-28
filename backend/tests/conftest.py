@@ -300,6 +300,7 @@ def clean_database(client):
                 "contacts",
                 "templates",
                 "leads",
+                "deal_outcomes",
                 "activities",
                 "settings",
                 "audit_log",
