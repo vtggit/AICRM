@@ -51,9 +51,22 @@ def test_migration_applies_cleanly():
             cur.execute("SELECT version_num FROM alembic_version")
             row = cur.fetchone()
             assert row is not None, "alembic_version table should exist after migration"
+            # Derive the expected head from the migration scripts so this does
+            # not go stale every time a new migration is added.
+            from pathlib import Path
+
+            from alembic.config import Config
+            from alembic.script import ScriptDirectory
+
+            cfg = Config()
+            cfg.set_main_option(
+                "script_location",
+                str(Path(__file__).resolve().parent.parent / "migrations"),
+            )
+            expected_head = ScriptDirectory.from_config(cfg).get_current_head()
             assert (
-                row[0] == "0002_add_contact_tags"
-            ), f"Expected version 0002_add_contact_tags, got {row[0]}"
+                row[0] == expected_head
+            ), f"DB at {row[0]} but latest migration head is {expected_head}"
     finally:
         conn.close()
 
