@@ -2,6 +2,7 @@
 
 Verifies the application can start and respond to basic requests.
 """
+
 from app.config import APP_VERSION
 
 
