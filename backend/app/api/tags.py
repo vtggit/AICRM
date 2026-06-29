@@ -82,3 +82,10 @@ def set_contact_tags(
     """Replace all tags for a contact with the provided list of tag IDs."""
     _repository.set_tags_for_contact(contact_id, payload.tag_ids)
     return None
+
+
+@router.get("/{tag_id}")
+def route_api_tags_tag_id(
+    tag_id: str, _user: AuthUser = Depends(require_role(ROLE_ADMIN))
+):
+    raise HTTPException(status_code=404, detail="not found")
