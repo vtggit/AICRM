@@ -3,6 +3,8 @@
 Verifies the application can start and respond to basic requests.
 """
 
+from app.config import APP_VERSION
+
 
 def test_health_returns_success(client):
     """GET /api/health should return 200 with status ok."""
@@ -29,3 +31,9 @@ def test_root_returns_success(client):
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
+
+
+def test_health_version_returns_only_version(client):
+    resp = client.get("/api/health/version")
+    assert resp.status_code == 200
+    assert resp.json() == {"version": APP_VERSION}

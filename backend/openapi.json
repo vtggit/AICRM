@@ -49,6 +49,25 @@
         }
       }
     },
+    "/api/health/version": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Route Api Health Version",
+        "operationId": "route_api_health_version_api_health_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/me": {
       "get": {
         "tags": [

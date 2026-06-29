@@ -130,3 +130,8 @@ def readiness_check():
     if BUILD_TIMESTAMP:
         payload["build_timestamp"] = BUILD_TIMESTAMP
     return payload
+
+
+@router.get("/api/health/version")
+def route_api_health_version():
+    return {"version": APP_VERSION}
