@@ -37,3 +37,9 @@ def test_health_version_returns_only_version(client):
     resp = client.get("/api/health/version")
     assert resp.status_code == 200
     assert resp.json() == {"version": APP_VERSION}
+
+
+def test_health_ping_returns_pong(client):
+    resp = client.get("/api/health/ping")
+    assert resp.status_code == 200
+    assert resp.json() == {"version": APP_VERSION}
