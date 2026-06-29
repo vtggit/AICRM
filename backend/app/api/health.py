@@ -135,3 +135,8 @@ def readiness_check():
 @router.get("/api/health/version")
 def route_api_health_version():
     return {"version": APP_VERSION}
+
+
+@router.get("/api/health/ping")
+def route_api_health_ping():
+    return {"ping": "pong"}
