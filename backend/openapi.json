@@ -68,6 +68,25 @@
         }
       }
     },
+    "/api/health/ping": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Route Api Health Ping",
+        "operationId": "route_api_health_ping_api_health_ping_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/me": {
       "get": {
         "tags": [
