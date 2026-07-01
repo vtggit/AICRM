@@ -16,6 +16,7 @@ _AUTHORITATIVE_FIELDS = (
     "status",
     "notes",
     "tags",
+    "priority",
     "created_at",
     "updated_at",
 )

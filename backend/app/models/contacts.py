@@ -29,6 +29,7 @@ def _normalize_phone(value: str | None) -> str | None:
 
 class ContactCreate(BaseModel):
     """Request model for creating a contact."""
+    priority: str | None = Field(default=None)
 
     name: str = Field(..., min_length=1, max_length=200)
     email: str | None = Field(default=None, max_length=300)
@@ -51,6 +52,7 @@ class ContactCreate(BaseModel):
 
 class ContactUpdate(BaseModel):
     """Request model for updating a contact."""
+    priority: str | None = Field(default=None)
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     email: str | None = Field(default=None, max_length=300)
@@ -73,6 +75,7 @@ class ContactUpdate(BaseModel):
 
 class ContactResponse(BaseModel):
     """Response model for a contact record."""
+    priority: str | None = None
 
     id: str
     name: str
