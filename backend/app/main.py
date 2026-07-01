@@ -145,6 +145,7 @@ def create_app() -> FastAPI:
     from app.api.analytics import router as analytics_router
     from app.api.audit import router as audit_router
     from app.api.auth import router as auth_router
+    from app.api.companies import router as companies_router
     from app.api.contacts import router as contacts_router
     from app.api.deal_outcomes import router as deal_outcomes_router
     from app.api.health import router as health_router
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     application.include_router(audit_router)
     application.include_router(deal_outcomes_router)
     application.include_router(sales_goals_router)
+    application.include_router(companies_router)
 
     @application.on_event("startup")
     def on_startup():
