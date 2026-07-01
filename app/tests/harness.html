@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset='utf-8'></head><body>
+<script>
+window.__calls = [];
+const ApiClient = {
+  async getProductsFromApi() { window.__calls.push('get'); return [{ id: '1', name: 'x', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-02T00:00:00Z' }]; },
+  async createProductInApi(d) { window.__calls.push('create'); return { id: '2', ...d, created_at: '2025-01-03T00:00:00Z' }; },
+  async updateProductInApi(id, d) { window.__calls.push('update:'+id); return { id, ...d, updated_at: '2025-01-04T00:00:00Z' }; },
+  async deleteProductInApi(id) { window.__calls.push('delete:'+id); },
+};
+</script>
+<script src='./../js/products-data-source.js'></script>
+</body></html>
