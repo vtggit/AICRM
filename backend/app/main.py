@@ -153,6 +153,7 @@ def create_app() -> FastAPI:
     from app.api.settings import router as settings_router
     from app.api.tags import router as tags_router
     from app.api.templates import router as templates_router
+    from app.api.companies import router as companies_router
 
     application.include_router(health_router)
     application.include_router(auth_router)
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     application.include_router(audit_router)
     application.include_router(deal_outcomes_router)
     application.include_router(sales_goals_router)
+    application.include_router(companies_router)
 
     @application.on_event("startup")
     def on_startup():
