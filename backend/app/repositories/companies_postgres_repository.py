@@ -24,7 +24,9 @@ class CompanyPostgresRepository:
     def list_all(
         self, limit: int | None = None, offset: int | None = None
     ) -> list[dict]:
-        sql = "SELECT * FROM companies ORDER BY created_at DESC"
+        sql = (
+            "SELECT * FROM companies WHERE deleted_at IS NULL ORDER BY created_at DESC"
+        )
         params: list = []
         if limit is not None:
             sql += " LIMIT %s"
@@ -38,7 +40,10 @@ class CompanyPostgresRepository:
 
     def get_by_id(self, entity_id: str) -> dict | None:
         with get_cursor() as cur:
-            cur.execute("SELECT * FROM companies WHERE id = %s", (entity_id,))
+            cur.execute(
+                "SELECT * FROM companies WHERE id = %s AND deleted_at IS NULL",
+                (entity_id,),
+            )
             row = cur.fetchone()
             return _row_to_dict(row) if row else None
 
@@ -83,5 +88,8 @@ class CompanyPostgresRepository:
 
     def delete(self, entity_id: str) -> bool:
         with get_cursor() as cur:
-            cur.execute("DELETE FROM companies WHERE id = %s", (entity_id,))
+            cur.execute(
+                "UPDATE companies SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL",
+                (entity_id,),
+            )
             return cur.rowcount > 0
