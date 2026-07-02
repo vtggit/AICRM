@@ -39,9 +39,15 @@ class ContactsPostgresRepository:
     def __init__(self):
         self._tags_repo = TagsPostgresRepository()
 
-    def list_all(self) -> list[dict]:
+    def list_all(self, company_id: str | None = None) -> list[dict]:
         with get_cursor() as cur:
-            cur.execute("SELECT * FROM contacts ORDER BY created_at DESC")
+            if company_id is not None:
+                cur.execute(
+                    "SELECT * FROM contacts WHERE company_id = %s ORDER BY created_at DESC",
+                    (company_id,),
+                )
+            else:
+                cur.execute("SELECT * FROM contacts ORDER BY created_at DESC")
             rows = cur.fetchall()
         results = []
         for r in rows:

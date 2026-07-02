@@ -37,8 +37,8 @@ class ContactsService:
     #  Public API                                                         #
     # ------------------------------------------------------------------ #
 
-    def list_contacts(self) -> list[dict]:
-        rows = self.repository.list_all()
+    def list_contacts(self, company_id: str | None = None) -> list[dict]:
+        rows = self.repository.list_all(company_id=company_id)
         return [_ensure_authoritative_shape(r) for r in rows]
 
     def get_contact(self, contact_id: str) -> dict | None:

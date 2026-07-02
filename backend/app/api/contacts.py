@@ -27,9 +27,11 @@ _service = ContactsService(_repository, _audit_service)
 
 
 @router.get("", response_model=list[ContactResponse])
-def list_contacts(_user: AuthUser = Depends(require_role(ROLE_ADMIN))):
+def list_contacts(
+    company_id: str | None = None, _user: AuthUser = Depends(require_role(ROLE_ADMIN))
+):
     """List all contacts. Requires admin role."""
-    return _service.list_contacts()
+    return _service.list_contacts(company_id=company_id)
 
 
 @router.get("/duplicates", response_model=DuplicateDetectionResponse)
