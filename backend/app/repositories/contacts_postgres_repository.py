@@ -70,8 +70,8 @@ class ContactsPostgresRepository:
             with get_cursor() as cur:
                 cur.execute(
                     """INSERT INTO contacts
-                       (id, name, email, phone, company, status, notes, created_at, updated_at)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                       (id, name, email, phone, company, status, notes, company_id, created_at, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     (
                         contact_id,
                         data["name"],
@@ -80,6 +80,7 @@ class ContactsPostgresRepository:
                         data.get("company"),
                         data.get("status", "active"),
                         data.get("notes"),
+                        data.get("company_id"),
                         now,
                         now,
                     ),
@@ -101,7 +102,15 @@ class ContactsPostgresRepository:
     def update(self, contact_id: str, data: dict) -> dict | None:
         tag_ids = data.pop("tag_ids", None)
 
-        updatable = ("name", "email", "phone", "company", "status", "notes")
+        updatable = (
+            "name",
+            "email",
+            "phone",
+            "company",
+            "status",
+            "notes",
+            "company_id",
+        )
         fields = [k for k in updatable if k in data]
         if not fields:
             fields = []
