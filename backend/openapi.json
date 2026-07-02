@@ -4640,6 +4640,17 @@
       },
       "LeadCreate": {
         "properties": {
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
           "name": {
             "type": "string",
             "maxLength": 200,
@@ -4747,6 +4758,17 @@
       },
       "LeadResponse": {
         "properties": {
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -4860,6 +4882,17 @@
       },
       "LeadUpdate": {
         "properties": {
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
           "name": {
             "anyOf": [
               {

@@ -46,6 +46,8 @@ def _normalize_phone(value: str | None) -> str | None:
 class LeadCreate(BaseModel):
     """Request model for creating a lead."""
 
+    company_id: str | None = Field(default=None)
+
     name: str = Field(..., min_length=1, max_length=200)
     company: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=300)
@@ -73,6 +75,8 @@ class LeadCreate(BaseModel):
 class LeadUpdate(BaseModel):
     """Request model for updating a lead."""
 
+    company_id: str | None = Field(default=None)
+
     name: str | None = Field(default=None, min_length=1, max_length=200)
     company: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=300)
@@ -99,6 +103,8 @@ class LeadUpdate(BaseModel):
 
 class LeadResponse(BaseModel):
     """Response model for a lead record."""
+
+    company_id: str | None = None
 
     id: str
     name: str
