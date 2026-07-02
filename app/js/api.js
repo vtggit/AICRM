@@ -60,6 +60,31 @@ class ApiError extends Error {
 }
 
 const ApiClient = {
+    async getCompaniesFromApi() {
+        const result = await this.get('/companies');
+        return this.assertList(result);
+    },
+
+    async createCompanyInApi(company) {
+        const payload = { name: company.name, website: company.website, industry: company.industry, employee_count: company.employee_count };
+        const result = await this.post('/companies', payload);
+        return this.assertEntity(result);
+    },
+
+    async updateCompanyInApi(id, company) {
+        const payload = {};
+        for (const key of ['name', 'website', 'industry', 'employee_count']) {
+            if (company[key] !== undefined) { payload[key] = company[key]; }
+        }
+        const result = await this.put(`/companies/${id}`, payload);
+        return this.assertEntity(result);
+    },
+
+    async deleteCompanyInApi(id) {
+        const result = await this.delete(`/companies/${id}`);
+        if (!result.ok) { throw ApiError.fromResult(result); }
+    },
+
     BASE_URL: Config.API_BASE_URL,
 
     // -----------------------------------------------------------------------
