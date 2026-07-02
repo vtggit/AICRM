@@ -15,6 +15,7 @@ Failure behavior:
 import logging
 
 import psycopg2
+import psycopg2.errors
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,6 +65,41 @@ def create_app() -> FastAPI:
     # -----------------------------------------------------------------------
     # Global exception handlers for operational clarity
     # -----------------------------------------------------------------------
+
+    @application.exception_handler(psycopg2.errors.ForeignKeyViolation)
+    async def foreign_key_violation_handler(
+        request: Request, exc: psycopg2.errors.ForeignKeyViolation
+    ):
+        """A write referenced a missing row (SQLSTATE 23503).
+
+        Returns a structured 422 naming the invalid reference (from the
+        driver diagnostics) instead of the generic 5xx database error.
+        Starlette resolves handlers by MRO, so this specific handler wins
+        over the generic ``psycopg2.Error`` -> 503 handler below.
+        """
+        from app.observability.logging import get_request_id
+
+        request_id = get_request_id()
+        diag = getattr(exc, "diag", None)
+        reference = (
+            getattr(diag, "message_detail", None)
+            or getattr(diag, "constraint_name", None)
+            or "a foreign key constraint was violated"
+        )
+        logger.warning(
+            "invalid reference during request %s %s — %s request_id=%s",
+            request.method,
+            request.url.path,
+            reference,
+            request_id,
+        )
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": f"Invalid reference: {reference}",
+                "request_id": request_id,
+            },
+        )
 
     @application.exception_handler(psycopg2.Error)
     async def database_error_handler(request: Request, exc: psycopg2.Error):
