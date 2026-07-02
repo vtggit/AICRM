@@ -97,6 +97,7 @@ const App = {
         if (page === 'winloss') await this.renderWinLossPage();
         if (page === 'salesgoals') await this.renderSalesGoals();
         if (page === 'settings') this.renderSettings();
+        if (page === 'companies') await this.renderCompanies();
 
         this.updateOverdueBadge();
 
@@ -113,6 +114,7 @@ const App = {
             activities: 'Activities',
             templates: 'Email Templates',
             winloss: 'Win/Loss Reasons',
+            companies: 'Companies',
             settings: 'Settings'
         };
         return titles[page] || page;
@@ -672,6 +674,132 @@ const App = {
         });
         document.getElementById('vcard-file-input').addEventListener('change', (e) => this.importContactsVCard(e));
         document.getElementById('btn-find-duplicates').addEventListener('click', () => this.findDuplicates());
+    },
+
+    async renderCompanies(companiesOverride) {
+        let companies;
+        try {
+            companies = companiesOverride || await CompaniesDataSource.getCompanies();
+        } catch (err) {
+            console.error('Failed to load companies:', err);
+            document.getElementById('companies-list').innerHTML =
+                `<div class="empty-state-card"><p>⚠️ ${this.escapeHtml(err.message)}</p></div>`;
+            return;
+        }
+
+        const container = document.getElementById('companies-list');
+        if (!companies || companies.length === 0) {
+            container.innerHTML = '<div class="empty-state-card"><p>No companies found.</p></div>';
+            return;
+        }
+
+        const isAdmin = Auth.isAdmin();
+        container.innerHTML = companies.map(item => `
+            <div class="contact-card" data-company-id="${this.escapeHtml(String(item.id))}">
+                <div class="card-header">
+                    <div class="card-header-left"><h4>${this.escapeHtml(item.name)}</h4></div>
+                    <div class="card-actions">
+                        ${isAdmin ? '<button class="card-action-btn" data-action="edit" title="Edit">✏️</button>' : ''}
+                        ${isAdmin ? '<button class="card-action-btn" data-action="delete" title="Delete">🗑️</button>' : ''}
+                    </div>
+                </div>
+                <div class="card-body">
+                    ${item.website != null && item.website !== '' ? `<p>Website: ${this.escapeHtml(String(item.website))}</p>` : ''}
+                    ${item.industry != null && item.industry !== '' ? `<p>Industry: ${this.escapeHtml(String(item.industry))}</p>` : ''}
+                    ${item.employeeCount != null && item.employeeCount !== '' ? `<p>Employee Count: ${this.escapeHtml(String(item.employeeCount))}</p>` : ''}
+                </div>
+                <div class="card-meta">
+                    <small class="text-secondary">${this.formatDate(item.createdAt)}</small>
+                </div>
+            </div>`).join('');
+        container.querySelectorAll('.card-action-btn[data-action]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const id = btn.closest('[data-company-id]').getAttribute('data-company-id');
+                if (btn.dataset.action === 'edit') { this.editCompany(id); } else { this.deleteCompany(id); }
+            });
+        });
+    },
+
+    showCompanyModal(item) {
+        document.getElementById('modal-title').textContent = item ? 'Edit Company' : 'Add Company';
+        document.getElementById('modal-body').innerHTML = `
+            <form id="company-form">
+                <div class="form-group">
+                    <label for="company-name">Name *</label>
+                    <input type="text" id="company-name" value="${item ? this.escapeHtml(item.name || '') : ''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="company-website">Website</label>
+                    <input type="text" id="company-website" value="${item ? this.escapeHtml(item.website || '') : ''}">
+                </div>
+                <div class="form-group">
+                    <label for="company-industry">Industry</label>
+                    <input type="text" id="company-industry" value="${item ? this.escapeHtml(item.industry || '') : ''}">
+                </div>
+                <div class="form-group">
+                    <label for="company-employee_count">Employee Count</label>
+                    <input type="number" id="company-employee_count" value="${item && item.employeeCount != null ? this.escapeHtml(String(item.employeeCount)) : ''}" step="any">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">${item ? 'Update' : 'Create'}</button>
+                </div>
+            </form>`;
+        document.getElementById('company-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveCompany(item);
+        });
+        this.openModal();
+    },
+
+    async saveCompany(existing) {
+        const data = {
+            name: document.getElementById('company-name').value.trim(),
+            website: document.getElementById('company-website').value.trim(),
+            industry: document.getElementById('company-industry').value.trim(),
+            employee_count: document.getElementById('company-employee_count').value.trim() === '' ? null : Number(document.getElementById('company-employee_count').value),
+        };
+        if (!data.name) return;
+        try {
+            if (existing) {
+                await CompaniesDataSource.updateCompany(existing.id, data);
+            } else {
+                await CompaniesDataSource.createCompany(data);
+            }
+            this.closeModal();
+            await this.renderCompanies();
+            this.showNotification(existing ? 'Company updated.' : 'Company created.', 'success');
+        } catch (err) {
+            console.error('Failed to save company:', err);
+            this.closeModal();
+            this.showNotification(this._handleApiError(err), 'error');
+        }
+    },
+
+    async editCompany(id) {
+        try {
+            const found = (await CompaniesDataSource.getCompanies()).find(x => x.id === id);
+            if (found) {
+                this.showCompanyModal(found);
+            } else {
+                this.showNotification('Company not found.', 'error');
+            }
+        } catch (err) {
+            console.error('Failed to load company:', err);
+            this.showNotification(this._handleApiError(err), 'error');
+        }
+    },
+
+    async deleteCompany(id) {
+        if (!confirm('Are you sure you want to delete this company?')) return;
+        try {
+            await CompaniesDataSource.deleteCompany(id);
+            await this.renderCompanies();
+            this.showNotification('Company deleted.', 'success');
+        } catch (err) {
+            console.error('Failed to delete company:', err);
+            this.showNotification(this._handleApiError(err), 'error');
+        }
     },
 
     async renderContacts(contactsOverride) {
