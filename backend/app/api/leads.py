@@ -30,11 +30,12 @@ def get_service() -> LeadsService:
 
 @router.get("", response_model=list[LeadResponse])
 def list_leads(
+    company_id: str | None = None,
     _user: AuthUser = Depends(require_authenticated_user),
     service: LeadsService = Depends(get_service),
 ):
     """List all leads. Requires authentication."""
-    return service.list_leads()
+    return service.list_leads(company_id=company_id)
 
 
 @router.post("", response_model=LeadResponse, status_code=status.HTTP_201_CREATED)
