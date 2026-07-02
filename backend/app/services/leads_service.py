@@ -17,6 +17,7 @@ _AUTHORITATIVE_FIELDS = (
     "stage",
     "source",
     "notes",
+    "company_id",
     "created_at",
     "updated_at",
 )
