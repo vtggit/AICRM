@@ -57,8 +57,8 @@ class LeadsPostgresRepository:
             with get_cursor() as cur:
                 cur.execute(
                     """INSERT INTO leads
-                       (id, name, company, email, phone, value, stage, source, notes, created_at, updated_at)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                       (id, name, company, email, phone, value, stage, source, notes, company_id, created_at, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     (
                         lead_id,
                         data["name"],
@@ -69,6 +69,7 @@ class LeadsPostgresRepository:
                         data.get("stage", "new"),
                         data.get("source"),
                         data.get("notes"),
+                        data.get("company_id"),
                         now,
                         now,
                     ),
@@ -94,6 +95,7 @@ class LeadsPostgresRepository:
             "stage",
             "source",
             "notes",
+            "company_id",
         )
         fields = [k for k in updatable if k in data]
 
