@@ -1132,6 +1132,22 @@
         "operationId": "list_leads_api_leads_get",
         "parameters": [
           {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
