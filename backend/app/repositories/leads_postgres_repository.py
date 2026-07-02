@@ -35,9 +35,15 @@ def _row_to_dict(row) -> dict:
 class LeadsPostgresRepository:
     """PostgreSQL-backed repository for lead CRUD operations."""
 
-    def list_all(self) -> list[dict]:
+    def list_all(self, company_id: str | None = None) -> list[dict]:
         with get_cursor() as cur:
-            cur.execute("SELECT * FROM leads ORDER BY created_at DESC")
+            if company_id is not None:
+                cur.execute(
+                    "SELECT * FROM leads WHERE company_id = %s ORDER BY created_at DESC",
+                    (company_id,),
+                )
+            else:
+                cur.execute("SELECT * FROM leads ORDER BY created_at DESC")
             rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
