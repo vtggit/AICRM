@@ -1,6 +1,6 @@
 """Contacts API routes — CRUD and bulk operations for contact records."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.auth.authorization import ROLE_ADMIN, require_role
 from app.auth.models import AuthUser
@@ -28,10 +28,16 @@ _service = ContactsService(_repository, _audit_service)
 
 @router.get("", response_model=list[ContactResponse])
 def list_contacts(
-    company_id: str | None = None, _user: AuthUser = Depends(require_role(ROLE_ADMIN))
+    response: Response,
+    limit: int = Query(20, ge=0, le=100),
+    offset: int = Query(0, ge=0),
+    company_id: str | None = None,
+    _user: AuthUser = Depends(require_role(ROLE_ADMIN)),
 ):
     """List all contacts. Requires admin role."""
-    return _service.list_contacts(company_id=company_id)
+    rows = _service.list_contacts(company_id=company_id)
+    response.headers["X-Total-Count"] = str(len(rows))
+    return rows[offset : offset + limit]
 
 
 @router.get("/duplicates", response_model=DuplicateDetectionResponse)

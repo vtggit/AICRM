@@ -1,6 +1,6 @@
 """Deal outcomes API routes (win/loss reason tracking)."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.auth.authorization import ROLE_ADMIN, require_role
 from app.auth.dependencies import require_authenticated_user
@@ -28,11 +28,16 @@ def get_service() -> DealOutcomesService:
 
 @router.get("", response_model=list[DealOutcomeResponse])
 def list_outcomes(
+    response: Response,
+    limit: int = Query(20, ge=0, le=100),
+    offset: int = Query(0, ge=0),
     _user: AuthUser = Depends(require_authenticated_user),
     service: DealOutcomesService = Depends(get_service),
 ):
     """List all deal outcomes. Requires authentication."""
-    return service.list_outcomes()
+    rows = service.list_outcomes()
+    response.headers["X-Total-Count"] = str(len(rows))
+    return rows[offset : offset + limit]
 
 
 @router.post(

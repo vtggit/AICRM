@@ -1,6 +1,6 @@
 """Templates API routes — CRUD for email template records."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.auth.authorization import ROLE_ADMIN, require_role
 from app.auth.dependencies import require_authenticated_user
@@ -20,9 +20,16 @@ _service = TemplatesService(_repository, _audit_service)
 
 
 @router.get("", response_model=list[TemplateResponse])
-def list_templates(_user: AuthUser = Depends(require_authenticated_user)):
+def list_templates(
+    response: Response,
+    limit: int = Query(20, ge=0, le=100),
+    offset: int = Query(0, ge=0),
+    _user: AuthUser = Depends(require_authenticated_user),
+):
     """List all templates. Requires authentication."""
-    return _service.list_templates()
+    rows = _service.list_templates()
+    response.headers["X-Total-Count"] = str(len(rows))
+    return rows[offset : offset + limit]
 
 
 @router.post("", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)

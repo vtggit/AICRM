@@ -1,6 +1,6 @@
 """Contact Tags API routes — CRUD for tag definitions and contact-tag assignments."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.auth.authorization import ROLE_ADMIN, require_role
 from app.auth.models import AuthUser
@@ -12,9 +12,16 @@ _repository = TagsPostgresRepository()
 
 
 @router.get("", response_model=list[TagResponse])
-def list_tags(_user: AuthUser = Depends(require_role(ROLE_ADMIN))):
+def list_tags(
+    response: Response,
+    limit: int = Query(20, ge=0, le=100),
+    offset: int = Query(0, ge=0),
+    _user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+):
     """List all available tags."""
-    return _repository.list_all()
+    rows = _repository.list_all()
+    response.headers["X-Total-Count"] = str(len(rows))
+    return rows[offset : offset + limit]
 
 
 @router.post("", response_model=TagResponse, status_code=status.HTTP_201_CREATED)
