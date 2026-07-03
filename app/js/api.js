@@ -61,8 +61,7 @@ class ApiError extends Error {
 
 const ApiClient = {
     async getCompaniesFromApi() {
-        const result = await this.get('/companies');
-        return this.assertList(result);
+        return this.getAllPages('/companies');
     },
 
     async createCompanyInApi(company) {
@@ -158,6 +157,23 @@ const ApiClient = {
      */
     async get(path) {
         return this._execute('GET', path);
+    },
+
+    /**
+     * Paged GET: fetch a list endpoint in capped chunks (limit=100, offset
+     * paging) until every row is retrieved. The backend enforces a default
+     * page size, so an unpaged GET would silently truncate long lists.
+     */
+    async getAllPages(path) {
+        const sep = path.includes('?') ? '&' : '?';
+        const all = [];
+        for (let offset = 0; ; offset += 100) {
+            const page = await this.get(`${path}${sep}limit=100&offset=${offset}`);
+            const rows = this.assertList(page);
+            all.push(...rows);
+            if (rows.length < 100) { break; }
+        }
+        return all;
     },
 
     /**
@@ -364,8 +380,7 @@ const ApiClient = {
      * Throws ApiError on HTTP failure or contract drift.
      */
     async getContactsFromApi() {
-        const result = await this.get('/contacts');
-        return this.assertList(result);
+        return this.getAllPages('/contacts');
     },
 
     /**
@@ -439,8 +454,7 @@ const ApiClient = {
     // === Tags ===
 
     async getTagsFromApi() {
-        const result = await this.get('/tags');
-        return this.assertList(result);
+        return this.getAllPages('/tags');
     },
 
     async createTagInApi(tag) {
@@ -475,8 +489,7 @@ const ApiClient = {
      * Throws ApiError on HTTP failure or contract drift.
      */
     async getTemplatesFromApi() {
-        const result = await this.get('/templates');
-        return this.assertList(result);
+        return this.getAllPages('/templates');
     },
 
     /**
@@ -534,8 +547,7 @@ const ApiClient = {
      * Throws ApiError on HTTP failure or contract drift.
      */
     async getLeadsFromApi() {
-        const result = await this.get('/leads');
-        return this.assertList(result);
+        return this.getAllPages('/leads');
     },
 
     /**
@@ -606,8 +618,7 @@ const ApiClient = {
      * Throws ApiError on HTTP failure or contract drift.
      */
     async getActivitiesFromApi() {
-        const result = await this.get('/activities');
-        return this.assertList(result);
+        return this.getAllPages('/activities');
     },
 
     /**
@@ -721,8 +732,7 @@ const ApiClient = {
      * Fetch all deal outcomes from the backend API.
      */
     async getDealOutcomesFromApi() {
-        const result = await this.get('/deal-outcomes');
-        return this.assertList(result);
+        return this.getAllPages('/deal-outcomes');
     },
 
     /**
@@ -758,8 +768,7 @@ const ApiClient = {
      * Fetch all sales goals from the backend API.
      */
     async getSalesGoals(activeOnly = '') {
-        const result = await this.get('/sales-goals' + activeOnly);
-        return Array.isArray(result) ? result : [];
+        return this.getAllPages('/sales-goals' + activeOnly);
     },
 
     /**
