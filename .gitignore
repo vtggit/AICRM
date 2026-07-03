@@ -44,3 +44,6 @@ Thumbs.db
 node_modules/
 package-lock.json
 yarn.lock
+
+# Playwright / E2E artifacts (per-run harness output)
+test-results/
