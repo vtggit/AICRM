@@ -3,7 +3,9 @@
 
 def test_leads_list_filters_by_company_id(client, admin_headers):
     parent = client.post(
-        "/api/companies", json={"name": "Filter Parent"}, headers=admin_headers
+        "/api/companies",
+        json={"name": "Filter Parent (leads_company_id_filter)"},
+        headers=admin_headers,
     )
     assert parent.status_code == 201, parent.text
     val = parent.json()["id"]

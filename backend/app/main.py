@@ -101,6 +101,39 @@ def create_app() -> FastAPI:
             },
         )
 
+    @application.exception_handler(psycopg2.errors.UniqueViolation)
+    async def unique_violation_handler(
+        request: Request, exc: psycopg2.errors.UniqueViolation
+    ):
+        """A write violated a unique constraint (SQLSTATE 23505).
+
+        Returns 409 Conflict naming the duplicate (from the driver
+        diagnostics) instead of the generic 5xx database error.
+        """
+        from app.observability.logging import get_request_id
+
+        request_id = get_request_id()
+        diag = getattr(exc, "diag", None)
+        duplicate = (
+            getattr(diag, "message_detail", None)
+            or getattr(diag, "constraint_name", None)
+            or "a unique constraint was violated"
+        )
+        logger.warning(
+            "duplicate value during request %s %s — %s request_id=%s",
+            request.method,
+            request.url.path,
+            duplicate,
+            request_id,
+        )
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": f"Duplicate value: {duplicate}",
+                "request_id": request_id,
+            },
+        )
+
     @application.exception_handler(psycopg2.Error)
     async def database_error_handler(request: Request, exc: psycopg2.Error):
         """Handle PostgreSQL connection and query errors.

@@ -3,7 +3,9 @@
 
 def test_leads_company_id_round_trips(client, admin_headers):
     parent = client.post(
-        "/api/companies", json={"name": "FK Parent"}, headers=admin_headers
+        "/api/companies",
+        json={"name": "FK Parent (leads_company_id_flow)"},
+        headers=admin_headers,
     )
     assert parent.status_code == 201, parent.text
     parent_id = parent.json()["id"]
