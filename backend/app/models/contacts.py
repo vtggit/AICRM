@@ -54,6 +54,9 @@ class ContactCreate(BaseModel):
 class ContactUpdate(BaseModel):
     """Request model for updating a contact."""
 
+    email_consent_status: Literal["opted_in", "opted_out", "unknown"] | None = None
+    consent_source: str | None = Field(default=None, max_length=64)
+
     company_id: str | None = Field(default=None)
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
@@ -77,6 +80,10 @@ class ContactUpdate(BaseModel):
 
 class ContactResponse(BaseModel):
     """Response model for a contact record."""
+
+    email_consent_status: str = "unknown"
+    consent_updated_at: str | None = None
+    consent_source: str | None = None
 
     company_id: str | None = None
 

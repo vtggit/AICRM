@@ -3,6 +3,9 @@
 from app.auth.models import AuthUser
 from app.models.audit import AuditEvent
 from app.models.contacts import ALLOWED_STATUSES, ContactCreate, ContactUpdate
+from app.repositories.contact_consent_postgres_repository import (
+    ContactConsentPostgresRepository,
+)
 from app.repositories.contacts_postgres_repository import ContactsPostgresRepository
 from app.services.audit_service import AuditService
 
@@ -22,6 +25,23 @@ _AUTHORITATIVE_FIELDS = (
 )
 
 
+_consent_repository = ContactConsentPostgresRepository()
+
+
+def _attach_consent(rows: list) -> list:
+    """Merge each contact's email-channel consent onto the flat v1 surface; `unknown`
+    when no consent row exists (the retroactive default for pre-existing contacts)."""
+    ids = [r["id"] for r in rows if r.get("id")]
+    found = _consent_repository.get_for_contacts(ids) if ids else {}
+    for r in rows:
+        c = found.get(r.get("id")) or {}
+        r["email_consent_status"] = c.get("status") or "unknown"
+        ts = c.get("updated_at")
+        r["consent_updated_at"] = ts.isoformat() if hasattr(ts, "isoformat") else ts
+        r["consent_source"] = c.get("source")
+    return rows
+
+
 class ContactsService:
     """Handles Contacts business logic and validation."""
 
@@ -39,13 +59,13 @@ class ContactsService:
 
     def list_contacts(self, company_id: str | None = None) -> list[dict]:
         rows = self.repository.list_all(company_id=company_id)
-        return [_ensure_authoritative_shape(r) for r in rows]
+        return _attach_consent([_ensure_authoritative_shape(r) for r in rows])
 
     def get_contact(self, contact_id: str) -> dict | None:
         row = self.repository.get_by_id(contact_id)
         if row is None:
             return None
-        return _ensure_authoritative_shape(row)
+        return _attach_consent([_ensure_authoritative_shape(row)])[0]
 
     def create_contact(self, payload: ContactCreate, actor: AuthUser) -> dict:
         _validate_contact_name(payload.name)
@@ -89,11 +109,35 @@ class ContactsService:
             _validate_status(payload.status)
 
         data = payload.model_dump(exclude_unset=True, exclude_none=True)
+        consent_status = data.pop("email_consent_status", None)
+        consent_source = data.pop("consent_source", None)
         result = self.repository.update(contact_id, data)
         if result is None:
             return None
 
-        contact = _ensure_authoritative_shape(result)
+        contact = _attach_consent([_ensure_authoritative_shape(result)])[0]
+        if consent_status is not None:
+            prev = _consent_repository.get_for_contact(contact_id)
+            _consent_repository.set_consent_with_audit(
+                contact_id,
+                consent_status,
+                consent_source or "manual",
+                AuditEvent(
+                    entity_type="contact",
+                    entity_id=contact_id,
+                    action="consent_change",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "old": (prev or {}).get("status") or "unknown",
+                        "new": consent_status,
+                        "source": consent_source or "manual",
+                    },
+                ),
+            )
+            contact = _attach_consent([contact])[0]
 
         changed_fields = [
             k
