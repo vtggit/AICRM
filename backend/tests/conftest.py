@@ -297,6 +297,7 @@ def clean_database(client):
             tables = [
                 "contact_tag_mapping",
                 "contact_tags",
+                "contact_consent",
                 "contacts",
                 "templates",
                 "leads",

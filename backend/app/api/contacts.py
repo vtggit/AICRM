@@ -58,7 +58,7 @@ def get_contact(
     _user: AuthUser = Depends(require_role(ROLE_ADMIN)),
 ):
     """Get a contact by ID. Requires admin role."""
-    contact = _repository.get_by_id(contact_id)
+    contact = _service.get_contact(contact_id)
     if not contact:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

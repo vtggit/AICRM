@@ -4178,6 +4178,33 @@
       },
       "ContactResponse": {
         "properties": {
+          "email_consent_status": {
+            "type": "string",
+            "title": "Email Consent Status",
+            "default": "unknown"
+          },
+          "consent_updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Updated At"
+          },
+          "consent_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Source"
+          },
           "company_id": {
             "anyOf": [
               {
@@ -4307,6 +4334,34 @@
       },
       "ContactUpdate": {
         "properties": {
+          "email_consent_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "opted_in",
+                  "opted_out",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Consent Status"
+          },
+          "consent_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Source"
+          },
           "company_id": {
             "anyOf": [
               {
