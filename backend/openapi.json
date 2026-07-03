@@ -2919,6 +2919,16 @@
         "operationId": "list_companies_api_companies_get",
         "parameters": [
           {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,

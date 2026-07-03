@@ -22,11 +22,16 @@ class CompanyPostgresRepository:
     """PostgreSQL repository for the companies table."""
 
     def list_all(
-        self, limit: int | None = None, offset: int | None = None
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        include_deleted: bool = False,
     ) -> list[dict]:
         sql = (
             "SELECT * FROM companies WHERE deleted_at IS NULL ORDER BY created_at DESC"
         )
+        if include_deleted:
+            sql = "SELECT * FROM companies ORDER BY created_at DESC"
         params: list = []
         if limit is not None:
             sql += " LIMIT %s"
