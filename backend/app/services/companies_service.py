@@ -11,9 +11,14 @@ class CompanyService:
         self.repository = repository
 
     def list_companies(
-        self, limit: int | None = None, offset: int | None = None
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        include_deleted: bool = False,
     ) -> list[dict]:
-        return self.repository.list_all(limit=limit, offset=offset)
+        return self.repository.list_all(
+            limit=limit, offset=offset, include_deleted=include_deleted
+        )
 
     def get_company(self, entity_id: str) -> dict | None:
         return self.repository.get_by_id(entity_id)

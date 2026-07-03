@@ -21,12 +21,15 @@ def get_service() -> CompanyService:
 
 @router.get("", response_model=list[CompanyResponse])
 def list_companies(
+    include_deleted: bool = False,
     limit: int | None = None,
     offset: int | None = None,
     _user: AuthUser = Depends(require_authenticated_user),
     service: CompanyService = Depends(get_service),
 ):
-    return service.list_companies(limit=limit, offset=offset)
+    return service.list_companies(
+        limit=limit, offset=offset, include_deleted=include_deleted
+    )
 
 
 @router.post("", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
