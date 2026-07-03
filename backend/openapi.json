@@ -637,6 +637,314 @@
         }
       }
     },
+    "/api/suppressions": {
+      "get": {
+        "tags": [
+          "suppressions"
+        ],
+        "summary": "List Suppressions",
+        "description": "List suppression entries (the #179 hardened list contract). Admin only.",
+        "operationId": "list_suppressions_api_suppressions_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 0,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuppressionResponse"
+                  },
+                  "title": "Response List Suppressions Api Suppressions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "suppressions"
+        ],
+        "summary": "Add Suppression",
+        "description": "Add an address to the suppression list. A duplicate (any case) returns 409 via the\ncentral UniqueViolation handler. Admin only.",
+        "operationId": "add_suppression_api_suppressions_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuppressionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuppressionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppressions/{suppression_id}": {
+      "delete": {
+        "tags": [
+          "suppressions"
+        ],
+        "summary": "Remove Suppression",
+        "description": "Remove a suppression entry (re-enabling the address). Admin only.",
+        "operationId": "remove_suppression_api_suppressions__suppression_id__delete",
+        "parameters": [
+          {
+            "name": "suppression_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Suppression Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppressions/unsubscribe": {
+      "post": {
+        "tags": [
+          "suppressions"
+        ],
+        "summary": "Unsubscribe Contact",
+        "description": "Admin-initiated unsubscribe: suppress the contact's address AND flip their consent to\nopted_out/source=unsubscribe in ONE transaction, audit-logged (#185-consistent).",
+        "operationId": "unsubscribe_contact_api_suppressions_unsubscribe_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaySendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppressions/may-send": {
+      "get": {
+        "tags": [
+          "suppressions"
+        ],
+        "summary": "May Send",
+        "description": "The deterministic send gate (AC-3): not suppressed AND consent opted_in. The contract\nevery future send path must call before dispatching.",
+        "operationId": "may_send_api_suppressions_may_send_get",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 300,
+              "title": "Email"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaySendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tags": {
       "get": {
         "tags": [
@@ -5289,6 +5597,32 @@
         "title": "LeadUpdate",
         "description": "Request model for updating a lead."
       },
+      "MaySendResponse": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "may_send": {
+            "type": "boolean",
+            "title": "May Send"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "may_send"
+        ],
+        "title": "MaySendResponse",
+        "description": "The send-gate verdict every future send path must consult."
+      },
       "MeResponse": {
         "properties": {
           "authenticated": {
@@ -5622,6 +5956,85 @@
         "title": "SettingsUpdate",
         "description": "Request model for updating settings.\n\nAccepts a free-form dict of key/value pairs so the UI can send\nwhatever fields it currently manages without backend changes."
       },
+      "SuppressionCreate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Email"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "unsubscribed",
+              "hard_bounce",
+              "complaint",
+              "manual"
+            ],
+            "title": "Reason"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "reason"
+        ],
+        "title": "SuppressionCreate",
+        "description": "Request model for adding a suppression entry."
+      },
+      "SuppressionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "reason",
+          "created_at"
+        ],
+        "title": "SuppressionResponse",
+        "description": "A suppression entry."
+      },
       "TagCreate": {
         "properties": {
           "name": {
@@ -5884,6 +6297,22 @@
         "type": "object",
         "title": "TemplateUpdate",
         "description": "Request model for updating a template."
+      },
+      "UnsubscribeRequest": {
+        "properties": {
+          "contact_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Contact Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact_id"
+        ],
+        "title": "UnsubscribeRequest",
+        "description": "Admin-initiated unsubscribe of a contact (public intake lands with the ESP work)."
       },
       "ValidationError": {
         "properties": {

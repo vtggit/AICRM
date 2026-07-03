@@ -221,12 +221,14 @@ def create_app() -> FastAPI:
     from app.api.leads import router as leads_router
     from app.api.sales_goals import router as sales_goals_router
     from app.api.settings import router as settings_router
+    from app.api.suppressions import router as suppressions_router
     from app.api.tags import router as tags_router
     from app.api.templates import router as templates_router
 
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(contacts_router)
+    application.include_router(suppressions_router)
     application.include_router(tags_router)
     application.include_router(templates_router)
     application.include_router(leads_router)
