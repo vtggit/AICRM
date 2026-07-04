@@ -46,6 +46,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: aicrm-backend
+    # Hardening (#122): immutable rootfs, no capabilities, explicit writable tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT_HOST:-9000}:9000"
@@ -93,9 +99,15 @@ services:
       context: ./app
       dockerfile: Dockerfile
     container_name: aicrm-frontend
+    # Hardening (#122): immutable rootfs, no capabilities, explicit writable tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT_HOST:-8080}:80"
+      - "${FRONTEND_PORT_HOST:-8080}:8080"
     # nginx does not use env vars at runtime for this config, but we
     # document the expected API base here for clarity.
     # The nginx proxy forwards /api/* to the backend container.
