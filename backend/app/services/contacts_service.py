@@ -1,6 +1,7 @@
 """Contacts service - business logic layer."""
 
 from app.auth.models import AuthUser
+from app.db.connection import transaction_scope
 from app.models.audit import AuditEvent
 from app.models.contacts import ALLOWED_STATUSES, ContactCreate, ContactUpdate
 from app.repositories.contact_consent_postgres_repository import (
@@ -72,24 +73,27 @@ class ContactsService:
         _validate_status(payload.status)
         _normalize_fields(payload)
         data = payload.model_dump(exclude_unset=True)
-        contact = _ensure_authoritative_shape(self.repository.create(data))
+        with (
+            transaction_scope()
+        ):  # contact, tags, and audit event persist or vanish together
+            contact = _ensure_authoritative_shape(self.repository.create(data))
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="contact",
-                entity_id=contact["id"],
-                action="created",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "name": contact["name"],
-                    "email": contact.get("email"),
-                    "company": contact.get("company"),
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="contact",
+                    entity_id=contact["id"],
+                    action="created",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "name": contact["name"],
+                        "email": contact.get("email"),
+                        "company": contact.get("company"),
+                    },
+                )
             )
-        )
 
         return contact
 
@@ -111,100 +115,109 @@ class ContactsService:
         data = payload.model_dump(exclude_unset=True, exclude_none=True)
         consent_status = data.pop("email_consent_status", None)
         consent_source = data.pop("consent_source", None)
-        result = self.repository.update(contact_id, data)
-        if result is None:
-            return None
+        with (
+            transaction_scope()
+        ):  # update, consent, and audit events persist or vanish together
+            result = self.repository.update(contact_id, data)
+            if result is None:
+                return None
 
-        contact = _attach_consent([_ensure_authoritative_shape(result)])[0]
-        if consent_status is not None:
-            prev = _consent_repository.get_for_contact(contact_id)
-            _consent_repository.set_consent_with_audit(
-                contact_id,
-                consent_status,
-                consent_source or "manual",
+            contact = _attach_consent([_ensure_authoritative_shape(result)])[0]
+            if consent_status is not None:
+                prev = _consent_repository.get_for_contact(contact_id)
+                _consent_repository.set_consent_with_audit(
+                    contact_id,
+                    consent_status,
+                    consent_source or "manual",
+                    AuditEvent(
+                        entity_type="contact",
+                        entity_id=contact_id,
+                        action="consent_change",
+                        actor_sub=actor.sub,
+                        actor_username=actor.username,
+                        actor_email=actor.email,
+                        actor_roles=actor.roles,
+                        details={
+                            "old": (prev or {}).get("status") or "unknown",
+                            "new": consent_status,
+                            "source": consent_source or "manual",
+                        },
+                    ),
+                )
+                contact = _attach_consent([contact])[0]
+
+            changed_fields = [
+                k
+                for k in data
+                if k in ("name", "email", "phone", "company", "status", "notes")
+            ]
+
+            self.audit_service.write(
                 AuditEvent(
                     entity_type="contact",
                     entity_id=contact_id,
-                    action="consent_change",
+                    action="updated",
                     actor_sub=actor.sub,
                     actor_username=actor.username,
                     actor_email=actor.email,
                     actor_roles=actor.roles,
                     details={
-                        "old": (prev or {}).get("status") or "unknown",
-                        "new": consent_status,
-                        "source": consent_source or "manual",
+                        "changed_fields": changed_fields,
                     },
-                ),
+                )
             )
-            contact = _attach_consent([contact])[0]
-
-        changed_fields = [
-            k
-            for k in data
-            if k in ("name", "email", "phone", "company", "status", "notes")
-        ]
-
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="contact",
-                entity_id=contact_id,
-                action="updated",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "changed_fields": changed_fields,
-                },
-            )
-        )
 
         return contact
 
     def delete_contact(self, contact_id: str, actor: AuthUser) -> bool:
-        existing = self.repository.get_by_id(contact_id)
-        deleted = self.repository.delete(contact_id)
-        if not deleted:
-            return False
+        with (
+            transaction_scope()
+        ):  # the delete and its audit event persist or vanish together
+            existing = self.repository.get_by_id(contact_id)
+            deleted = self.repository.delete(contact_id)
+            if not deleted:
+                return False
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="contact",
-                entity_id=contact_id,
-                action="deleted",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "name": existing.get("name") if existing else None,
-                    "email": existing.get("email") if existing else None,
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="contact",
+                    entity_id=contact_id,
+                    action="deleted",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "name": existing.get("name") if existing else None,
+                        "email": existing.get("email") if existing else None,
+                    },
+                )
             )
-        )
 
         return True
 
     def bulk_delete_contacts(self, contact_ids: list[str], actor: AuthUser) -> int:
         """Delete multiple contacts. Returns count of deleted records."""
-        count = self.repository.bulk_delete(contact_ids)
+        with (
+            transaction_scope()
+        ):  # the bulk delete and its audit event persist or vanish together
+            count = self.repository.bulk_delete(contact_ids)
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="contact",
-                entity_id="bulk",
-                action="bulk_deleted",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "count": count,
-                    "contact_ids": contact_ids,
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="contact",
+                    entity_id="bulk",
+                    action="bulk_deleted",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "count": count,
+                        "contact_ids": contact_ids,
+                    },
+                )
             )
-        )
 
         return count
 
@@ -216,24 +229,27 @@ class ContactsService:
     ) -> int:
         """Update status for multiple contacts. Returns count of updated records."""
         _validate_status(status)
-        count = self.repository.bulk_update_status(contact_ids, status)
+        with (
+            transaction_scope()
+        ):  # the bulk update and its audit event persist or vanish together
+            count = self.repository.bulk_update_status(contact_ids, status)
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="contact",
-                entity_id="bulk",
-                action="bulk_status_updated",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "count": count,
-                    "status": status,
-                    "contact_ids": contact_ids,
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="contact",
+                    entity_id="bulk",
+                    action="bulk_status_updated",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "count": count,
+                        "status": status,
+                        "contact_ids": contact_ids,
+                    },
+                )
             )
-        )
 
         return count
 
