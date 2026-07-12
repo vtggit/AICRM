@@ -1,6 +1,7 @@
 """Leads service - business logic layer."""
 
 from app.auth.models import AuthUser
+from app.db.connection import transaction_scope
 from app.models.audit import AuditEvent
 from app.models.leads import ALLOWED_STAGES, LeadCreate, LeadUpdate
 from app.repositories.leads_postgres_repository import LeadsPostgresRepository
@@ -53,25 +54,28 @@ class LeadsService:
         _validate_stage(payload.stage)
         _normalize_fields(payload)
         data = payload.model_dump(exclude_unset=True)
-        lead = _ensure_authoritative_shape(self.repository.create(data))
+        with (
+            transaction_scope()
+        ):  # the lead and its audit event persist or vanish together
+            lead = _ensure_authoritative_shape(self.repository.create(data))
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="lead",
-                entity_id=lead["id"],
-                action="created",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "name": lead["name"],
-                    "email": lead.get("email"),
-                    "company": lead.get("company"),
-                    "stage": lead.get("stage"),
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="lead",
+                    entity_id=lead["id"],
+                    action="created",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "name": lead["name"],
+                        "email": lead.get("email"),
+                        "company": lead.get("company"),
+                        "stage": lead.get("stage"),
+                    },
+                )
             )
-        )
 
         return lead
 
@@ -91,67 +95,73 @@ class LeadsService:
             _validate_stage(payload.stage)
 
         data = payload.model_dump(exclude_unset=True, exclude_none=True)
-        result = self.repository.update(lead_id, data)
-        if result is None:
-            return None
+        with (
+            transaction_scope()
+        ):  # the update and its audit event persist or vanish together
+            result = self.repository.update(lead_id, data)
+            if result is None:
+                return None
 
-        lead = _ensure_authoritative_shape(result)
+            lead = _ensure_authoritative_shape(result)
 
-        changed_fields = [
-            k
-            for k in data
-            if k
-            in (
-                "name",
-                "company",
-                "email",
-                "phone",
-                "value",
-                "stage",
-                "source",
-                "notes",
+            changed_fields = [
+                k
+                for k in data
+                if k
+                in (
+                    "name",
+                    "company",
+                    "email",
+                    "phone",
+                    "value",
+                    "stage",
+                    "source",
+                    "notes",
+                )
+            ]
+
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="lead",
+                    entity_id=lead_id,
+                    action="updated",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "changed_fields": changed_fields,
+                    },
+                )
             )
-        ]
-
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="lead",
-                entity_id=lead_id,
-                action="updated",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "changed_fields": changed_fields,
-                },
-            )
-        )
 
         return lead
 
     def delete_lead(self, lead_id: str, actor: AuthUser) -> bool:
-        existing = self.repository.get_by_id(lead_id)
-        deleted = self.repository.delete(lead_id)
-        if not deleted:
-            return False
+        with (
+            transaction_scope()
+        ):  # the delete and its audit event persist or vanish together
+            existing = self.repository.get_by_id(lead_id)
+            deleted = self.repository.delete(lead_id)
+            if not deleted:
+                return False
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="lead",
-                entity_id=lead_id,
-                action="deleted",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "name": existing.get("name") if existing else None,
-                    "email": existing.get("email") if existing else None,
-                    "stage": existing.get("stage") if existing else None,
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="lead",
+                    entity_id=lead_id,
+                    action="deleted",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "name": existing.get("name") if existing else None,
+                        "email": existing.get("email") if existing else None,
+                        "stage": existing.get("stage") if existing else None,
+                    },
+                )
             )
-        )
 
         return True
 

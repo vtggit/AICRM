@@ -1,6 +1,7 @@
 """Activities service - business logic layer."""
 
 from app.auth.models import AuthUser
+from app.db.connection import transaction_scope
 from app.models.activities import (
     ALLOWED_STATUSES,
     ALLOWED_TYPES,
@@ -55,24 +56,27 @@ class ActivitiesService:
         _validate_activity_status(payload.status)
         _normalize_fields(payload)
         data = payload.model_dump(exclude_unset=True)
-        activity = _ensure_authoritative_shape(self.repository.create(data))
+        with (
+            transaction_scope()
+        ):  # the activity and its audit event persist or vanish together
+            activity = _ensure_authoritative_shape(self.repository.create(data))
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="activity",
-                entity_id=activity["id"],
-                action="created",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "type": activity["type"],
-                    "description": activity["description"],
-                    "status": activity["status"],
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="activity",
+                    entity_id=activity["id"],
+                    action="created",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "type": activity["type"],
+                        "description": activity["description"],
+                        "status": activity["status"],
+                    },
+                )
             )
-        )
 
         return activity
 
@@ -92,64 +96,72 @@ class ActivitiesService:
             _validate_activity_status(payload.status)
 
         data = payload.model_dump(exclude_unset=True, exclude_none=True)
-        result = self.repository.update(activity_id, data)
-        if result is None:
-            return None
+        with (
+            transaction_scope()
+        ):  # the update and its audit event persist or vanish together
+            result = self.repository.update(activity_id, data)
+            if result is None:
+                return None
 
-        activity = _ensure_authoritative_shape(result)
+            activity = _ensure_authoritative_shape(result)
 
-        changed_fields = [
-            k
-            for k in data
-            if k
-            in (
-                "type",
-                "description",
-                "contact_name",
-                "occurred_at",
-                "due_date",
-                "status",
+            changed_fields = [
+                k
+                for k in data
+                if k
+                in (
+                    "type",
+                    "description",
+                    "contact_name",
+                    "occurred_at",
+                    "due_date",
+                    "status",
+                )
+            ]
+
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="activity",
+                    entity_id=activity_id,
+                    action="updated",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "changed_fields": changed_fields,
+                    },
+                )
             )
-        ]
-
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="activity",
-                entity_id=activity_id,
-                action="updated",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "changed_fields": changed_fields,
-                },
-            )
-        )
 
         return activity
 
     def delete_activity(self, activity_id: str, actor: AuthUser) -> bool:
-        existing = self.repository.get_by_id(activity_id)
-        deleted = self.repository.delete(activity_id)
-        if not deleted:
-            return False
+        with (
+            transaction_scope()
+        ):  # the delete and its audit event persist or vanish together
+            existing = self.repository.get_by_id(activity_id)
+            deleted = self.repository.delete(activity_id)
+            if not deleted:
+                return False
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="activity",
-                entity_id=activity_id,
-                action="deleted",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "type": existing.get("type") if existing else None,
-                    "description": existing.get("description") if existing else None,
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="activity",
+                    entity_id=activity_id,
+                    action="deleted",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "type": existing.get("type") if existing else None,
+                        "description": (
+                            existing.get("description") if existing else None
+                        ),
+                    },
+                )
             )
-        )
 
         return True
 

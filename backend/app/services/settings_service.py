@@ -3,6 +3,7 @@
 import logging
 
 from app.auth.models import AuthUser
+from app.db.connection import transaction_scope
 from app.models.audit import AuditEvent
 from app.models.settings import SettingsUpdate
 from app.repositories.settings_repository import SettingsRepository
@@ -48,28 +49,31 @@ class SettingsService:
         _validate_payload(payload.payload)
         _normalize_payload(payload.payload)
 
-        result = self.repository.update_settings(payload.payload)
-        if result is None:
-            raise ValueError("Failed to update settings.")
+        with (
+            transaction_scope()
+        ):  # the update and its audit event persist or vanish together
+            result = self.repository.update_settings(payload.payload)
+            if result is None:
+                raise ValueError("Failed to update settings.")
 
-        settings = _ensure_authoritative_shape(result)
+            settings = _ensure_authoritative_shape(result)
 
-        changed_keys = list(payload.payload.keys())
+            changed_keys = list(payload.payload.keys())
 
-        self.audit_service.write(
-            AuditEvent(
-                entity_type="settings",
-                entity_id=settings["id"],
-                action="updated",
-                actor_sub=actor.sub,
-                actor_username=actor.username,
-                actor_email=actor.email,
-                actor_roles=actor.roles,
-                details={
-                    "changed_fields": changed_keys,
-                },
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="settings",
+                    entity_id=settings["id"],
+                    action="updated",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "changed_fields": changed_keys,
+                    },
+                )
             )
-        )
 
         return settings
 
