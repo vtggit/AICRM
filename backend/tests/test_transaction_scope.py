@@ -31,7 +31,9 @@ def test_cursors_inside_a_scope_share_one_transaction(client, test_database):
     with transaction_scope():
         with get_cursor() as cur:
             cur.execute(f"INSERT INTO {t} (id) VALUES ('a')")
-        with get_cursor() as cur:  # a second get_cursor: same txn, sees the uncommitted row
+        with (
+            get_cursor() as cur
+        ):  # a second get_cursor: same txn, sees the uncommitted row
             cur.execute(f"SELECT COUNT(*) AS n FROM {t}")
             assert cur.fetchone()["n"] == 1
     assert _count(t) == 1  # committed once, at scope exit
