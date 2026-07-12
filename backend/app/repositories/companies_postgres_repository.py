@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from app.audit.recorder import record_audit
 from app.db.connection import get_cursor
 
 
@@ -52,7 +53,7 @@ class CompanyPostgresRepository:
             row = cur.fetchone()
             return _row_to_dict(row) if row else None
 
-    def create(self, data: dict) -> dict:
+    def create(self, data: dict, actor: str | None = None) -> dict:
         new_id = data.get("id", _generate_id())
         now = datetime.now(timezone.utc)
         with get_cursor() as cur:
@@ -68,9 +69,15 @@ class CompanyPostgresRepository:
                     now,
                 ),
             )
+            if (
+                actor
+            ):  # same cursor: the write and its audit row commit or roll back together
+                record_audit(cur, actor, "create", "companies", new_id)
         return self.get_by_id(new_id)
 
-    def update(self, entity_id: str, data: dict) -> dict | None:
+    def update(
+        self, entity_id: str, data: dict, actor: str | None = None
+    ) -> dict | None:
         updatable = (
             "name",
             "website",
@@ -89,12 +96,26 @@ class CompanyPostgresRepository:
                 f"UPDATE companies SET {', '.join(set_clauses)} WHERE id = %s",
                 values + [entity_id],
             )
+            if actor and cur.rowcount > 0:  # audit only a write that actually happened
+                record_audit(
+                    cur,
+                    actor,
+                    "update",
+                    "companies",
+                    entity_id,
+                    detail=", ".join(fields),
+                )
         return self.get_by_id(entity_id)
 
-    def delete(self, entity_id: str) -> bool:
+    def delete(self, entity_id: str, actor: str | None = None) -> bool:
         with get_cursor() as cur:
             cur.execute(
                 "UPDATE companies SET deleted_at = NOW() WHERE id = %s AND deleted_at IS NULL",
                 (entity_id,),
             )
-            return cur.rowcount > 0
+            deleted = cur.rowcount > 0
+            if actor and deleted:
+                record_audit(
+                    cur, actor, "delete", "companies", entity_id, detail="soft"
+                )
+            return deleted
