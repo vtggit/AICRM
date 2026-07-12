@@ -6,13 +6,17 @@ from app.auth.authorization import ROLE_ADMIN, require_role
 from app.auth.dependencies import require_authenticated_user
 from app.auth.models import AuthUser
 from app.models.companies import CompanyCreate, CompanyResponse, CompanyUpdate
+from app.repositories.audit_postgres_repository import AuditPostgresRepository
 from app.repositories.companies_postgres_repository import CompanyPostgresRepository
+from app.services.audit_service import AuditService
 from app.services.companies_service import CompanyService
 
 router = APIRouter(prefix="/api/companies", tags=["companies"])
 
 _repository = CompanyPostgresRepository()
-_service = CompanyService(repository=_repository)
+_audit_repository = AuditPostgresRepository()
+_audit_service = AuditService(_audit_repository)
+_service = CompanyService(repository=_repository, audit_service=_audit_service)
 
 
 def get_service() -> CompanyService:
@@ -41,7 +45,7 @@ def create_company(
     user: AuthUser = Depends(require_role(ROLE_ADMIN)),
     service: CompanyService = Depends(get_service),
 ):
-    return service.create_company(payload, actor=user.username or user.sub)
+    return service.create_company(payload, actor=user)
 
 
 @router.get("/{entity_id}", response_model=CompanyResponse)
@@ -66,7 +70,7 @@ def update_company(
     user: AuthUser = Depends(require_role(ROLE_ADMIN)),
     service: CompanyService = Depends(get_service),
 ):
-    entity = service.update_company(entity_id, payload, actor=user.username or user.sub)
+    entity = service.update_company(entity_id, payload, actor=user)
     if entity is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -81,7 +85,7 @@ def delete_company(
     user: AuthUser = Depends(require_role(ROLE_ADMIN)),
     service: CompanyService = Depends(get_service),
 ):
-    if not service.delete_company(entity_id, actor=user.username or user.sub):
+    if not service.delete_company(entity_id, actor=user):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Company '{entity_id}' not found.",
