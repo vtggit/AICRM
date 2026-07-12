@@ -38,10 +38,10 @@ def list_companies(
 @router.post("", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
 def create_company(
     payload: CompanyCreate,
-    _user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+    user: AuthUser = Depends(require_role(ROLE_ADMIN)),
     service: CompanyService = Depends(get_service),
 ):
-    return service.create_company(payload)
+    return service.create_company(payload, actor=user.username or user.sub)
 
 
 @router.get("/{entity_id}", response_model=CompanyResponse)
@@ -63,10 +63,10 @@ def get_company(
 def update_company(
     entity_id: str,
     payload: CompanyUpdate,
-    _user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+    user: AuthUser = Depends(require_role(ROLE_ADMIN)),
     service: CompanyService = Depends(get_service),
 ):
-    entity = service.update_company(entity_id, payload)
+    entity = service.update_company(entity_id, payload, actor=user.username or user.sub)
     if entity is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -78,10 +78,10 @@ def update_company(
 @router.delete("/{entity_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_company(
     entity_id: str,
-    _user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+    user: AuthUser = Depends(require_role(ROLE_ADMIN)),
     service: CompanyService = Depends(get_service),
 ):
-    if not service.delete_company(entity_id):
+    if not service.delete_company(entity_id, actor=user.username or user.sub):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Company '{entity_id}' not found.",
