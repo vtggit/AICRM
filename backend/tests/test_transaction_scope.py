@@ -41,26 +41,26 @@ def test_cursors_inside_a_scope_share_one_transaction(client, test_database):
 
 def test_scope_rolls_back_everything_on_exception(client, test_database):
     t = _mk("rollback")
-    with pytest.raises(RuntimeError):
-        with transaction_scope():
-            with get_cursor() as cur:
-                cur.execute(f"INSERT INTO {t} (id) VALUES ('a')")
-            with get_cursor() as cur:
-                cur.execute(f"INSERT INTO {t} (id) VALUES ('b')")
-            raise RuntimeError("the audit write failed after the mutation")
+    with pytest.raises(RuntimeError), transaction_scope():
+        with get_cursor() as cur:
+            cur.execute(f"INSERT INTO {t} (id) VALUES ('a')")
+        with get_cursor() as cur:
+            cur.execute(f"INSERT INTO {t} (id) VALUES ('b')")
+        raise RuntimeError("the audit write failed after the mutation")
     assert _count(t) == 0  # the mutation must NOT survive its failed audit
 
 
 def test_nested_scope_joins_the_outer_transaction(client, test_database):
     t = _mk("nested")
-    with pytest.raises(RuntimeError):
-        with transaction_scope():
-            with get_cursor() as cur:
-                cur.execute(f"INSERT INTO {t} (id) VALUES ('outer')")
-            with transaction_scope():  # joins — must NOT commit on its own exit
-                with get_cursor() as cur:
-                    cur.execute(f"INSERT INTO {t} (id) VALUES ('inner')")
-            raise RuntimeError("failure after the inner scope exited")
+    with pytest.raises(RuntimeError), transaction_scope():
+        with get_cursor() as cur:
+            cur.execute(f"INSERT INTO {t} (id) VALUES ('outer')")
+        with (
+            transaction_scope(),
+            get_cursor() as cur,
+        ):  # joins — must NOT commit on its own exit
+            cur.execute(f"INSERT INTO {t} (id) VALUES ('inner')")
+        raise RuntimeError("failure after the inner scope exited")
     assert _count(t) == 0  # the inner scope's write rolled back with the outer
 
 
@@ -77,14 +77,15 @@ def test_standalone_get_cursor_is_unchanged(client, test_database):
 
 def test_sequential_scopes_are_independent(client, test_database):
     t = _mk("seq")
-    with pytest.raises(RuntimeError):
-        with transaction_scope():
-            with get_cursor() as cur:
-                cur.execute(f"INSERT INTO {t} (id) VALUES ('doomed')")
-            raise RuntimeError("first scope dies")
-    with transaction_scope():  # a fresh scope afterwards must work normally
+    with pytest.raises(RuntimeError), transaction_scope():
         with get_cursor() as cur:
-            cur.execute(f"INSERT INTO {t} (id) VALUES ('kept')")
+            cur.execute(f"INSERT INTO {t} (id) VALUES ('doomed')")
+        raise RuntimeError("first scope dies")
+    with (
+        transaction_scope(),
+        get_cursor() as cur,
+    ):  # a fresh scope afterwards works normally
+        cur.execute(f"INSERT INTO {t} (id) VALUES ('kept')")
     with get_cursor() as cur:
         cur.execute(f"SELECT id FROM {t}")
         assert [r["id"] for r in cur.fetchall()] == ["kept"]
