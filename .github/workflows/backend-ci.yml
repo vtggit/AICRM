@@ -21,6 +21,14 @@ on:
   pull_request:
     branches: [main, master]
 
+# Cancel a superseded run (e.g. a force-push) instead of letting both finish — faster feedback
+# and less runner clutter. Keyed per ref, so distinct PRs and main are independent; only
+# redundant runs of the SAME ref are cancelled. (No paths-ignore: this repo is public, so
+# Actions minutes are free and the secret scan should run on every change.)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release-metadata:
     name: Release metadata (version, changelog, consistency)
