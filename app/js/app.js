@@ -229,8 +229,13 @@ const App = {
         }
     },
 
-    /** Open the simple login modal (Step 8 placeholder). */
+    /** Open the login affordance. In production (Keycloak) redirect to the IdP; in
+     *  development, the manual bearer-token modal. */
     _openLoginModal() {
+        if (Auth.isProductionAuth && Auth.isProductionAuth()) {
+            Auth.login();
+            return;
+        }
         // Remove existing modal if any
         const existing = document.getElementById('login-modal');
         if (existing) existing.remove();
