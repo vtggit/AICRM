@@ -1,6 +1,6 @@
 """PostgreSQL repository for sales goals and quota tracking."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import uuid4
 
 from app.db.connection import get_cursor
@@ -14,6 +14,11 @@ def _row_to_dict(row) -> dict:
     d = dict(row)
     for key in ("created_at", "updated_at"):
         if d.get(key) and isinstance(d[key], datetime):
+            d[key] = d[key].isoformat()
+    # DATE columns come back as datetime.date — serialize to ISO-8601 strings
+    # exactly like the timestamps, because SalesGoalResponse declares them as str
+    for key in ("start_date", "end_date"):
+        if d.get(key) and isinstance(d[key], date):
             d[key] = d[key].isoformat()
     # Ensure numeric fields are floats
     for key in ("target_value", "current_value"):
@@ -41,8 +46,9 @@ class SalesGoalsPostgresRepository:
             return _row_to_dict(row) if row else None
 
     def create(self, data: dict) -> dict:
-        goal_id = data.get("id", _generate_id())
+        goal_id = data.get("id") or _generate_id()
         now = datetime.now(timezone.utc)
+        current_value = data.get("current_value") or 0.0
         with get_cursor() as cur:
             cur.execute(
                 """INSERT INTO sales_goals
@@ -53,7 +59,7 @@ class SalesGoalsPostgresRepository:
                     data["name"],
                     data["type"],
                     data["target_value"],
-                    data.get("current_value", 0.0),
+                    current_value,
                     data["period"],
                     data["start_date"],
                     data["end_date"],
