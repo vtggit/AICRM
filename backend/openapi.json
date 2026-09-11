@@ -2452,7 +2452,7 @@
           "audit"
         ],
         "summary": "Get Audit Log",
-        "description": "List recent audit events. Requires admin role.\n\nOptionally filter by entity type and limit the number of results.",
+        "description": "List recent audit events. Requires admin role.\n\nOptionally filter by entity type.  Follows the product-wide pagination\ncontract: offset/limit paging (default 20, hard cap 100, non-negative\nvalues only) with the total matching row count in the X-Total-Count\nheader.  Results are ordered by a stable key (timestamp DESC, id DESC)\nso offset pages are deterministic under concurrent inserts.",
         "operationId": "get_audit_log_api_audit_get",
         "parameters": [
           {
@@ -2477,8 +2477,21 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
+              "maximum": 100,
+              "minimum": 0,
+              "default": 20,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
             }
           },
           {
