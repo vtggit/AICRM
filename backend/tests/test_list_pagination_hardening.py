@@ -4,6 +4,7 @@
 def test_list_pagination_hardening(client, admin_headers):
     endpoints = [
         "/api/activities",
+        "/api/audit",
         "/api/companies",
         "/api/contacts",
         "/api/deal-outcomes",
