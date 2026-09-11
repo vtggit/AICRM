@@ -898,6 +898,15 @@ body {
     margin-left: auto;
 }
 
+.nav-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-sidebar);
+    padding: 0.75rem 1.5rem 0.25rem;
+}
+
 /* Mark complete button */
 .btn-mark-complete {
     font-size: 1rem;
@@ -1256,6 +1265,14 @@ body {
 
 .modal-body {
     padding: 1.25rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
 }
 
 /* === Form Elements === */
@@ -2278,6 +2295,15 @@ body {
     background: #9ca3af;
     cursor: not-allowed;
     opacity: 0.6;
+}
+
+.btn-info {
+    background: #3b82f6;
+    color: #ffffff;
+}
+
+.btn-info:hover {
+    background: #2563eb;
 }
 
 /* Contact checkbox styling */
@@ -4250,5 +4276,65 @@ body {
     .trend-legend-items {
         gap: 0.5rem;
     }
+}
+
+/* === Issue #245: Missing Utility Classes === */
+
+.form-control {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: border-color var(--transition);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.analytics-stat-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.25rem;
+}
+
+.btn-delete-goal {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.btn-delete-goal:hover {
+    background: var(--danger);
+    color: #ffffff;
+}
+
+.btn-edit-goal {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.btn-edit-goal:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
