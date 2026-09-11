@@ -304,6 +304,7 @@ def clean_database(client):
                 "deal_outcomes",
                 "activities",
                 "settings",
+                "sales_goals",
                 "audit_log",
             ]
             cur.execute("TRUNCATE TABLE " + ", ".join(tables) + " RESTART IDENTITY;")
