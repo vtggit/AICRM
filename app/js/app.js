@@ -10,6 +10,7 @@ const App = {
         this._selectedContactIds = new Set();
         this._currentContactIds = [];
         this.bindNavigation();
+        this._bindDataActionDelegation();
         this.bindThemeToggle();
         this.bindMenuToggle();
         this.bindSearch();
@@ -77,6 +78,75 @@ const App = {
                 const page = item.dataset.page;
                 this.navigate(page);
             });
+        });
+    },
+
+    /**
+     * Delegated click handler for all dynamically rendered action buttons.
+     *
+     * Buttons rendered into innerHTML carry a `data-action` attribute plus
+     * `data-*` payload attributes (rendered through escapeAttr) instead of
+     * inline event handlers, so record ids and other data values are never
+     * interpolated into executable inline JavaScript.
+     */
+    _bindDataActionDelegation() {
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            const element = target.closest('[data-action]');
+            if (!element) return;
+            const data = element.dataset;
+            switch (element.dataset.action) {
+                case 'view-contact':
+                    this.viewContact(data.contactId);
+                    break;
+                case 'edit-contact':
+                    this.editContact(data.contactId);
+                    break;
+                case 'edit-contact-close':
+                    this.closeModal();
+                    this.editContact(data.contactId);
+                    break;
+                case 'delete-contact':
+                    this.deleteContact(data.contactId);
+                    break;
+                case 'quick-log-activity':
+                    this.quickLogActivity(data.contactName, data.activityType);
+                    break;
+                case 'quick-add-activity':
+                    this.quickAddActivityForContact(data.contactName);
+                    break;
+                case 'edit-lead':
+                    this.editLead(data.leadId);
+                    break;
+                case 'delete-lead':
+                    this.deleteLead(data.leadId);
+                    break;
+                case 'mark-activity-complete':
+                    this.markActivityComplete(data.activityId);
+                    break;
+                case 'delete-activity':
+                    this.deleteActivity(data.activityId);
+                    break;
+                case 'edit-template':
+                    this.editTemplate(data.templateId);
+                    break;
+                case 'delete-template':
+                    this.deleteTemplate(data.templateId);
+                    break;
+                case 'merge-with-existing':
+                    this.mergeWithExisting(data.contactId);
+                    break;
+                case 'merge-contacts':
+                    this.mergeContacts(data.keepContactId, data.removeContactId);
+                    break;
+                case 'edit-tag':
+                    this.editTagInline(data.tagId);
+                    break;
+                case 'delete-tag':
+                    this.deleteTagConfirm(data.tagId, data.tagName);
+                    break;
+            }
         });
     },
 
@@ -500,7 +570,10 @@ const App = {
         if (activeLeads.length === 0) return [];
 
         // Calculate days since last activity for each lead
-        const leadActivityMap = {};
+        // Null-prototype map: lead ids are data, so prototype keys
+        // ("constructor", "__proto__", ...) must never resolve to inherited
+        // properties and poison the recency scoring.
+        const leadActivityMap = Object.create(null);
         activities.forEach(a => {
             if (a.leadId) {
                 const d = new Date(a.date);
@@ -600,7 +673,7 @@ const App = {
             .slice(0, 5);
 
         container.innerHTML = recent.map(c => `
-            <div class="recent-item" onclick="App.viewContact('${c.id}')" title="Click to view ${this.escapeHtml(c.name)}">
+            <div class="recent-item" data-action="view-contact" data-contact-id="${this.escapeAttr(c.id)}" title="Click to view ${this.escapeHtml(c.name)}">
                 <span class="recent-item-icon">👤</span>
                 <div class="recent-item-details">
                     <div class="recent-item-name">${this.escapeHtml(c.name)}</div>
@@ -625,7 +698,7 @@ const App = {
             .slice(0, 5);
 
         container.innerHTML = recent.map(l => `
-            <div class="recent-item" onclick="App.editLead('${l.id}')" title="Click to view ${this.escapeHtml(l.name)}">
+            <div class="recent-item" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Click to view ${this.escapeHtml(l.name)}">
                 <span class="recent-item-icon">🎯</span>
                 <div class="recent-item-details">
                     <div class="recent-item-name">${this.escapeHtml(l.name)}</div>
@@ -701,7 +774,7 @@ const App = {
 
         const isAdmin = Auth.isAdmin();
         container.innerHTML = companies.map(item => `
-            <div class="contact-card" data-company-id="${this.escapeHtml(String(item.id))}">
+            <div class="contact-card" data-company-id="${this.escapeAttr(item.id)}">
                 <div class="card-header">
                     <div class="card-header-left"><h4>${this.escapeHtml(item.name)}</h4></div>
                     <div class="card-actions">
@@ -720,7 +793,10 @@ const App = {
             </div>`).join('');
         container.querySelectorAll('.card-action-btn[data-action]').forEach((btn) => {
             btn.addEventListener('click', () => {
-                const id = btn.closest('[data-company-id]').getAttribute('data-company-id');
+                const rawId = btn.closest('[data-company-id]').getAttribute('data-company-id');
+                // Data attributes round-trip as strings; restore the backend's
+                // numeric company id so strict lookups (x.id === id) keep working.
+                const id = /^\d+$/.test(rawId) ? Number(rawId) : rawId;
                 if (btn.dataset.action === 'edit') { this.editCompany(id); } else { this.deleteCompany(id); }
             });
         });
@@ -876,27 +952,27 @@ const App = {
             const activityCount = activityCounts[c.name] || 0;
             const isSelected = (this._selectedContactIds || new Set()).has(c.id);
             const tagsHtml = (c.tags || []).map(t =>
-                `<span class="contact-tag-badge" style="background-color:${t.color || '#3b82f6'}" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>`
+                `<span class="contact-tag-badge" style="background-color:${this.safeTagColor(t.color)}" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>`
             ).join('');
             return `
-            <div class="contact-card${isDuplicate ? ' contact-card-duplicate' : ''}${isSelected ? ' contact-card-selected' : ''}" data-contact-id="${c.id}">
+            <div class="contact-card${isDuplicate ? ' contact-card-duplicate' : ''}${isSelected ? ' contact-card-selected' : ''}" data-contact-id="${this.escapeAttr(c.id)}">
                 <div class="card-header">
                     <div class="card-header-left">
-                        <input type="checkbox" class="contact-checkbox" data-contact-id="${c.id}" ${isSelected ? 'checked' : ''} title="Select for bulk operations">
+                        <input type="checkbox" class="contact-checkbox" data-contact-id="${this.escapeAttr(c.id)}" ${isSelected ? 'checked' : ''} title="Select for bulk operations">
                         <h4>${this.escapeHtml(c.name)}</h4>
                     </div>
                     <div class="card-actions">
                         ${isDuplicate ? '<span class="duplicate-badge" title="Duplicate contact detected">⚠️ Duplicate</span>' : ''}
-                        <button class="card-action-btn" onclick="App.viewContact('${c.id}')" title="View Details">👁️</button>
-                        ${isAdmin ? `<button class="card-action-btn" onclick="App.editContact('${c.id}')" title="Edit">✏️</button>` : ''}
-                        ${isAdmin ? `<button class="card-action-btn" onclick="App.deleteContact('${c.id}')" title="Delete">🗑️</button>` : ''}
+                        <button class="card-action-btn" data-action="view-contact" data-contact-id="${this.escapeAttr(c.id)}" title="View Details">👁️</button>
+                        ${isAdmin ? `<button class="card-action-btn" data-action="edit-contact" data-contact-id="${this.escapeAttr(c.id)}" title="Edit">✏️</button>` : ''}
+                        ${isAdmin ? `<button class="card-action-btn" data-action="delete-contact" data-contact-id="${this.escapeAttr(c.id)}" title="Delete">🗑️</button>` : ''}
                     </div>
                 </div>
                 <div class="card-quick-actions">
-                    <button class="quick-activity-btn" onclick="App.quickLogActivity('${this.escapeHtml(c.name)}', 'call')" title="Quick log a call">📞 Call</button>
-                    <button class="quick-activity-btn" onclick="App.quickLogActivity('${this.escapeHtml(c.name)}', 'email')" title="Quick log an email">📧 Email</button>
-                    <button class="quick-activity-btn" onclick="App.quickLogActivity('${this.escapeHtml(c.name)}', 'meeting')" title="Quick log a meeting">🤝 Meeting</button>
-                    <button class="quick-activity-btn" onclick="App.quickLogActivity('${this.escapeHtml(c.name)}', 'note')" title="Quick add a note">📝 Note</button>
+                    <button class="quick-activity-btn" data-action="quick-log-activity" data-contact-name="${this.escapeAttr(c.name)}" data-activity-type="call" title="Quick log a call">📞 Call</button>
+                    <button class="quick-activity-btn" data-action="quick-log-activity" data-contact-name="${this.escapeAttr(c.name)}" data-activity-type="email" title="Quick log an email">📧 Email</button>
+                    <button class="quick-activity-btn" data-action="quick-log-activity" data-contact-name="${this.escapeAttr(c.name)}" data-activity-type="meeting" title="Quick log a meeting">🤝 Meeting</button>
+                    <button class="quick-activity-btn" data-action="quick-log-activity" data-contact-name="${this.escapeAttr(c.name)}" data-activity-type="note" title="Quick add a note">📝 Note</button>
                 </div>
                 <div class="card-body">
                     ${c.email ? `<p>📧 ${this.escapeHtml(c.email)}</p>` : ''}
@@ -1183,8 +1259,8 @@ const App = {
             container.innerHTML = tags.map(t => {
                 const checked = contactTagIds.includes(t.id) ? 'checked' : '';
                 return `<label class="tag-checkbox-item">
-                    <input type="checkbox" class="tag-checkbox" value="${t.id}" ${checked}>
-                    <span class="tag-color-dot" style="background-color:${t.color || '#3b82f6'}"></span>
+                    <input type="checkbox" class="tag-checkbox" value="${this.escapeAttr(t.id)}" ${checked}>
+                    <span class="tag-color-dot" style="background-color:${this.safeTagColor(t.color)}"></span>
                     ${this.escapeHtml(t.name)}
                 </label>`;
             }).join('');
@@ -1250,8 +1326,8 @@ const App = {
                     </div>
                     <div class="contact-detail-actions">
                         <button id="contact-email-btn" class="btn btn-secondary" ${emailGate.enabled ? '' : 'disabled'} title="${this.escapeAttr(emailGate.enabled ? `Send a freeform email to ${contactEmail}` : emailGate.reason)}" data-contact-id="${this.escapeAttr(contact.id)}">📧 Email</button>
-                        <button class="btn btn-secondary" onclick="App.quickAddActivityForContact('${this.escapeHtml(contact.name)}')">+ Add Activity</button>
-                        <button class="btn btn-secondary" onclick="App.closeModal(); App.editContact('${contact.id}')">✏️ Edit</button>
+                        <button class="btn btn-secondary" data-action="quick-add-activity" data-contact-name="${this.escapeAttr(contact.name)}">+ Add Activity</button>
+                        <button class="btn btn-secondary" data-action="edit-contact-close" data-contact-id="${this.escapeAttr(contact.id)}">✏️ Edit</button>
                     </div>
                 </div>
                 ${emailGate.enabled ? '' : `<div id="contact-email-gate-reason" style="margin-top:0.5rem;font-size:0.85rem;color:#b45309;">⚠️ ${this.escapeHtml(emailGate.reason)}</div>`}
@@ -1723,7 +1799,7 @@ const App = {
                 ${d.phone ? `<span>📱 ${this.escapeHtml(d.phone)}</span>` : ''}
                 ${d.company ? `<span>🏢 ${this.escapeHtml(d.company)}</span>` : ''}
                 <div class="duplicate-match-actions">
-                    <button class="btn btn-primary btn-sm" onclick="App.mergeWithExisting('${d.id}')">Merge</button>
+                    <button class="btn btn-primary btn-sm" data-action="merge-with-existing" data-contact-id="${this.escapeAttr(d.id)}">Merge</button>
                 </div>
             </div>
         `).join('');
@@ -1767,12 +1843,12 @@ const App = {
                 <div id="tags-list-container">
                     ${tags.length === 0 ? '<p class="text-secondary">No tags created yet.</p>' :
                         tags.map(t => `
-                        <div class="tag-list-item" data-tag-id="${t.id}">
-                            <span class="tag-list-color" style="background-color:${t.color || '#3b82f6'}"></span>
+                        <div class="tag-list-item" data-tag-id="${this.escapeAttr(t.id)}">
+                            <span class="tag-list-color" style="background-color:${this.safeTagColor(t.color)}"></span>
                             <span class="tag-list-name">${this.escapeHtml(t.name)}</span>
                             <div class="tag-list-actions">
-                                <button class="btn btn-sm btn-secondary" onclick="App.editTagInline('${t.id}')">Edit</button>
-                                <button class="btn btn-sm btn-danger" onclick="App.deleteTagConfirm('${t.id}', '${this.escapeHtml(t.name)}')">Delete</button>
+                                <button class="btn btn-sm btn-secondary" data-action="edit-tag" data-tag-id="${this.escapeAttr(t.id)}">Edit</button>
+                                <button class="btn btn-sm btn-danger" data-action="delete-tag" data-tag-id="${this.escapeAttr(t.id)}" data-tag-name="${this.escapeAttr(t.name)}">Delete</button>
                             </div>
                         </div>
                     `).join('')}
@@ -1934,7 +2010,7 @@ const App = {
                         ${c.company ? `<span>🏢 ${this.escapeHtml(c.company)}</span>` : ''}
                         <span class="text-secondary">${this.formatDate(c.createdAt || c.created_at)}</span>
                         ${ci < group.contacts.length - 1 ? `<div class="duplicate-match-actions">
-                            <button class="btn btn-primary btn-sm" onclick="App.mergeContacts('${group.contacts[0].id}', '${c.id}')">Merge into first</button>
+                            <button class="btn btn-primary btn-sm" data-action="merge-contacts" data-keep-contact-id="${this.escapeAttr(group.contacts[0].id)}" data-remove-contact-id="${this.escapeAttr(c.id)}">Merge into first</button>
                         </div>` : '<div class="text-secondary"><em>Keep</em></div>'}
                     </div>
                 `).join('')}
@@ -2530,8 +2606,8 @@ const App = {
                 <div class="card-header">
                     <h4>${this.escapeHtml(l.name)}</h4>
                     <div class="card-actions">
-                        <button class="card-action-btn" onclick="App.editLead('${l.id}')" title="Edit">✏️</button>
-                        <button class="card-action-btn" onclick="App.deleteLead('${l.id}')" title="Delete">🗑️</button>
+                        <button class="card-action-btn" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Edit">✏️</button>
+                        <button class="card-action-btn" data-action="delete-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Delete">🗑️</button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -2627,17 +2703,17 @@ const App = {
         ).join('');
 
         return `
-            <div class="kanban-card" draggable="true" data-lead-id="${l.id}" data-lead-stage="${l.stage}">
+            <div class="kanban-card" draggable="true" data-lead-id="${this.escapeAttr(l.id)}" data-lead-stage="${this.escapeAttr(l.stage)}">
                 <p class="kanban-card-name">${this.escapeHtml(l.name)}</p>
                 ${l.company ? `<p class="kanban-card-company">${this.escapeHtml(l.company)}</p>` : ''}
                 ${l.value ? `<p class="kanban-card-value">$${Number(l.value).toLocaleString()}</p>` : ''}
                 <div class="kanban-card-footer">
                     <span class="kanban-card-score ${tier.class}" title="Score: ${score}/100">${score}</span>
                     <span class="kanban-card-age ${ageClass}">${daysInStage}d</span>
-                    <select class="kanban-card-stage-select" data-lead-id="${l.id}" title="Change stage">${stageOptions}</select>
+                    <select class="kanban-card-stage-select" data-lead-id="${this.escapeAttr(l.id)}" title="Change stage">${stageOptions}</select>
                     <div class="kanban-card-actions">
-                        <button class="kanban-card-action" onclick="App.editLead('${l.id}')" title="Edit">✏️</button>
-                        <button class="kanban-card-action" onclick="App.deleteLead('${l.id}')" title="Delete">🗑️</button>
+                        <button class="kanban-card-action" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Edit">✏️</button>
+                        <button class="kanban-card-action" data-action="delete-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Delete">🗑️</button>
                     </div>
                 </div>
             </div>
@@ -3244,8 +3320,8 @@ const App = {
                     <div class="timeline-header">
                         <h4>${this.getActivityIcon(a.type)} ${this.escapeHtml(a.type.charAt(0).toUpperCase() + a.type.slice(1))}</h4>
                         <div class="card-actions">
-                            ${!isCompleted ? `<button class="card-action-btn btn-mark-complete" onclick="App.markActivityComplete('${a.id}')" title="Mark Complete">✅</button>` : ''}
-                            <button class="card-action-btn" onclick="App.deleteActivity('${a.id}')" title="Delete">🗑️</button>
+                            ${!isCompleted ? `<button class="card-action-btn btn-mark-complete" data-action="mark-activity-complete" data-activity-id="${this.escapeAttr(a.id)}" title="Mark Complete">✅</button>` : ''}
+                            <button class="card-action-btn" data-action="delete-activity" data-activity-id="${this.escapeAttr(a.id)}" title="Delete">🗑️</button>
                         </div>
                     </div>
                     <p>${this.escapeHtml(a.description)}</p>
@@ -3705,8 +3781,8 @@ const App = {
                     <div class="template-subject">${this.escapeHtml(t.subject || 'No subject')}</div>
                     <div class="template-preview">${this.escapeHtml(preview)}</div>
                     <div class="template-actions">
-                        ${isAdmin ? `<button class="btn-edit-template" onclick="App.editTemplate('${t.id}')">Edit</button>` : ''}
-                        ${isAdmin ? `<button class="btn-delete-template" onclick="App.deleteTemplate('${t.id}')">Delete</button>` : ''}
+                        ${isAdmin ? `<button class="btn-edit-template" data-action="edit-template" data-template-id="${this.escapeAttr(t.id)}">Edit</button>` : ''}
+                        ${isAdmin ? `<button class="btn-delete-template" data-action="delete-template" data-template-id="${this.escapeAttr(t.id)}">Delete</button>` : ''}
                     </div>
                 </div>
             `;
@@ -4488,6 +4564,14 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             .replace(/'/g, '&#39;');
     },
 
+    // Tag colors are data (API-set, user-controllable) and land inside a
+    // double-quoted style="..." attribute, so only a strict hex whitelist may
+    // pass through; anything else falls back to the default color.
+    safeTagColor(color) {
+        const value = typeof color === 'string' ? color.trim() : '';
+        return /^#[0-9a-f]{3,8}$/i.test(value) ? value : '#3b82f6';
+    },
+
     formatDate(dateStr) {
         const date = new Date(dateStr);
         const now = new Date();
@@ -4685,7 +4769,7 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
                             <div class="timeline-header">
                                 <h4>${this.getActivityIcon(a.type)} ${this.escapeHtml(a.type.charAt(0).toUpperCase() + a.type.slice(1))}</h4>
                                 <div class="card-actions">
-                                    ${!isCompleted ? `<button class="card-action-btn btn-mark-complete" onclick="App.markActivityComplete('${a.id}')" title="Mark Complete">✅</button>` : ''}
+                                    ${!isCompleted ? `<button class="card-action-btn btn-mark-complete" data-action="mark-activity-complete" data-activity-id="${this.escapeAttr(a.id)}" title="Mark Complete">✅</button>` : ''}
                                 </div>
                             </div>
                             <p>${this.escapeHtml(a.description)}</p>
