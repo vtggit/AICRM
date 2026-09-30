@@ -637,6 +637,73 @@
         }
       }
     },
+    "/api/contacts/{contact_id}/send-email": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Send Contact Email",
+        "description": "Send a freeform email to the contact. Any signed-in user.\n\n404 when the contact does not exist or is soft-deleted, 422 when the\ncontact has no email address, 409 when the may_send gate refuses (the\ngate's reasons are in the detail), 503 when the transport is not\nconfigured, 502 when the transport fails, and 202 with\n{\"status\": \"accepted\"} when the transport accepts the message.",
+        "operationId": "send_contact_email_api_contacts__contact_id__send_email_post",
+        "parameters": [
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/suppressions": {
       "get": {
         "tags": [
@@ -4496,6 +4563,29 @@
         ],
         "title": "ContactCreate",
         "description": "Request model for creating a contact."
+      },
+      "ContactEmailRequest": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "body"
+        ],
+        "title": "ContactEmailRequest",
+        "description": "Request body for POST /api/contacts/{contact_id}/send-email."
       },
       "ContactResponse": {
         "properties": {
