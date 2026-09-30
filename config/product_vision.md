@@ -24,14 +24,10 @@ API-contract discipline — delivered incrementally, never speculatively.
   channel) without consulting the may_send gate (suppression list + per-channel consent,
   opted_in required — CASL-conservative). Public unsubscribe links and ESP webhooks belong to
   the ESP integration epic, not earlier.
-- **Pagination contract (shipped on 9 of the 10 list endpoints — every one EXCEPT
-  `GET /api/audit`):** offset pagination — limit default 20, hard cap 100, non-negative
-  validation (422), X-Total-Count header, bare-array responses. `GET /api/audit` predates the
-  contract and does NOT follow it: bare `limit: int = 100` (backend/app/api/audit.py:20) — no
-  offset parameter, no cap, no 422 validation, no X-Total-Count. Migrate it before designing any
-  audit-history paging, and do not specify audit paging against offset/X-Total-Count today. New
-  list endpoints follow the contract exactly. Response envelopes are deferred to the
-  API-versioning epic (v2).
+- **Pagination contract (shipped on every list endpoint; `GET /api/audit` joined it in #243,
+  2026-09-11):** offset pagination — limit default 20, hard cap 100, non-negative validation
+  (422), X-Total-Count header, bare-array responses. New list endpoints follow the contract
+  exactly. Response envelopes are deferred to the API-versioning epic (v2).
 - **Duplicates return 409** through the central UniqueViolation handler; bad references 422
   via the FK handler; both name the offending value from driver diagnostics.
 - **Soft-delete semantics:** deleted_at timestamps, list/get exclusion by default,
