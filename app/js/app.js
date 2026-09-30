@@ -195,9 +195,10 @@ const App = {
 
         if (Auth.isAuthenticated()) {
             const user = Auth.getCurrentUser();
+            const displayName = this.escapeAttr(user.display_name || user.sub);
             statusEl.innerHTML =
                 `<span class="auth-indicator">🟢</span>` +
-                `<span class="auth-username" title="${user.display_name || user.sub}">${user.display_name || user.sub}</span>`;
+                `<span class="auth-username" title="${displayName}">${this.escapeHtml(user.display_name || user.sub)}</span>`;
             statusEl.title = `Logged in as ${user.display_name || user.sub}`;
         } else {
             statusEl.innerHTML = `<span class="auth-indicator">🔴</span>`;
@@ -850,7 +851,9 @@ const App = {
             console.error('Failed to load activities for contact counts:', err);
             activities = [];
         }
-        const activityCounts = {};
+        // Null-prototype map: contact names may collide with Object.prototype
+        // keys (e.g. "constructor"), which would poison the count lookups.
+        const activityCounts = Object.create(null);
         activities.forEach(a => {
             if (a.contactName) {
                 activityCounts[a.contactName] = (activityCounts[a.contactName] || 0) + 1;
@@ -1228,6 +1231,11 @@ const App = {
             console.error('Failed to load activities for contact:', err);
         }
 
+        const contactEmail = String(contact.email || '').trim();
+        const emailGate = contactEmail
+            ? await this._emailSendGateFor(contactEmail)
+            : { enabled: false, reason: 'No email address on file for this contact.' };
+
         document.getElementById('modal-title').textContent = 'Contact Details';
         document.getElementById('modal-container').classList.add('modal-wide');
 
@@ -1241,10 +1249,12 @@ const App = {
                         <span class="badge badge-${contact.status}">${contact.status}</span>
                     </div>
                     <div class="contact-detail-actions">
+                        <button id="contact-email-btn" class="btn btn-secondary" ${emailGate.enabled ? '' : 'disabled'} title="${this.escapeAttr(emailGate.enabled ? `Send a freeform email to ${contactEmail}` : emailGate.reason)}" data-contact-id="${this.escapeAttr(contact.id)}">📧 Email</button>
                         <button class="btn btn-secondary" onclick="App.quickAddActivityForContact('${this.escapeHtml(contact.name)}')">+ Add Activity</button>
                         <button class="btn btn-secondary" onclick="App.closeModal(); App.editContact('${contact.id}')">✏️ Edit</button>
                     </div>
                 </div>
+                ${emailGate.enabled ? '' : `<div id="contact-email-gate-reason" style="margin-top:0.5rem;font-size:0.85rem;color:#b45309;">⚠️ ${this.escapeHtml(emailGate.reason)}</div>`}
                 <div class="contact-detail-fields">
                     ${contact.email ? `<div class="detail-field"><span class="field-label">Email</span><span class="field-value">📧 ${this.escapeHtml(contact.email)}</span></div>` : ''}
                     ${contact.phone ? `<div class="detail-field"><span class="field-label">Phone</span><span class="field-value">📱 ${this.escapeHtml(contact.phone)}</span></div>` : ''}
@@ -1261,7 +1271,203 @@ const App = {
             </div>
         `;
 
+        document.getElementById('contact-email-btn').addEventListener('click', () => {
+            this.openContactEmailForm(contact.id);
+        });
+
         this.openModal();
+    },
+
+    /**
+     * Consult the suppression send-gate for an address (GET /api/suppressions/may-send).
+     * Returns the Email button state for the contact detail view:
+     *   { enabled: true,  reason: null }                 — the gate allows sending
+     *   { enabled: false, reason: '<visible reason>' }   — refused, or the gate
+     *                                                        verdict is unknown
+     *                                                        (unknown state fails closed)
+     */
+    async _emailSendGateFor(email) {
+        let result;
+        try {
+            result = await ApiClient.get('/suppressions/may-send?email=' + encodeURIComponent(email));
+        } catch (err) {
+            console.error('Failed to check send gate:', err);
+            return { enabled: false, reason: 'Send status unavailable. Please try again later.' };
+        }
+        if (!result.ok || !result.data || typeof result.data.may_send !== 'boolean') {
+            return { enabled: false, reason: 'Send status unavailable. Please try again later.' };
+        }
+        if (!result.data.may_send) {
+            const reasons = (Array.isArray(result.data.reasons) ? result.data.reasons : [])
+                .filter(Boolean).join('; ');
+            return {
+                enabled: false,
+                reason: reasons ? `Sending not allowed: ${reasons}.` : 'Sending not allowed for this address.',
+            };
+        }
+        return { enabled: true, reason: null };
+    },
+
+    /**
+     * Open the freeform email form for a contact (detail view's Email button).
+     * Re-checks the send-gate so an address that was suppressed since the detail
+     * view rendered cannot be mailed.
+     */
+    async openContactEmailForm(contactId) {
+        let contact = null;
+        try {
+            const contacts = await ContactsDataSource.getContacts();
+            contact = contacts.find(c => c.id === contactId);
+        } catch (err) {
+            console.error('Failed to load contact:', err);
+        }
+        if (!contact) {
+            this.showNotification('Contact not found.', 'error');
+            return;
+        }
+        const email = String(contact.email || '').trim();
+        if (!email) {
+            this._renderContactEmailBlocked(contact, 'No email address on file for this contact.');
+            return;
+        }
+        const gate = await this._emailSendGateFor(email);
+        if (!gate.enabled) {
+            this._renderContactEmailBlocked(contact, gate.reason);
+            return;
+        }
+        this._renderContactEmailForm(contact);
+    },
+
+    /**
+     * Render the email compose form (subject + body) inside the open modal.
+     */
+    _renderContactEmailForm(contact) {
+        document.getElementById('modal-title').textContent = 'Send Email';
+        document.getElementById('modal-body').innerHTML = `
+            <form id="contact-email-form">
+                <div class="form-group">
+                    <label for="contact-email-recipient">To</label>
+                    <input type="email" id="contact-email-recipient" value="${this.escapeAttr(contact.email)}" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="contact-email-subject">Subject *</label>
+                    <input type="text" id="contact-email-subject" required maxlength="500" placeholder="Subject of your message">
+                </div>
+                <div class="form-group">
+                    <label for="contact-email-body">Message *</label>
+                    <textarea id="contact-email-body" rows="8" required maxlength="20000" placeholder="Write your message"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="contact-email-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="contact-email-send">Send Email</button>
+                </div>
+            </form>
+        `;
+        document.getElementById('contact-email-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.submitContactEmail(contact);
+        });
+        document.getElementById('contact-email-cancel').addEventListener('click', () => {
+            this.viewContact(contact.id);
+        });
+        this.openModal();
+    },
+
+    /**
+     * Render the "sending not allowed" panel shown when the send-gate refuses.
+     */
+    _renderContactEmailBlocked(contact, reason) {
+        document.getElementById('modal-title').textContent = 'Send Email';
+        document.getElementById('modal-body').innerHTML = `
+            <div id="contact-email-status" role="status">
+                <div id="contact-email-status-message">⛔ ${this.escapeHtml(reason)}</div>
+                <div class="form-actions" style="margin-top:1rem;">
+                    <button type="button" class="btn btn-secondary" id="contact-email-back">Back to Contact</button>
+                </div>
+            </div>
+        `;
+        document.getElementById('contact-email-back').addEventListener('click', () => {
+            this.viewContact(contact.id);
+        });
+        this.openModal();
+        this.showNotification(reason, 'error');
+    },
+
+    /**
+     * Submit the freeform email: POST /api/contacts/{id}/send-email via ApiClient.
+     * The view shows a distinct message for each outcome:
+     *   202 accepted, 409 gate refusal (with the gate's reasons),
+     *   503 sending not configured, 502 transport failure.
+     */
+    async submitContactEmail(contact) {
+        const subject = (document.getElementById('contact-email-subject').value || '').trim();
+        const body = (document.getElementById('contact-email-body').value || '').trim();
+        const sendButton = document.getElementById('contact-email-send');
+
+        if (!subject || !body) {
+            this._renderContactEmailStatus(contact, 'error', 'Both a subject and a message are required.');
+            return;
+        }
+        if (sendButton) {
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending…';
+        }
+
+        let result;
+        try {
+            result = await ApiClient.post(`/contacts/${contact.id}/send-email`, { subject, body });
+        } catch (err) {
+            console.error('Failed to send email:', err);
+            this._renderContactEmailStatus(contact, 'error', 'Could not reach the server. Please try again.');
+            return;
+        }
+
+        if (result.ok) {
+            this._renderContactEmailStatus(contact, 'success', `Email accepted. Your message to ${contact.email} is on its way.`);
+            return;
+        }
+        if (result.status === 409) {
+            const detail = result.error || 'Send refused by the send gate.';
+            const reasons = detail.replace(/^Email send refused by send gate:\s*/i, '');
+            this._renderContactEmailStatus(contact, 'error', `Email not allowed: ${reasons}`);
+            return;
+        }
+        if (result.status === 503) {
+            this._renderContactEmailStatus(contact, 'warning', 'Email sending is not configured. An administrator must set up the mail transport first.');
+            return;
+        }
+        if (result.status === 502) {
+            this._renderContactEmailStatus(contact, 'error', 'The email could not be sent. The mail transport failed; please try again later.');
+            return;
+        }
+        this._renderContactEmailStatus(contact, 'error', this._handleApiError(ApiError.fromResult(result)));
+    },
+
+    /**
+     * Render the post-submit status message (one distinct message per outcome)
+     * in place of the email form.
+     */
+    _renderContactEmailStatus(contact, kind, message) {
+        const icons = { success: '✅', warning: '⚠️', error: '⛔' };
+        document.getElementById('modal-title').textContent = 'Send Email';
+        document.getElementById('modal-body').innerHTML = `
+            <div id="contact-email-status" role="status">
+                <div id="contact-email-status-message">${icons[kind] || '⛔'} ${this.escapeHtml(message)}</div>
+                <div class="form-actions" style="margin-top:1rem;">
+                    <button type="button" class="btn btn-secondary" id="contact-email-back">Back to Contact</button>
+                    ${kind === 'success' ? '' : '<button type="button" class="btn btn-primary" id="contact-email-try-again">Try Again</button>'}
+                </div>
+            </div>
+        `;
+        document.getElementById('contact-email-back').addEventListener('click', () => {
+            this.viewContact(contact.id);
+        });
+        const tryAgainBtn = document.getElementById('contact-email-try-again');
+        if (tryAgainBtn) {
+            tryAgainBtn.addEventListener('click', () => this.openContactEmailForm(contact.id));
+        }
+        this.openModal();
+        this.showNotification(message, kind === 'success' ? 'success' : 'error');
     },
 
     /**
@@ -4263,6 +4469,23 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Escape a value for use inside a double-quoted HTML attribute (e.g.
+     * data-* attributes read by event listeners). Unlike escapeHtml, the
+     * element-content serializer leaves double quotes untouched, so they
+     * must be neutralized here or a hostile value terminates the enclosing
+     * attribute and forges new ones.
+     */
+    escapeAttr(text) {
+        if (text === null || text === undefined) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     },
 
     formatDate(dateStr) {
