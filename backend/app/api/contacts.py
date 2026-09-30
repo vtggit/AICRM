@@ -164,11 +164,6 @@ def bulk_update_status(
 @router.post(
     "/{contact_id}/send-email",
     status_code=status.HTTP_202_ACCEPTED,
-    # Hidden from the OpenAPI schema on purpose: the committed contract
-    # artifact (backend/openapi.json) must stay byte-identical to the
-    # generated schema (tests/test_openapi_contract.py), and this
-    # endpoint's behavior is pinned by tests/test_issue256_freeform.py.
-    include_in_schema=False,
 )
 def send_contact_email(
     contact_id: str,
