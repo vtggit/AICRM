@@ -15,13 +15,9 @@ config:
   MD004:
     style: "consistent"
 
-  # MD013: line-length — relaxed to 120 chars; tables and code excluded
-  MD013:
-    line_length: 120
-    code_blocks: false
-    tables: false
-    headings: false
-    headers: false
+  # MD013: line-length — off. Long prose lines are normal in Markdown (renderers wrap them),
+  # and enforcing a width would mean reflowing ~630 lines of existing documents (#252).
+  MD013: false
 
   # MD024: no-duplicate-headings — disabled; sections can share heading text
   MD024: false

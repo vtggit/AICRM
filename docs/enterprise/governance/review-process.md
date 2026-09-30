@@ -3,6 +3,7 @@
 ## When Review Is Required
 
 Review is required for:
+
 - new foundational platform choices
 - security-sensitive technology choices
 - new databases, identity providers, or messaging platforms
@@ -12,6 +13,7 @@ Review is required for:
 ## Review Inputs
 
 A review request should include:
+
 - business context
 - proposed choice
 - alternatives considered

@@ -6,7 +6,7 @@ This document explains how AICRM versions are defined, bumped, and released.
 
 The canonical application version lives in the **`VERSION`** file at the repository root.
 
-```
+```text
 0.1.0
 ```
 

@@ -35,36 +35,36 @@ The domain migration is complete. All business domains are backend-owned with Po
 
 ### Documentation Index
 
-**Product**
+#### Product
 
 - [Executive Summary](product/executive-summary.md)
 
-**Architecture**
+#### Architecture
 
 - [System Overview](architecture/system-overview.md)
 - [Technical Stack](architecture/technical-stack.md)
 
-**Security**
+#### Security
 
 - [Application Security Model](security/application-security-model.md)
 
-**Deployment**
+#### Deployment
 
 - [Deployment Architecture](deployment/deployment-architecture.md)
 
-**Operations**
+#### Operations
 
 - [Monitoring & Observability](operations/monitoring-observability.md)
 
-**Testing**
+#### Testing
 
 - [Testing Strategy](testing/testing-strategy.md)
 
-**Compliance**
+#### Compliance
 
 - [Standards Conformance](compliance/standards-conformance.md)
 - [Exception Register](compliance/exception-register.md)
 
-**Decisions**
+#### Decisions
 
 - [ADR-0001: Current State Baseline](decisions/adrs/adr-0001-current-state-baseline.md)

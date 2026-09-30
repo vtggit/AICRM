@@ -19,7 +19,7 @@ AICRM has a comprehensive automated backend test suite built with **pytest**, co
 
 **Test Structure:**
 
-```
+```text
 backend/tests/
 ├── conftest.py              # Shared fixtures (DB, app, auth tokens)
 ├── test_health_api.py       # Health endpoint tests

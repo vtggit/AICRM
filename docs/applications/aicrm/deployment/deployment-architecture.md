@@ -39,7 +39,7 @@ AICRM is a **three-service containerized application** consisting of a frontend,
 
 ### Container Layout
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │  docker-compose.yml                         │
 │                                             │

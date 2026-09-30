@@ -16,7 +16,7 @@ See [LICENSE](./LICENSE) for the full license terms.
 
 AICRM is a **backend-owned application**. All business data is managed by a FastAPI backend and persisted in PostgreSQL. The frontend is a static client that communicates exclusively through the backend REST API.
 
-```
+```text
 ┌──────────────────────────────────────────────────┐
 │                    Frontend                       │
 │  Static HTML/CSS/JS (app/)                       │
@@ -73,7 +73,7 @@ This starts three services in the correct order:
 
 ### 3. Open the Application
 
-Visit **http://localhost:8080** in your browser.
+Visit **<http://localhost:8080>** in your browser.
 
 ### 4. Authenticate
 
@@ -167,7 +167,7 @@ In production mode (`AUTH_MODE=production`), the backend validates real JWTs aga
 
 ## Project Structure
 
-```
+```text
 AICRM/
 ├── .env.example                  # Configuration template (copy to .env)
 ├── docker-compose.yml            # Full-stack container orchestration
@@ -347,7 +347,7 @@ Backend CI runs automatically on every push and pull request via GitHub Actions.
 
 Three independent CI jobs run in parallel after checkout: quality gates, security hygiene, and backend tests. This means formatting/linting problems and dependency issues are caught quickly without waiting for a database to start.
 
-```
+```text
 Push or open PR
   → GitHub Actions starts automatically
     → Quality gates run (black, ruff, shellcheck)

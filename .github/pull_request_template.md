@@ -5,18 +5,15 @@
 
 <!-- What does this PR change, and why? -->
 
-
 ## Implements
 
 <!-- The deliberated issue this PR implements, e.g. "Implements: #128".
      Required if you include the CodeAgent PR Contract below. -->
 Implements: #
 
-
 ## Testing / Evidence
 
 <!-- How was this verified? -->
-
 
 ## CodeAgent PR Contract
 

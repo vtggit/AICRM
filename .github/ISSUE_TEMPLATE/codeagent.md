@@ -11,15 +11,13 @@ assignees: []
 <!-- What is the problem or opportunity, and what does "done" look like?
      Describe the outcome, not the implementation. -->
 
-
 ## Acceptance criteria
 
 <!-- Concrete, testable criteria for "done" — one per line. The deliberation
      system assigns each a stable AC-N id and the eventual PR proves them by id. -->
 
-- [ ] 
-- [ ] 
-
+- [ ]
+- [ ]
 
 ## Open questions for the team
 
@@ -28,8 +26,7 @@ assignees: []
      system-managed "Panel Open Questions" section — answer those in a comment
      and apply the `ca-roundanswers` label to continue. -->
 
-- 
-
+-
 
 <!--
 ───────────────────────────────────────────────────────────────────────────────

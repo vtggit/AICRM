@@ -135,6 +135,7 @@ PostgreSQL is the system of record for all AICRM business data. All domains (Con
 | Approving schema changes for merge | Database Owner (review approval) |
 
 **Rules:**
+
 - Schema changes are introduced through Alembic migration files only  —  never by editing the legacy schema helper.
 - Migration files are reviewed before merge. The Database Owner verifies correctness.
 - CI validates that migrations apply cleanly against a fresh database.
@@ -152,6 +153,7 @@ PostgreSQL is the system of record for all AICRM business data. All domains (Con
 | Coordinating migration steps during release if schema changed | Release Owner, in coordination with Database Owner |
 
 **Rules:**
+
 - CI enforces VERSION format, changelog consistency, and drift detection.
 - If VERSION changes in a PR, CHANGELOG.md must also change.
 - Releases are not considered ready until CI is fully green.
@@ -180,6 +182,7 @@ PostgreSQL is the system of record for all AICRM business data. All domains (Con
 ### When to Escalate
 
 Escalate when:
+
 - The runbook does not address the failure mode
 - The incident affects data integrity
 - The incident requires schema or configuration changes to resolve
@@ -188,6 +191,7 @@ Escalate when:
 ### Post-Incident
 
 After every incident:
+
 - Update the runbook if new guidance is needed
 - Capture root cause and mitigation in `docs/operations/known-issues.md`
 - Consider adding automated guardrails (tests, CI checks, monitoring) to prevent recurrence
@@ -200,6 +204,7 @@ After every incident:
 ### Normal Operations
 
 During normal operations:
+
 - CI runs automatically on every push and pull request.
 - The Operational Responder or Application Owner reviews CI failures as they occur.
 - Routine maintenance tasks follow the calendar above.
@@ -215,6 +220,7 @@ During normal operations:
 ### Handoff
 
 When ownership of a role changes:
+
 - The incoming owner should review this document, the runbook, and the known issues list.
 - The outgoing owner should brief the incoming owner on any ongoing operational context.
 - This document should be updated if roles or responsibilities change.

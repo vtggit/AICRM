@@ -1,17 +1,20 @@
 # AICRM - Core Requirements
 
 ## Product Overview
+
 AICRM is a modern, AI First, Customer Relationship Management (CRM) web application that helps businesses manage contacts, leads, and activities. AI inclusion is considered in every enhancement.
 
 ## Core Features
 
 ### 1. Dashboard (COMPLETED)
+
 - Statistics overview (total contacts, leads, converted leads, today's activities)
 - Recent activities feed
 - Lead pipeline visualization showing counts per stage
 - Responsive layout with stat cards
 
 ### 2. Contact Management (COMPLETED)
+
 - Create, Read, Update, Delete (CRUD) contacts
 - Contact fields: name, email, phone, company, status, notes
 - Status options: Active, Inactive, VIP
@@ -20,6 +23,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Card-based contact display with action buttons
 
 ### 3. Lead Management (COMPLETED)
+
 - Create, Read, Update, Delete (CRUD) leads
 - Lead fields: name, company, email, phone, estimated value, stage, source, notes
 - Pipeline stages: New, Contacted, Qualified, Proposal, Won, Lost
@@ -29,6 +33,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Card-based lead display with value highlighting
 
 ### 4. Activity Tracking (COMPLETED)
+
 - Create and delete activities
 - Activity types: Call, Email, Meeting, Note, Task
 - Link activities to contacts
@@ -37,28 +42,33 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Filter by activity type
 
 ### 5. Global Search (COMPLETED)
+
 - Real-time search across contacts and leads
 - Searches name, email, company, and source fields
 - Auto-navigates to relevant results page
 - Debounced input (300ms)
 
 ### 6. Data Management (COMPLETED)
+
 - Export Contacts and Leads as CSV files (client-side convenience only)
 - Import Contacts and Leads from CSV files
 - Full data backup and recovery handled at the PostgreSQL level (e.g. `pg_dump`)
 - All business data persisted in PostgreSQL via backend APIs
 
 ### 7. Theme Toggle (COMPLETED)
+
 - Light and dark theme support
 - Theme preference persisted in sessionStorage
 - Toggle button in header
 
 ### 8. Responsive Design (COMPLETED)
+
 - Mobile-friendly sidebar with hamburger menu
 - Responsive grid layouts
 - Touch-friendly interaction elements
 
 ### 9. CSV Import/Export (COMPLETED)
+
 - Export all contacts to CSV file with headers (Name, Email, Phone, Company, Status, Notes)
 - Import contacts from CSV file with proper parsing (handles quoted fields, escaped quotes)
 - Toast notification system for success/error feedback
@@ -67,6 +77,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Proper CSV escaping for special characters and commas in field values
 
 ### 10. Lead CSV Export/Import (COMPLETED)
+
 - Export all leads to CSV file with headers (Name, Company, Email, Phone, Value, Stage, Source, Notes)
 - Import leads from CSV file with proper parsing (handles quoted fields, escaped quotes)
 - Toast notification system for success/error feedback
@@ -77,6 +88,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Dashboard stats updated after import
 
 ### 11. vCard Import (COMPLETED)
+
 - Import contacts from vCard (.vcf) files supporting vCard 2.1, 3.0, and 4.0 formats
 - "Import vCard" button (📇) in Contacts toolbar alongside CSV import/export buttons
 - Parses standard vCard fields: FN (full name), N (structured name), EMAIL, TEL, ORG (company), NOTE (notes), TITLE
@@ -89,6 +101,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Skips vCard records with empty names
 
 ### 12. Dashboard Revenue Summary (COMPLETED)
+
 - Total Pipeline Value stat card (sum of active lead values, excludes won/lost)
 - Won Revenue stat card (sum of all won lead values)
 - Average Deal Size calculation (won revenue / won lead count, $0.00 if none)
@@ -98,6 +111,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Revenue calculated dynamically on dashboard render (not stored)
 
 ### 13. Email Templates (COMPLETED)
+
 - Create, edit, and delete reusable email templates
 - Template fields: name, category, subject, body
 - Category options: Sales, Support, Follow-up, Onboarding, Newsletter
@@ -106,6 +120,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Toast notifications for save/delete operations
 
 ### 14. AI-Powered Lead Recommendations (COMPLETED)
+
 - Dashboard card showing prioritized lead recommendations
 - Scores active leads using existing lead scoring algorithm (0-100)
 - Detects stale leads (14+ days = urgent, 7-13 days = high priority)
@@ -114,6 +129,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Click-to-navigate to individual leads
 
 ### 15. Keyboard Shortcuts (COMPLETED)
+
 - Number keys (1-5) navigate to Dashboard, Contacts, Leads, Activities, Templates
 - `/` focuses global search bar
 - `?` opens keyboard shortcuts help modal
@@ -125,6 +141,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Keyboard icon button in header opens shortcuts help modal
 
 ### 16. Activity Due Date Tracking (COMPLETED)
+
 - Optional due date field on activity creation/edit forms (date input)
 - Overdue activities highlighted with red left border and red timeline dot
 - Overdue due dates displayed with ⚠️ warning icon and red text
@@ -138,6 +155,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Due date tracking persisted in PostgreSQL with activity data
 
 ### 17. Contact Tags (COMPLETED)
+
 - Manage Tags modal accessible from Contacts page ("Manage Tags" button)
 - Tag CRUD operations: create, edit, delete tags via modal UI
 - Each tag has a name (unique, required) and color (hex color code, default: #6b7280)
@@ -152,6 +170,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Dark theme support for all tag UI components
 
 ### 18. Activity Calendar View (COMPLETED)
+
 - Monthly calendar view toggleable from Activities page via toolbar button or `C` keyboard shortcut
 - Calendar header with month/year display, previous/next month navigation, and "Today" button
 - 7-column grid layout with weekday headers (Sun, Mon, Tue, Wed, Thu, Fri, Sat)
@@ -169,6 +188,7 @@ AICRM is a modern, AI First, Customer Relationship Management (CRM) web applicat
 - Calendar renders with proper first-day-of-week alignment and empty cell padding
 
 ## Technical Requirements
+
 - Single Page Application (SPA) frontend architecture
 - Backend-owned data: FastAPI + PostgreSQL for all business domains
 - JWT authentication (development shared token or production JWKS)

@@ -90,7 +90,7 @@ versioning policy, release workflow, and which steps are automated vs manual.
 
 ## Structure
 
-```
+```text
 backend/
 ├── Dockerfile                # Container build definition
 ├── start.sh                  # Startup script (DB wait + migrations)
@@ -161,6 +161,7 @@ docker compose up --build
 ```
 
 The backend container:
+
 1. Waits for PostgreSQL to accept connections (`start.sh`)
 2. Runs Alembic migrations (`alembic upgrade head`)
 3. Starts uvicorn on port 9000
@@ -240,7 +241,7 @@ alembic downgrade -1
 
 ### Startup Order (Containerized)
 
-```
+```text
 db (PostgreSQL)
   → healthcheck passes (pg_isready)
     → backend (start.sh waits for DB connectivity)
@@ -321,7 +322,7 @@ export AUTH_JWKS_URL=https://your-idp.example.com/realms/aicrm/protocol/openid-c
 
 Logs are written to stdout in a structured format that includes timestamp, level, request ID, logger name, and message. Example:
 
-```
+```text
 2024-01-15T10:30:00+0000 INFO   [a1b2c3d4-...] app.auth.security: JWT validation failed  —  token expired request_id=a1b2c3d4-...
 ```
 
@@ -383,6 +384,7 @@ curl http://localhost:9000/api/health/ready
 The readiness endpoint returns `"status": "degraded"` if the database is unreachable, even though the process itself is running. Use this to distinguish between "backend down" and "backend running but database unavailable."
 
 Response fields:
+
 - `status`: `"ok"` or `"degraded"`
 - `app_version`: Application version from `VERSION` file or `APP_VERSION` env var
 - `service`: Always `"aicrm-backend"`
@@ -395,6 +397,7 @@ Response fields:
 **Symptoms:** Backend container exits, process crashes, or port 9000 is not listening.
 
 **Diagnostics:**
+
 ```bash
 # Check if the process is running
 docker ps -a | grep aicrm-backend
@@ -407,6 +410,7 @@ lsof -i :9000
 ```
 
 **Startup log prefixes and their meaning:**
+
 - `[startup] INFO: Waiting for PostgreSQL...`  —  Normal: backend is waiting for DB
 - `[startup] INFO: PostgreSQL is ready`  —  Normal: DB connection established
 - `[startup] INFO: Running database migrations...`  —  Normal: applying schema migrations
@@ -415,6 +419,7 @@ lsof -i :9000
 - `[startup] ERROR: Database migrations failed`  —  Migration error (see below)
 
 **Common causes:**
+
 - **Database not ready:** Backend waits 60 seconds. If DB doesn't start, the backend exits with a clear error. Start the database first.
 - **Port conflict:** Another process is using port 9000. Kill it or change `BACKEND_PORT`.
 - **Missing Python dependencies:** Rebuild the container image.
@@ -422,11 +427,13 @@ lsof -i :9000
 ### Database Connection Failure
 
 **Symptoms:**
+
 - Frontend shows "The service is temporarily unavailable" on API requests
 - `/api/health/ready` returns `"status": "degraded"` with database error
 - Backend logs show `psycopg2.OperationalError` or connection refused errors
 
 **Diagnostics:**
+
 ```bash
 # Check if PostgreSQL is running
 docker ps | grep aicrm-db
@@ -442,6 +449,7 @@ curl http://localhost:9000/api/health/ready
 ```
 
 **Common causes:**
+
 - **Database container not started:** `docker start aicrm-db`
 - **Database still initializing:** PostgreSQL can take 10-30 seconds to start. Wait or restart backend.
 - **Wrong credentials:** Verify DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD environment variables.
@@ -450,11 +458,13 @@ curl http://localhost:9000/api/health/ready
 ### Migration Failure
 
 **Symptoms:**
+
 - Backend logs show `[startup] ERROR: Database migrations failed`
 - Backend process exits with non-zero code
 - Error references a specific migration file or SQL error
 
 **Diagnostics:**
+
 ```bash
 # View migration error details
 docker logs aicrm-backend --tail 100 | grep -A 20 "migration"
@@ -468,12 +478,14 @@ docker exec aicrm-backend alembic current
 ```
 
 **Common causes:**
+
 - **Stale schema:** Database was modified outside of migrations. Inspect with `alembic current` and `alembic heads`.
 - **Conflicting migrations:** Two HEAD revisions exist. Resolve with `alembic merge head`.
 - **Missing migration:** New code references tables not yet created. Create the migration with `alembic revision --autogenerate -m "description"`.
 - **Permission issue:** PostgreSQL user lacks CREATE/ALTER privileges.
 
 **Recovery:**
+
 ```bash
 # If safe to stamp (schema manually matches a known revision)
 docker exec aicrm-backend alembic stamp <revision>
@@ -487,6 +499,7 @@ docker exec aicrm-backend alembic upgrade head
 **Symptoms:** Frontend shows "You must sign in to perform this action" or API returns 401.
 
 **Diagnostics:**
+
 ```bash
 # Check auth-related log lines
 docker logs aicrm-backend --tail 50 | grep -i "auth\|token\|401"
@@ -505,11 +518,13 @@ docker logs aicrm-backend --tail 50 | grep -i "auth\|token\|401"
 | `auth: development mode  —  accepting any token` | Dev mode active | Expected in development |
 
 **Auth configuration:**
+
 - `AUTH_MODE=development`: Accepts any non-empty bearer token matching `AUTH_DEV_TOKEN`
 - `AUTH_MODE=production`: Validates real JWTs against JWKS endpoint
 - Unknown AUTH_MODE values cause startup failure (fail closed, no silent fallback)
 
 **Common causes:**
+
 - **Expired token:** Normal. User logs in again.
 - **Stale token in browser:** Clear browser localStorage and log in again.
 - **Auth mode misconfiguration:** Verify AUTH_MODE is "development" or "production".
@@ -520,6 +535,7 @@ docker logs aicrm-backend --tail 50 | grep -i "auth\|token\|401"
 **Symptoms:** Frontend shows "You do not have permission to perform this action" or API returns 403.
 
 **Diagnostics:**
+
 ```bash
 # Check authorization log lines
 docker logs aicrm-backend --tail 50 | grep -i "forbidden\|403\|admin"
@@ -528,6 +544,7 @@ docker logs aicrm-backend --tail 50 | grep -i "forbidden\|403\|admin"
 The log line prefixed with `authz: forbidden` includes the user's subject, required role, and actual roles.
 
 **Common causes:**
+
 - **Non-admin user accessing admin features:** Expected. Only admin users can access settings and audit logs.
 - **Token missing is_admin claim:** If the user should be admin, re-authenticate with correct claims.
 - **Frontend showing admin UI to non-admin users:** Admin-only elements should be hidden. If visible, it's a frontend bug.
@@ -535,6 +552,7 @@ The log line prefixed with `authz: forbidden` includes the user's subject, requi
 ### Audit Write Failure
 
 **Symptoms:**
+
 - API mutations fail with 500 errors
 - Backend logs show `audit: failed to write event`
 
@@ -542,6 +560,7 @@ The log line prefixed with `authz: forbidden` includes the user's subject, requi
 When an audit write fails, the entire business mutation fails. This ensures every persisted mutation has a corresponding audit record. See `backend/app/services/audit_service.py` for the policy rationale.
 
 **Diagnostics:**
+
 ```bash
 # Check audit-related log lines
 docker logs aicrm-backend --tail 50 | grep -i "audit"
@@ -551,6 +570,7 @@ docker exec -it aicrm-db psql -U aicrm -d aicrm -c "SELECT count(*) FROM audit_l
 ```
 
 **Common causes:**
+
 - **Audit table missing:** Run migrations (`alembic upgrade head`).
 - **Database permissions:** Grant INSERT on audit_log to the application user.
 - **Database disk full:** Free disk space or expand volume.
@@ -576,6 +596,7 @@ curl -v http://localhost:9000/api/contacts \
 **Symptoms:** Frontend can't reach backend, but backend health check works on a different port.
 
 **Diagnostics:**
+
 ```bash
 # Check what port the backend is actually listening on
 docker logs aicrm-backend --tail 20 | grep "Uvicorn"
@@ -628,6 +649,7 @@ touch your normal development database.
 **Option 1 (containerized):** Docker must be installed and accessible.
 
 **Option 2 (local PostgreSQL):**
+
 - PostgreSQL 12+ running and accessible at the configured `DB_HOST`/`DB_PORT`
 - The configured database user must have permission to create/drop databases
 
@@ -741,6 +763,7 @@ shellcheck backend/run_tests.sh backend/start.sh
 arguments  —  if black says the file is wrong, run `black backend/` to fix it.
 
 **ruff** catches practical problems including:
+
 - Unused imports
 - Undefined names
 - Duplicate imports
