@@ -1,0 +1,31 @@
+# AICRM compliance capabilities (CodeAgent#815).
+#
+# The engine's compliance guard reads this record, but only what the engine has VERIFIED on main
+# counts:
+#   shipped  - the proof test passes, AND fails (pytest exit 1) with the declared mutation applied
+#              (the capability's code replaced by a stub), so a test that passes regardless proves
+#              nothing;
+#   deferred - the decision text appears verbatim in config/product_vision.md.
+# A marker counts as covered only when EVERY entry naming it is verified. Anything not recorded
+# here is treated as absent, and compliance-sensitive work that depends on it stays blocked.
+capabilities:
+  - id: email_consent_tracking
+    markers: [consent, opt-out, opt out, casl, can-spam, canspam]
+    status: shipped
+    proof: tests/test_contact_consent.py::test_contact_consent_flow
+    mutation:
+      target: app.repositories.contact_consent_postgres_repository:ContactConsentPostgresRepository.set_consent_with_audit
+      returns: null
+
+  - id: suppression_send_gate
+    markers: [suppression, can-spam, canspam, casl]
+    status: shipped
+    proof: tests/test_suppression_send_gate.py::test_suppression_send_gate
+    mutation:
+      target: app.repositories.suppressions_postgres_repository:SuppressionsPostgresRepository.may_send
+      returns: [true, []]
+
+  - id: public_unsubscribe_links
+    markers: [unsubscribe]
+    status: deferred
+    decision: "Public unsubscribe links and ESP webhooks belong to the ESP integration epic"
