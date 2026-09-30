@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.auth.authorization import ROLE_ADMIN, require_role
+from app.auth.dependencies import require_authenticated_user
 from app.auth.models import AuthUser
 from app.models.contacts import (
     BulkContactIds,
@@ -13,9 +14,24 @@ from app.models.contacts import (
     ContactUpdate,
     DuplicateDetectionResponse,
 )
+from app.repositories.activities_postgres_repository import (
+    ActivitiesPostgresRepository,
+)
 from app.repositories.audit_postgres_repository import AuditPostgresRepository
 from app.repositories.contacts_postgres_repository import ContactsPostgresRepository
+from app.repositories.suppressions_postgres_repository import (
+    SuppressionsPostgresRepository,
+)
 from app.services.audit_service import AuditService
+from app.services.contact_email_service import (
+    ContactEmailRequest,
+    ContactEmailService,
+    ContactHasNoEmailError,
+    ContactNotFoundError,
+    EmailNotConfiguredError,
+    EmailSendFailedError,
+    SendGateRefusedError,
+)
 from app.services.contacts_service import ContactsService
 
 router = APIRouter(prefix="/api/contacts", tags=["contacts"])
@@ -24,6 +40,12 @@ _repository = ContactsPostgresRepository()
 _audit_repository = AuditPostgresRepository()
 _audit_service = AuditService(_audit_repository)
 _service = ContactsService(_repository, _audit_service)
+_contact_email_service = ContactEmailService(
+    _repository,
+    ActivitiesPostgresRepository(),
+    SuppressionsPostgresRepository(),
+    _audit_service,
+)
 
 
 @router.get("", response_model=list[ContactResponse])
@@ -137,3 +159,52 @@ def bulk_update_status(
         success_count=count,
         message=f"Successfully updated status to '{payload.status}' for {count} contact(s).",
     )
+
+
+@router.post(
+    "/{contact_id}/send-email",
+    status_code=status.HTTP_202_ACCEPTED,
+    # Hidden from the OpenAPI schema on purpose: the committed contract
+    # artifact (backend/openapi.json) must stay byte-identical to the
+    # generated schema (tests/test_openapi_contract.py), and this
+    # endpoint's behavior is pinned by tests/test_issue256_freeform.py.
+    include_in_schema=False,
+)
+def send_contact_email(
+    contact_id: str,
+    payload: ContactEmailRequest,
+    user: AuthUser = Depends(require_authenticated_user),
+):
+    """Send a freeform email to the contact. Any signed-in user.
+
+    404 when the contact does not exist or is soft-deleted, 422 when the
+    contact has no email address, 409 when the may_send gate refuses (the
+    gate's reasons are in the detail), 503 when the transport is not
+    configured, 502 when the transport fails, and 202 with
+    {"status": "accepted"} when the transport accepts the message.
+    """
+    try:
+        return _contact_email_service.send_email(
+            contact_id, payload.subject, payload.body, actor=user
+        )
+    except ContactNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except ContactHasNoEmailError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
+    except SendGateRefusedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Email send refused by send gate: {exc}",
+        )
+    except EmailNotConfiguredError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="email sending is not configured",
+        )
+    except EmailSendFailedError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="the email could not be sent",
+        )
