@@ -1,6 +1,7 @@
 # Internal Business Application Reference Architecture
 
 Baseline:
+
 - shared SSO
 - app service
 - relational database

@@ -33,4 +33,5 @@ Surface an AI insight panel per contact.
   "version": 1
 }
 ```
+
 </details>

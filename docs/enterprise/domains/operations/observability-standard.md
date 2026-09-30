@@ -1,6 +1,7 @@
 # Observability Standard
 
 Production systems must provide:
+
 - structured logs
 - basic metrics
 - health checks

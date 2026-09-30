@@ -1,9 +1,11 @@
 # AICRM - Future Enhancements - Always consider AI inclusion in every enhancement
 
 ## Item 1: Contact Import/Export with CSV Support ✅ IMPLEMENTED
+
 **Status:** Implemented (Session 2)
 **Description:** Add ability to import contacts from CSV files and export contacts to CSV format. This would allow users to migrate data from spreadsheets or other CRM systems.
 **Features:**
+
 - ✅ CSV file upload with proper parsing (handles quoted fields, escaped quotes)
 - ✅ Data validation during import (skips empty rows, reports counts)
 - ✅ Export all contacts to CSV with headers (Name, Email, Phone, Company, Status, Notes)
@@ -14,9 +16,11 @@
 **Tests:** `docs/testing/test-csv-import-export.js` (7/7 passed)
 
 ## Item 2: Lead Scoring System ✅ IMPLEMENTED
+
 **Status:** Implemented (Session 2)
 **Description:** Implement an automated lead scoring mechanism that assigns points based on lead attributes and interactions.
 **Features:**
+
 - ✅ Scoring rules based on source (website, referral, social media, cold call, event)
 - ✅ Scoring based on stage (new, contacted, qualified, proposal, won)
 - ✅ Scoring based on deal value tiers ($0–$10K, $10K–$50K, $50K–$100K, $100K+)
@@ -32,9 +36,11 @@
 **Tests:** `docs/testing/test-lead-scoring.js` (7/7 passed)
 
 ## Item 3: Email Templates ✅ IMPLEMENTED
+
 **Status:** Implemented (Session 3)
 **Description:** Create reusable email templates for common communications like follow-ups, proposals, and introductions.
 **Features:**
+
 - ✅ Full CRUD operations (create, read, update, delete templates)
 - ✅ Variable substitution with clickable chips ({{contact_name}}, {{contact_email}}, {{contact_phone}}, {{contact_company}}, {{lead_name}}, {{lead_company}}, {{lead_value}})
 - ✅ Template categories (follow-up, introduction, proposal, thank-you, meeting, other)
@@ -53,27 +59,33 @@
 **Tests:** `docs/testing/test-email-templates.js` (10/10 passed)
 
 ## Item 4: Calendar Integration
+
 **Status:** Planned
 **Description:** Add calendar view for scheduling and viewing upcoming meetings, calls, and tasks.
 **Features:**
+
 - Monthly and weekly calendar views
 - Activity scheduling with reminders
 - Conflict detection
 - Export to iCalendar format
 
 ## Item 5: Advanced Reporting Dashboard
+
 **Status:** Planned
 **Description:** Comprehensive analytics and reporting features for tracking CRM performance.
 **Features:**
+
 - Conversion rate tracking
 - Revenue forecasting based on pipeline
 - Activity trend charts
 - Custom date range filtering
 
 ## Item 6: Tags and Custom Fields
+
 **Status:** Partially Implemented — Tags ✅ Done (Session 13 / v0.1.3); Custom Fields ⏳ Planned
 **Description:** Allow users to add custom tags and fields to contacts and leads for better organization. Tags are fully implemented; custom fields remain planned.
 **Features (Tags — Implemented):**
+
 - ✅ Multi-tag support with color coding (create, edit, delete tags via Manage Tags modal)
 - ✅ Tag assignment in contact edit form (checkbox selector with color dots)
 - ✅ Tag badges rendered on contact cards (color-coded)
@@ -86,9 +98,11 @@
 **Files Modified:** `app/index.html`, `app/js/app.js`, `app/js/api.js`, `app/js/contacts-data-source.js`, `app/css/styles.css`, `backend/app/api/tags.py`, `backend/app/models/contact_tags.py`, `backend/app/repositories/tags_postgres_repository.py`, `backend/app/db/schema.py`
 
 ## Item 7: Activity Reminders and Notifications
+
 **Status:** ✅ Implemented (v0.1.6)
 **Description:** Browser-based notifications for upcoming activities and follow-up reminders.
 **Features:**
+
 - Configurable reminder times
 - Browser notification API integration
 - Overdue activity alerts
@@ -103,18 +117,22 @@
 - `docs/testing/test-activity-reminders.js` — 15-test Playwright E2E suite (all passing)
 
 ## Item 8: Multi-User Support
+
 **Status:** Planned
 **Description:** Support for multiple user accounts with role-based access control.
 **Features:**
+
 - User registration and authentication
 - Role-based permissions (admin, manager, sales)
 - Activity ownership tracking
 - Shared contact management
 
 ## Item 9: Bulk Contact Operations ✅ IMPLEMENTED
+
 **Status:** Implemented (v0.1.x)
 **Description:** Enable mass operations on multiple contacts simultaneously to improve productivity for power users managing large contact lists.
 **Features:**
+
 - ✅ Multi-select contacts with checkboxes
 - ✅ Bulk status change (e.g., mark multiple contacts as VIP or Inactive)
 - ✅ Bulk delete with confirmation dialog
@@ -130,9 +148,11 @@
 **Tests:** `docs/testing/test-bulk-operations.js`
 
 ## Item 10: Contact Activity History Timeline ✅ IMPLEMENTED
+
 **Status:** Implemented (Session 8)
 **Description:** Display a per-contact timeline of all related activities, providing a complete interaction history at a glance when viewing a contact's details.
 **Features:**
+
 - ✅ Expandable activity timeline within contact detail modal (wide layout)
 - ✅ Chronological display of all activities linked to the contact (newest first)
 - ✅ Activity type icons for quick visual scanning (📞📧🤝📝📋)
@@ -153,9 +173,11 @@
 **Dependencies:** Contact Management, Activity Tracking (both Item 0 - existing)
 
 ## Item 11: Lead CSV Export/Import ✅ IMPLEMENTED
+
 **Status:** Implemented (Session 2)
 **Description:** Extend CSV import/export capability to leads, complementing the existing contact CSV feature. This allows users to migrate lead data from spreadsheets or other CRM systems.
 **Features:**
+
 - ✅ Export all leads to CSV with headers (Name, Company, Email, Phone, Value, Stage, Source, Notes)
 - ✅ Import leads from CSV file with proper parsing (handles quoted fields, escaped quotes)
 - ✅ Data validation during import (skips empty rows, reports counts)
@@ -169,9 +191,11 @@
 **Tests:** `docs/testing/test-lead-csv.js` (8/8 passed)
 
 ## Item 12: Dashboard Revenue Summary ✅ IMPLEMENTED
+
 **Status:** Implemented (Session 2)
 **Description:** Add revenue-focused statistics to the dashboard, giving users immediate visibility into their pipeline value and won revenue.
 **Features:**
+
 - ✅ Total pipeline value stat card (sum of active lead values, excludes won/lost)
 - ✅ Won revenue stat card (sum of all won lead values)
 - ✅ Average deal size calculation (won revenue / won lead count)
@@ -189,9 +213,11 @@
 **Dependencies:** Lead Management (Item 0 - existing)
 
 ## Item 13: Quick Activity Logging from Cards ✅ IMPLEMENTED
+
 **Status:** Implemented (Session v0.1.5)
 **Description:** Add one-click activity logging buttons directly on contact cards, allowing users to quickly log calls, emails, meetings, or notes without navigating away from the list view.
 **Features:**
+
 - ✅ Quick-action buttons (📞 Call, 📧 Email, 🤝 Meeting, 📝 Note) on each contact card
 - ✅ Opens activity modal with type pre-filled based on button clicked
 - ✅ Pre-fills the related contact reference automatically
@@ -208,9 +234,11 @@
 **Dependencies:** Contact Management, Activity Tracking (all Item 0 - existing)
 
 ## Item 14: Dashboard Recent Items ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** Display recently added contacts and leads on the dashboard, giving users immediate visibility into their latest CRM activity without navigating to separate pages.
 **Features:**
+
 - ✅ "Recent Contacts" section showing the 5 most recently added contacts
 - ✅ "Recent Leads" section showing the 5 most recently added leads
 - ✅ Each item shows name, company/email, and creation timestamp
@@ -224,16 +252,18 @@
 **Dependencies:** Contact Management, Lead Management (both Item 0 - existing)
 
 ## Item 15: AI-Powered Lead Recommendations ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** Use AI-driven insights to surface the most promising leads and suggest next-best actions, aligning with AICRM's "AI First" product vision. This helps sales teams prioritize their outreach efforts intelligently.
 **Features:**
+
 - ✅ "Recommended Actions" panel on dashboard showing top leads needing attention
 - ✅ Smart suggestions based on lead score, stage duration, and engagement history (e.g., "Follow up with Acme Corp — qualified for 14 days")
 - ✅ Stale lead detection — flags leads that haven't been contacted in over 7 days
 - ✅ Priority ranking combining lead score, deal value, and time since last activity
 - ✅ Visual priority indicators (urgent/high/normal) on recommendation cards
 **Implementation Details:**
-- `getLeadRecommendations(leads)` — scores leads by: (lead_score * 0.4) + (normalized_value * 0.3) + (engagement_recency * 0.3)
+- `getLeadRecommendations(leads)` — scores leads by: (lead_score *0.4) + (normalized_value* 0.3) + (engagement_recency * 0.3)
 - `renderRecommendedActions(leads)` — renders "Recommended Actions" dashboard card with clickable lead rows
 - Recency factor decreases over time since last linked activity (full points at day 0, zero after 14 days)
 - CSS classes: `.recommendation-list`, `.recommendation-item`, `.recommendation-urgent`, `.recommendation-high`, `.recommendation-normal`
@@ -243,9 +273,11 @@
 **Dependencies:** Lead Scoring (Item 2 - implemented), Activity Tracking (Item 0 - existing)
 
 ## Item 16: Dashboard PDF Report Export
+
 **Status:** ✅ Implemented (Session 7)
 **Description:** Generate a shareable one-page PDF summary of dashboard metrics, enabling users to include CRM data in meetings, reports, and stakeholder communications without screenshots.
 **Features:**
+
 - "Export PDF Report" button on the dashboard
 - PDF includes: stat cards summary, pipeline breakdown, recent activities, and revenue summary
 - Report header with AICRM branding, generation timestamp, and company name
@@ -265,9 +297,11 @@
 **Tests:** `docs/testing/test-pdf-export.js` — 6/6 tests passing
 
 ## Item 17: Contact Duplicate Detection ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** Automatically detect potential duplicate contacts when creating or editing contacts, helping users maintain a clean and deduplicated contact database. This prevents accidental data fragmentation where the same person exists under multiple entries.
 **Features:**
+
 - ✅ Real-time duplicate check by email address during contact creation/editing
 - ✅ Duplicate check by name + company combination
 - ✅ Warning modal showing matching existing contacts with "Keep both" or "Merge" options
@@ -285,9 +319,11 @@
 **Dependencies:** Contact Management (Item 0 - existing)
 
 ## Item 18: Keyboard Shortcuts
+
 **Status:** ✅ Implemented (Session 4)
 **Description:** Add global keyboard shortcuts for power users to navigate and perform common actions faster without reaching for the mouse, improving productivity and accessibility.
 **Features:**
+
 - Global shortcut `/` to focus the search bar (works from any page)
 - `Ctrl+N` or `Cmd+N` to open "New Contact" modal
 - `Ctrl+L` or `Cmd+L` to open "New Lead" modal
@@ -307,9 +343,11 @@
 **Tests:** 11/11 passing (button, modal, sections, `/` focus, keys 1-3 navigation, Ctrl+N, Ctrl+L, modal content, console errors)
 
 ## Item 19: Contact Import from vCard (vCard/VCF Support) ✅ IMPLEMENTED
+
 **Status:** Implemented (v0.2.3)
 **Description:** Enable importing contacts from vCard (.vcf) files, the universal contact exchange format used by email clients, smartphones, and most CRM systems. This complements the existing CSV import by supporting the most common personal contact export format.
 **Features:**
+
 - ✅ Upload .vcf files containing one or more vCard contacts (vCard 2.1, 3.0, and 4.0 formats)
 - ✅ Parse standard vCard fields: FN (full name), N (structured name), EMAIL, TEL, ORG (company), NOTE (notes), TITLE
 - ✅ Map vCard fields to AICRM contact fields (name, email, phone, company, notes)
@@ -329,9 +367,11 @@
 **Dependencies:** Contact Management (existing), Contact CSV Import/Export (Item 1 - implemented)
 
 ## Item 20: Activity Due Date Tracking and Overdue Alerts ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Item 27)
 **Description:** Add due date support for Tasks and Meetings activity types, with visual overdue indicators on the activities timeline and dashboard. This transforms the activity tracker from a passive log into an actionable task management system.
 **Features:**
+
 - ✅ Due date field for Task and Meeting activity types (date picker)
 - ✅ Visual overdue indicator: red border and "Overdue" badge on past-due activities
 - ✅ "Overdue" filter option in the Activities page filter dropdown
@@ -350,9 +390,11 @@
 **Dependencies:** Activity Tracking (Item 0 - existing)
 
 ## Item 21: Quick Activity Log ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** A floating action button available on every page that lets users quickly log an activity (call, email, meeting, note, task) without navigating away from their current view. This reduces friction in activity tracking and encourages consistent logging by sales teams.
 **Features:**
+
 - ✅ Floating action button (FAB) visible on all pages (bottom-right corner)
 - ✅ Clicking FAB opens quick-select chips for activity type selection
 - ✅ Activity type selector (icon buttons: call, email, meeting, note, task)
@@ -366,9 +408,11 @@
 **Dependencies:** Activity Tracking (Item 0 - existing), Modal system (existing)
 
 ## Item 22: Dashboard Widget Customization
+
 **Status:** Planned
 **Description:** Allow users to customize their dashboard by toggling visibility of individual stat cards and sections, and reordering them via drag-and-drop. This personalizes the dashboard for different roles (e.g., sales reps vs. managers) and reduces clutter.
 **Features:**
+
 - Toggle switch on each stat card to show/hide it
 - Drag-and-drop reordering of stat cards in the stats grid
 - Toggle switches for dashboard sections (Recent Activities, Lead Pipeline, Recommended Actions)
@@ -385,9 +429,11 @@
 - Default layout shows all cards in original order
 
 ## Item 23: Lead Assignment and Ownership
+
 **Status:** Planned
 **Description:** Allow leads to be assigned to specific team members (once multi-user support is implemented) or tracked with an "owner" label for solo users who manage multiple sales territories or accounts. This provides accountability and prevents leads from being orphaned.
 **Features:**
+
 - Owner field on lead creation/edit forms (free-text for solo users, dropdown for multi-user)
 - Filter leads by owner
 - Unassigned leads indicator on dashboard
@@ -404,9 +450,11 @@
 **Dependencies:** Lead Pipeline (Item 0 - existing), Multi-User Support (Item 8 - planned, for dropdown selection)
 
 ## Item 24: Data Backup and Restore ✅ IMPLEMENTED (Client-Side Only)
+
 **Status:** Implemented (Session 5) — Client-side convenience only; not a full system backup
 **Description:** Provide users with a one-click way to export their CRM data as a single JSON file. This is a client-side convenience feature and **not** a substitute for PostgreSQL-level backups. Full data backup and recovery should be handled via `pg_dump` or equivalent database tools.
 **Features:**
+
 - ✅ "Create Backup" button in Settings page that downloads a JSON file containing accessible data (contacts, leads, activities, templates)
 - ✅ Backup file includes timestamp and version metadata (appName, version, createdAt, summary with counts)
 - ✅ Backup file naming convention: `aicrm_backup_YYYY-MM-DD.json`
@@ -421,9 +469,11 @@
 **Bug Fix:** Fixed settings object handling — `Storage.get()` returns `[]` by default for SETTINGS key; added guard to normalize to `{}` before reading/writing `lastBackup`
 
 ## Item 25: AI-Powered Email Composer
+
 **Status:** Planned
 **Description:** An intelligent email composition assistant that generates personalized email drafts by combining email templates with contact/lead context and AI-suggested content. This bridges the gap between static templates and fully manual email writing, helping sales teams send personalized outreach at scale.
 **Features:**
+
 - "Compose Email" button on contact and lead cards that opens the composer modal
 - Select a template as the starting point (or start from blank)
 - Auto-populate template variables with the selected contact/lead data
@@ -448,9 +498,11 @@
 **Dependencies:** Email Templates (Item 3 - implemented), Contact Management, Lead Management (existing)
 
 ## Item 26: Lead Conversion Funnel Analytics ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** A visual funnel chart on the dashboard showing lead conversion rates between each pipeline stage, with drop-off analysis. This gives users immediate insight into where leads are lost in the sales process and which stages need improvement.
 **Features:**
+
 - ✅ Funnel visualization on dashboard showing each pipeline stage as a narrowing bar
 - ✅ Conversion rate percentage between consecutive stages
 - ✅ Drop-off count and percentage at each stage transition
@@ -466,10 +518,13 @@
 - `renderAnalytics()` in `app/js/app.js` renders funnel chart + stage breakdown table
 **Files Modified:** `backend/app/api/analytics.py`, `backend/app/models/analytics.py`, `backend/app/repositories/analytics_postgres_repository.py`, `app/js/api.js`, `app/js/app.js`, `app/index.html`, `app/css/styles.css`
 **Dependencies:** Lead Pipeline (existing), Lead Scoring (existing, for stage data)
+
 ## Item 27: Activity Due Date Tracking ✅ IMPLEMENTED
+
 **Status:** Implemented (Session 6)
 **Description:** Add due date and time support to activities, with visual overdue indicators and filtering. This transforms the activity tracker from a simple log into a proactive task management system, ensuring follow-ups are never missed.
 **Features:**
+
 - ✅ Due date picker on activity creation/edit forms
 - ✅ Visual overdue indicator (red left border, red timeline dot, ⚠️ warning icon) for past-due activities
 - ✅ "Overdue" filter option in activity status filter dropdown (All, Overdue, Completed, Active)
@@ -494,9 +549,11 @@
 **Tests:** `docs/testing/test-activity-due-date-tracking.js` (15/15 passed)
 
 ## Item 28: Contact Activity Quick-Add FAB ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Item 21)
 **Description:** A floating action button (FAB) that provides instant access to log a quick activity (call, email, meeting, note) from any page, without navigating to the Activities page. This reduces friction for field sales reps who need to log interactions on the go.
 **Features:**
+
 - ✅ Fixed-position floating action button (bottom-right corner)
 - ✅ Click expands to show activity type quick-select chips (📞 Call, 📧 Email, 🤝 Meeting, 📝 Note, ✅ Task)
 - ✅ Selecting a type opens a pre-filled activity modal with that type
@@ -509,9 +566,11 @@
 **Dependencies:** Activity Tracking (Item 0 - existing), Modal system (existing)
 
 ## Item 29: AI-Powered Contact Insights
+
 **Status:** Planned
 **Description:** An intelligent insights panel that analyzes contact data and surfaces actionable recommendations using rule-based AI patterns. This helps sales teams prioritize outreach and identify opportunities they might otherwise miss.
 **Features:**
+
 - Per-contact insight panel showing engagement score, last interaction summary, and recommended next action
 - "Stale Contact" detection — contacts with no activity in 30+ days flagged for re-engagement
 - Smart suggestions based on contact status and activity history (e.g., "VIP with no activity in 45 days — schedule a check-in call")
@@ -528,9 +587,11 @@
 **Dependencies:** Contact Management, Activity Tracking, Lead Management (all existing)
 
 ## Item 30: Advanced Contact Search and Filtering
+
 **Status:** Planned
 **Description:** Enhance the global search with advanced filtering capabilities including multi-field search, saved search presets, and filter combinations. This transforms search from a simple text lookup into a powerful data discovery tool.
 **Features:**
+
 - Multi-field search with field-specific operators (e.g., "company:Acme", "email:@gmail.com")
 - Combined filters on Contacts page: status + company + search text simultaneously
 - Saved search presets — users can name and save frequent filter combinations
@@ -548,9 +609,11 @@
 **Dependencies:** Contact Management, Global Search (both existing)
 
 ## Item 31: Activity Recurrence and Reminders
+
 **Status:** Planned
 **Description:** Support for recurring activities (daily, weekly, monthly) with browser-based reminder notifications. This automates follow-up scheduling, ensuring critical activities like weekly check-ins and monthly reviews never slip through the cracks.
 **Features:**
+
 - Recurrence pattern selector on activity creation (None, Daily, Weekly, Monthly)
 - End date or occurrence count for recurring series
 - Browser Notification API integration for due date reminders
@@ -571,9 +634,11 @@
 **Dependencies:** Activity Due Date Tracking (Item 27 - implemented), Activity Tracking (existing)
 
 ## Item 32: Contact Notes with Rich Text and Pinning
+
 **Status:** Planned
 **Description:** Enhance contact notes with rich text formatting support and the ability to pin important notes to the top of a contact's detail view. This improves note readability and ensures critical information is always visible.
 **Features:**
+
 - Rich text editor for notes (bold, italic, underline, bullet lists, numbered lists)
 - Pin/unpin notes to keep critical information at the top
 - Timestamped note entries with edit history
@@ -593,9 +658,11 @@
 **Dependencies:** Contact Management (existing)
 
 ## Item 33: Workflow Automation Rules
+
 **Status:** Planned
 **Description:** Enable users to create automated workflow rules that trigger actions based on CRM events. This reduces manual follow-up work and ensures consistent processes across the sales pipeline.
 **Features:**
+
 - Visual rule builder with condition-action pairs (e.g., "IF lead value > $50K AND stage = proposal, THEN create follow-up activity in 7 days")
 - Pre-built rule templates for common scenarios (stale contact follow-up, high-value lead escalation, new contact onboarding sequence)
 - Trigger conditions based on: lead stage changes, value thresholds, time since last contact, contact status changes, activity completion
@@ -614,9 +681,11 @@
 **Dependencies:** Activity Tracking, Email Templates, Lead Management (all existing)
 
 ## Item 34: Communication Log and Unified Inbox
+
 **Status:** Planned
 **Description:** A centralized communication log that aggregates all interactions (calls, emails, meetings, notes) across contacts and leads into a single searchable timeline. This provides a complete view of customer communications and helps sales teams stay organized.
 **Features:**
+
 - Unified inbox view showing all communications sorted chronologically
 - Filter by communication type (call, email, meeting, note, task)
 - Filter by contact or lead association
@@ -638,9 +707,11 @@
 **Dependencies:** Activity Tracking, Contact Management, Lead Management, Email Templates (all existing)
 
 ## Item 35: AI-Powered Contact Insights and Next-Best-Action
+
 **Status:** Planned
 **Description:** Leverage AI to analyze contact data and suggest intelligent next steps, surfacing insights that would otherwise be buried in manual review. This transforms AICRM from a passive record-keeping tool into an active sales assistant.
 **Features:**
+
 - AI-generated "Next Best Action" recommendation per contact (e.g., "Schedule follow-up call — no contact in 30 days")
 - Sentiment analysis of contact notes and activity descriptions (positive/neutral/negative indicator)
 - Predicted conversion likelihood score for leads based on engagement patterns, deal value, and stage
@@ -660,9 +731,11 @@
 **Dependencies:** Contact Management, Lead Management, Activity Tracking (all existing); requires LLM API configuration
 
 ## Item 36: Dashboard Customization and Widget System
+
 **Status:** Planned
 **Description:** Allow users to personalize their dashboard by adding, removing, reordering, and resizing stat cards and widgets. This gives each user a workspace tailored to their role and priorities.
 **Features:**
+
 - Drag-and-drop reordering of dashboard stat cards and widgets
 - Toggle visibility of individual cards/widgets via a dashboard settings panel
 - Resize widgets (small, medium, large) for different data densities
@@ -682,9 +755,11 @@
 **Dependencies:** Dashboard (existing), Activity Tracking, Contact Management, Lead Management (all existing)
 
 ## Item 37: Contact Merge and Deduplication ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** Automatically detect and intelligently merge duplicate contact records to maintain data hygiene and prevent fragmented customer profiles. This is critical as contact lists grow and data is imported from multiple sources.
 **Features:**
+
 - ✅ Automatic duplicate detection based on matching email addresses and similar names
 - ⏳ Fuzzy name matching algorithm (e.g., "Jon Smith" vs "John Smith") — not yet implemented
 - ✅ Side-by-side comparison view showing field differences between potential duplicates
@@ -705,9 +780,11 @@
 **Dependencies:** Contact Management, Activity Tracking, Audit Log (all existing)
 
 ## Item 38: Lead Assignment and Ownership
+
 **Status:** Planned
 **Description:** Enable team-based lead management by allowing leads to be assigned to specific team members, tracking ownership, and providing visibility into workload distribution. This bridges the gap between single-user CRM and full multi-user collaboration.
 **Features:**
+
 - Assign/unassign leads to team members via dropdown in lead cards and detail modal
 - Owner avatar and name displayed prominently on lead cards
 - "My Leads" filter showing only leads assigned to current user
@@ -732,9 +809,11 @@
 **Dependencies:** Lead Management, Settings, Audit Log (all existing)
 
 ## Item 39: Smart Contact Notes with AI Summarization
+
 **Status:** Planned
 **Description:** Leverage AI to automatically summarize and organize contact notes, making it effortless to understand the history and key details of any customer relationship without scrolling through pages of raw notes. This transforms unstructured notes into actionable intelligence.
 **Features:**
+
 - AI-generated summary of contact notes displayed prominently in contact detail view
 - Key points extraction — automatically identifies action items, decisions, and follow-ups from notes
 - Sentiment trend indicator — tracks whether the relationship is improving, stable, or declining based on note content
@@ -756,9 +835,11 @@
 **Dependencies:** Contact Management, Activity Tracking (existing); requires LLM API configuration (shared with Item 35)
 
 ## Item 40: Lead Conversion Funnel and Drop-off Analytics ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Item 26)
 **Description:** Visualize the complete lead journey from acquisition to conversion with a dynamic funnel chart, identifying exactly where leads are dropping off and which stages need improvement. This provides data-driven insights for optimizing the sales process.
 **Features:**
+
 - ✅ Funnel visualization showing lead count and conversion rate at each stage
 - ✅ Drop-off rate between consecutive stages (percentage lost)
 - ✅ Time-in-stage analytics — average days spent at each stage
@@ -778,9 +859,11 @@
 **Dependencies:** Lead Management (existing), Dashboard (existing)
 
 ## Item 41: Contact Communication Log and Interaction History ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** Provide a unified, chronological communication log for each contact that aggregates all interactions (emails sent via templates, calls logged, meetings held, notes added, activities completed) into a single scrollable timeline. This gives sales reps instant context before any outreach, eliminating the need to search across multiple pages.
 **Features:**
+
 - ✅ Unified timeline view combining activities in chronological order
 - ✅ Communication type icons and color coding (📞 Call, 📧 Email, 🤝 Meeting, 📝 Note, 📋 Task)
 - ⏳ "Last Contacted" date prominently displayed on contact cards — not yet implemented
@@ -801,9 +884,11 @@
 **Dependencies:** Contact Management, Activity Tracking, Email Templates (all existing)
 
 ## Item 42: Automated Follow-up Suggestions and Smart Reminders
+
 **Status:** Planned
 **Description:** Intelligently suggest when and how to follow up with contacts and leads based on their activity history, deal stage, and engagement patterns. This ensures no contact falls through the cracks and helps sales reps prioritize their outreach effectively.
 **Features:**
+
 - Dashboard widget showing "Follow-ups Due Today" with contact name, last interaction date, suggested action, and priority
 - Per-contact follow-up suggestions in contact detail view (e.g., "Last called 14 days ago — schedule follow-up call")
 - Suggested follow-up intervals based on contact status (VIP = 7 days, Active = 14 days, Inactive = 30 days) and lead stage
@@ -829,9 +914,11 @@
 **Dependencies:** Contact Management, Lead Management, Activity Tracking, Dashboard (all existing)
 
 ## Item 43: Contact Import Wizard with AI-Powered Data Enrichment
+
 **Status:** Planned
 **Description:** A guided multi-step import wizard that not only imports contact data from CSV but also enriches it using AI — auto-detecting fields, suggesting corrections for typos, classifying industries, and appending missing data from public sources. This transforms raw spreadsheet imports into clean, structured CRM records with minimal manual effort.
 **Features:**
+
 - Multi-step wizard UI: Upload → Preview → Map Fields → Enrich → Confirm
 - AI-powered field mapping — automatically detects which CSV columns map to CRM fields (name, email, phone, company, status)
 - Data quality checks with AI suggestions (e.g., "Is 'Goggle Inc' a typo for 'Google Inc'?")
@@ -855,9 +942,11 @@
 **Dependencies:** Contact Management (existing); requires LLM API configuration (shared with Items 35, 39)
 
 ## Item 44: Sales Pipeline Analytics and Revenue Forecasting
+
 **Status:** Planned
 **Description:** AI-powered sales analytics that goes beyond basic pipeline visualization — providing revenue forecasts, win probability scoring, pipeline health metrics, and actionable insights. Sales managers can see not just where deals are, but how likely they are to close and when, enabling data-driven planning and resource allocation.
 **Features:**
+
 - Revenue forecast dashboard showing projected monthly/quarterly revenue based on pipeline stage probabilities
 - Win probability scoring per lead — AI analyzes lead attributes, activity history, and stage duration to predict close likelihood (0-100%)
 - Pipeline health score — composite metric (0-100) combining velocity, conversion rates, and stage distribution
@@ -881,9 +970,11 @@
 **Dependencies:** Lead Management, Activity Tracking, Dashboard (all existing)
 
 ## Item 45: Email Campaign Management and Tracking
+
 **Status:** Planned
 **Description:** A full-featured email campaign system that lets users compose, schedule, send, and track bulk email campaigns — building on the existing email templates feature. Users can segment their contacts and leads into mailing lists, track opens and clicks, and measure campaign effectiveness over time.
 **Features:**
+
 - Campaign creation wizard: select recipients (by contact status, lead stage, tags), pick a template, customize subject/body
 - Campaign preview with variable substitution rendered for a sample contact
 - Send now or schedule for later (date/time picker with timezone support)
@@ -911,9 +1002,11 @@
 **Dependencies:** Email Templates (Item 3 - existing), Contact Management, Lead Management (existing)
 
 ## Item 46: Unified Activity Feed and Real-time Collaboration Notes
+
 **Status:** Planned
 **Description:** A centralized, real-time activity feed that aggregates all CRM interactions across contacts, leads, and campaigns into a single chronological stream. Combined with shared collaboration notes, this gives users a bird's-eye view of everything happening in the CRM and enables team context sharing even before full multi-user support is available.
 **Features:**
+
 - Unified feed showing all activities, lead stage changes, campaign sends, and contact updates in chronological order
 - Feed filters: by date range, entity type (contact/lead/campaign), activity type, and status
 - Real-time feed updates via Server-Sent Events (SSE) — new activities appear without page refresh
@@ -939,9 +1032,11 @@
 **Dependencies:** Contact Management, Lead Management, Activity Tracking (all existing); enhances Multi-User Support (Item 8) when implemented
 
 ## Item 47: Contact and Lead Search with Advanced Filters
+
 **Status:** Planned
 **Description:** A powerful global search and filtering system that lets users find contacts and leads instantly using keyword search, combined advanced filters, and saved search presets. This addresses the growing need for quick data retrieval as contact and lead lists expand.
 **Features:**
+
 - Global search bar accessible from any page (keyboard shortcut `/` to focus)
 - Full-text search across name, email, phone, company, and notes fields
 - Advanced filter panel with combined criteria: date range, status/stage, score range, tags, source, deal value range
@@ -964,9 +1059,11 @@
 **Dependencies:** Contact Management, Lead Management, Lead Scoring (Item 2 - existing); Tags (Item 6 - optional enhancement)
 
 ## Item 48: Smart Follow-up Suggestions and Engagement Scoring
+
 **Status:** Planned
 **Description:** AI-powered follow-up recommendations that analyze each contact's and lead's interaction history to suggest the next best action — including optimal timing, communication channel, and suggested talking points. Combined with an engagement score, users can prioritize who to reach out to next.
 **Features:**
+
 - Per-contact/lead engagement score (0-100) based on recency, frequency, and diversity of interactions
 - Smart follow-up suggestions: "Last contacted 14 days ago — suggest follow-up call", "No response to last email — try phone", etc.
 - Recommended next action type (call, email, meeting, task) based on interaction patterns
@@ -990,9 +1087,11 @@
 **Dependencies:** Contact Management, Lead Management, Activity Tracking (all existing); enhances Lead Scoring (Item 2) patterns
 
 ## Item 49: Contact Communication Preferences and Do-Not-Contact List
+
 **Status:** Planned
 **Description:** Manage how and when to communicate with each contact, respecting their preferences and compliance requirements. This builds trust and ensures the CRM supports ethical, consent-driven outreach.
 **Features:**
+
 - Per-contact communication preferences: preferred channel (email, phone, meeting), preferred times, frequency limit
 - Do-not-contact flag with reason tracking (opt-out, compliance, personal request)
 - Automatic suppression — contacts on do-not-contact list are excluded from campaigns, search results (configurable), and follow-up suggestions
@@ -1013,9 +1112,11 @@
 **Dependencies:** Contact Management (existing); enhances Email Campaigns (Item 45), Smart Follow-up (Item 48)
 
 ## Item 50: Win/Loss Reason Tracking and Deal Post-Mortem Analysis
+
 **Status:** Planned
 **Description:** Capture structured reasons for won and lost deals to generate actionable insights about what drives success and failure in the sales pipeline. Combined with AI-powered pattern detection, this turns historical deal data into strategic intelligence.
 **Features:**
+
 - Win/loss reason fields on leads when stage changes to Won or Lost (multi-select from predefined categories + free-text)
 - Predefined reason categories: Price, Competition, Timing, Features, Budget, Decision Maker, Relationship, Other
 - Deal post-mortem summary — auto-generated summary of the deal journey (activities, timeline, key moments)
@@ -1039,9 +1140,11 @@
 **Dependencies:** Lead Management, Lead Scoring (Item 2 - existing); enhances Sales Pipeline Analytics (Item 44) when implemented
 
 ## Item 51: Contact Duplicate Detection and Merge ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Items 17, 37, 58, 65)
 **Description:** Automatically detect duplicate contacts and leads based on email, phone, and name similarity, then provide a guided merge workflow to consolidate records without data loss. Reduces data quality issues and ensures a single source of truth per person.
 **Features:**
+
 - ✅ Automatic duplicate detection on contact creation (email match, name+company match)
 - ✅ Duplicate preview modal showing side-by-side comparison of conflicting records
 - ✅ Guided merge workflow — combines notes, preserves activity history
@@ -1061,9 +1164,11 @@
 **Dependencies:** Contact Management, Lead Management (both existing); enhances Data Backup (data integrity)
 
 ## Item 52: Sales Pipeline Kanban Board View ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** A visual drag-and-drop Kanban board view for the leads pipeline, providing an intuitive alternative to the card-list view. Enables rapid stage changes, visual pipeline health assessment, and bulk lead management through spatial organization.
 **Features:**
+
 - ✅ Kanban board with columns for each pipeline stage (New, Contacted, Qualified, Proposal, Won, Lost)
 - ✅ Drag-and-drop leads between stages to update pipeline status
 - ✅ Stage summary showing lead count and total value per column
@@ -1089,9 +1194,11 @@
 **Dependencies:** Lead Management, Lead Scoring (Item 2 - existing); complementary to Calendar Integration (Item 4)
 
 ## Item 53: Natural Language Activity and Contact Search
+
 **Status:** Planned
 **Description:** Enable users to search contacts, activities, and leads using natural language queries instead of rigid filters. Leverages AI to parse intent and map to structured search criteria, dramatically improving discoverability.
 **Features:**
+
 - Natural language search bar on Contacts, Activities, and Leads pages (e.g., "calls from last week about pricing", "VIP customers in New York", "leads over $50K that are stale")
 - AI-powered query parsing — converts natural language into structured filters (entity type, date range, keywords, value thresholds, status)
 - Fuzzy matching on names, companies, and notes using Levenshtein distance
@@ -1110,9 +1217,11 @@
 **Dependencies:** Contact Management, Activity Tracking, Lead Management (all existing)
 
 ## Item 54: Contact Activity Heatmap and Engagement Analytics
+
 **Status:** Planned
 **Description:** A visual heatmap showing contact engagement patterns over time, helping users identify which contacts are most active, when they're most responsive, and which relationships need attention.
 **Features:**
+
 - GitHub-style contribution heatmap showing activity density per contact (color intensity = number of activities per day)
 - Per-contact engagement score — composite metric based on activity frequency, recency, and diversity of interaction types
 - "Best time to contact" suggestion — analyzes historical response patterns to recommend optimal outreach windows
@@ -1125,7 +1234,7 @@
 **Implementation Approach:**
 - Frontend-only visualization using existing `/api/activities` data — no new backend tables needed
 - Create `/api/analytics/engagement/{contact_id}` endpoint returning activity frequency data grouped by day
-- Calculate engagement score as: (activity_count * 0.4) + (recency_bonus * 0.3) + (type_diversity * 0.3)
+- Calculate engagement score as: (activity_count *0.4) + (recency_bonus* 0.3) + (type_diversity * 0.3)
 - Render heatmap as CSS grid with color-coded cells (light → dark green for low → high activity)
 - Use Canvas API for trend line charts
 - Add "Best Time" algorithm: group activities by hour-of-day, find peak interaction windows
@@ -1133,9 +1242,11 @@
 **Dependencies:** Activity Tracking, Contact Management (both existing); complements Contact Tags (Item 6)
 
 ## Item 55: Lead Conversion Funnel and Drop-off Analysis ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Items 26, 40)
 **Description:** A comprehensive visual funnel showing how leads progress through each stage of the sales pipeline, with conversion rates and drop-off analysis at every step. Helps identify bottlenecks and optimize the sales process.
 **Features:**
+
 - ✅ Funnel visualization showing lead count and conversion rate at each stage
 - ✅ Drop-off rate between consecutive stages (percentage lost)
 - ✅ Time-in-stage analytics — average days spent at each stage
@@ -1155,9 +1266,11 @@
 **Dependencies:** Lead Management (existing), Dashboard (existing)
 
 ## Item 56: Contact Communication Preferences and Do-Not-Contact List
+
 **Status:** Planned
 **Description:** Track and respect how each contact prefers to be communicated with, and maintain a do-not-contact list for compliance and relationship management. Prevents accidental outreach via unwanted channels and helps teams follow communication best practices.
 **Features:**
+
 - Communication preference fields per contact: preferred channel (Email, Phone, Meeting), preferred times (morning/afternoon/evening), frequency limit (daily/weekly/monthly)
 - Do-not-contact flag with reason tracking (opted out, request, compliance) and effective date
 - Visual warning when creating activities that conflict with contact preferences (e.g., phone call when contact prefers email)
@@ -1179,9 +1292,11 @@
 **Dependencies:** Contact Management, Activity Tracking (both existing); enhances Contact Tags (Item 6) for segmentation
 
 ## Item 57: Contact Import Wizard
+
 **Status:** Planned
 **Description:** Multi-step guided import wizard for contacts with column mapping, data preview, validation summary, and duplicate detection. Provides a polished, error-resistant experience for bulk contact imports that goes beyond the basic CSV import.
 **Features:**
+
 - Step 1: File selection with drag-and-drop support and file type validation (.csv, .json)
 - Step 2: Column mapping — auto-detect column headers with manual override for mismatched fields
 - Step 3: Data preview — paginated preview of parsed rows with validation warnings (invalid email, missing name, etc.)
@@ -1201,9 +1316,11 @@
 **Dependencies:** Contact Management, CSV Import (both existing); builds on Bulk Contact Operations (Item 9)
 
 ## Item 58: Contact Merge and Duplicate Detection ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Items 17, 37, 51, 65)
 **Description:** A comprehensive duplicate detection and merge system that automatically identifies duplicate contacts based on email and name+company matching, then provides a guided merge workflow to consolidate records without data loss.
 **Features:**
+
 - ✅ Automatic duplicate detection on contact creation (email exact match, name+company match)
 - ✅ Side-by-side comparison view showing field differences between potential duplicates
 - ✅ Smart merge strategy: keeps most recent data, combines notes, preserves all activity history
@@ -1224,9 +1341,11 @@
 **Dependencies:** Contact Management, Activity Tracking, Audit Log (all existing)
 
 ## Item 59: Product and Service Catalog
+
 **Status:** Planned
 **Description:** A structured product and service catalog that can be attached to leads and deals, enabling accurate deal composition, product-level revenue analytics, and faster proposal generation. Moves beyond single-value deals to multi-product pipelines.
 **Features:**
+
 - Full CRUD for products/services: name, description, unit price, category, SKU, active/inactive status
 - Associate multiple products with a lead/deal via a line-item interface (product selector, quantity, unit price override)
 - Automatic deal value recalculation from line items (with optional manual override)
@@ -1251,9 +1370,11 @@
 **Dependencies:** Lead Management, Dashboard Revenue Summary (both existing); enhances Sales Pipeline Kanban (Item 52) and Funnel Analytics (Item 55)
 
 ## Item 60: Sales Goals and Quota Tracking
+
 **Status:** Planned
 **Description:** Set monthly, quarterly, and annual sales targets with visual progress tracking, enabling teams to monitor performance against goals and receive AI-powered guidance on closing the gap.
 **Features:**
+
 - Create goals with target type (revenue, deals won, pipeline value), target amount, period (monthly/quarterly/annual), and start/end dates
 - Visual progress bar on dashboard showing percentage toward each active goal (e.g., "67% of $100K monthly target")
 - Per-goal breakdown: current value, remaining amount, days remaining, daily run-rate needed
@@ -1277,9 +1398,11 @@
 **Dependencies:** Dashboard, Lead Management, Dashboard Revenue Summary (all existing); complements Sales Pipeline Analytics (Item 44)
 
 ## Item 61: Win/Loss Reason Tracking
+
 **Status:** Planned
 **Description:** Capture structured reasons why deals were won or lost, enabling data-driven analysis of sales performance and identification of recurring patterns. Combines with AI to surface actionable insights from historical win/loss data.
 **Features:**
+
 - Add win/loss reason fields to lead edit form when stage changes to Won or Lost
 - Pre-configured reason categories: Price, Competition, Timing, Fit, Budget, Decision Maker, Other
 - Custom reason text field for detailed notes
@@ -1299,9 +1422,11 @@
 **Dependencies:** Lead Management, Dashboard Revenue Summary (both existing); enhances Sales Goals and Quota Tracking (Item 60)
 
 ## Item 62: Contact Communication Preferences
+
 **Status:** Planned
 **Description:** Track and respect individual contact communication preferences (email, phone, meeting, preferred times, Do Not Contact) to improve engagement quality and compliance. AI suggests optimal contact timing based on historical response patterns.
 **Features:**
+
 - Communication preference fields on contact edit form: preferred channel (email/phone/meeting), preferred contact hours, Do Not Contact flag
 - Visual indicators on contact cards showing preferred channel icon and DNC status
 - Activity creation form warns when scheduling outside preferred hours or contacting a DNC contact
@@ -1322,9 +1447,11 @@
 **Dependencies:** Contact Management, Activity Tracking, Contact Tags (all existing); complements Activity Reminders and Notifications (Item 7)
 
 ## Item 63: Lead Stage Aging and SLA Tracking ✅ IMPLEMENTED
+
 **Status:** Implemented
 **Description:** Track how long leads spend in each pipeline stage and flag leads that exceed configurable time thresholds. This ensures leads don't stagnate and helps sales teams prioritize stale opportunities.
 **Features:**
+
 - ✅ Days-in-stage counter displayed on lead cards and Kanban board
 - ✅ Visual aging indicators: green (fresh), yellow (approaching threshold), red (overdue/stale)
 - ✅ Configurable SLA thresholds per stage in Settings
@@ -1345,9 +1472,11 @@
 **Dependencies:** Lead Management (existing), Lead Scoring (existing), Kanban View (Item 52)
 
 ## Item 64: Email Signature Parsing for Contact Creation
+
 **Status:** Planned
 **Description:** When pasting an email body into a quick-contact form, automatically detect and extract contact information from email signatures, dramatically reducing manual data entry for new contacts. AI-powered parsing handles diverse signature formats.
 **Features:**
+
 - Paste email body into a "Quick Contact from Email" modal and auto-extract name, email, phone, company, title, and website
 - Handles common signature formats: block format, horizontal-rule separated, table-based, and plain text
 - Pre-fills the contact creation form with extracted fields for user review before saving
@@ -1370,9 +1499,11 @@
 **Dependencies:** Contact Management (existing); enhances Email Templates (Item 3) and Contact Import Wizard (Item 43/55)
 
 ## Item 65: Contact Merge Tool ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Items 17, 37, 51, 58)
 **Description:** A dedicated tool for detecting and merging duplicate contact records. Provides side-by-side comparison and a guided merge workflow that preserves all data including activities and notes.
 **Features:**
+
 - ✅ Duplicate detection based on email exact match and name+company combination
 - ✅ Side-by-side comparison modal showing field differences
 - ✅ Merge confirmation dialog with preview
@@ -1390,9 +1521,11 @@
 **Dependencies:** Contact Management, Activity Tracking, Audit Log (all existing)
 
 ## Item 66: Communication Timeline View ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Items 10, 41)
 **Description:** A chronological timeline view for each contact that consolidates all interactions — calls, emails, meetings, notes, and tasks — into a single scrollable feed. This gives users a complete narrative of their relationship with a contact at a glance.
 **Features:**
+
 - ✅ Chronological timeline feed showing all contact interactions
 - ✅ Each timeline entry shows: icon + type badge (📞 Call, 📧 Email, 🤝 Meeting, 📝 Note, ✅ Task), timestamp, and content preview
 - ✅ Timeline accessible from contact detail modal
@@ -1415,9 +1548,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); Lead Management (existing)
 
 ## Item 67: Sales Pipeline Kanban Board View
+
 **Status:** ✅ Implemented (Session 0.1.7)
 **Description:** A visual drag-and-drop Kanban board for managing the sales pipeline, providing an intuitive alternative to the card-list lead view. Users can see all leads organized by stage in columns and move leads between stages by dragging cards, giving a bird's-eye view of the entire pipeline at a glance.
 **Features:**
+
 - ✅ Kanban board layout with columns for each pipeline stage (New, Contacted, Qualified, Proposal, Won, Lost)
 - ✅ Lead cards within each column showing name, company, value, score badge, and days-in-stage
 - ✅ Drag-and-drop lead cards between columns to update stage (with confirmation for Won/Lost)
@@ -1443,9 +1578,11 @@
 **Dependencies:** Lead Management (existing); Lead Scoring (Item 2)
 
 ## Item 68: Smart Contact Notes with AI Summarization
+
 **Status:** Planned
 **Description:** Enhance the contact notes system with rich text editing, pinning, search, and AI-powered summarization. Instead of a single plain-text notes field, contacts can have multiple timestamped notes that are searchable, filterable, and automatically summarized by AI to surface key information quickly.
 **Features:**
+
 - Multiple notes per contact (replacing the single notes field) with timestamp, author, and content
 - Rich text editor supporting bold, italic, lists, and links (no external library — custom toolbar)
 - Pin important notes to the top of the list for quick reference
@@ -1469,9 +1606,11 @@
 **Dependencies:** Contact Management (existing); AI integration (existing infrastructure for lead recommendations)
 
 ## Item 69: Automated Follow-up Reminders with AI-Powered Suggestions
+
 **Status:** Planned
 **Description:** An intelligent follow-up system that automatically suggests when and how to follow up with contacts and leads based on their interaction history, lead stage, time since last contact, and engagement patterns. AI analyzes the relationship context to generate personalized follow-up message templates and optimal timing recommendations.
 **Features:**
+
 - Automated follow-up scheduling based on configurable rules (e.g., "follow up 3 days after initial contact", "weekly check-in for Qualified leads")
 - AI-generated follow-up message suggestions tailored to each contact's history and stage
 - Follow-up priority scoring: combines days since last contact, lead score, deal value, and stage urgency
@@ -1495,9 +1634,11 @@
 **Dependencies:** Activity Reminders (Item 65 — implemented); Lead Scoring (Item 2 — implemented); AI integration (existing); Activity Tracking (existing)
 
 ## Item 70: Contact Relationship Mapping and Influence Network Visualization
+
 **Status:** Planned
 **Description:** A visual relationship map showing connections between contacts within the same organization and across organizations, helping users understand decision-making hierarchies, influence networks, and relationship gaps. This feature enables strategic account planning by visualizing the web of connections and identifying key decision-makers, champions, and blockers.
 **Features:**
+
 - Interactive force-directed graph visualization of contact relationships
 - Relationship types: reports-to, colleague, decision-maker, champion, blocker, influencer
 - Organization grouping: contacts from the same company automatically clustered together
@@ -1525,9 +1666,11 @@
 **Dependencies:** Contact Management (existing); Lead Scoring (Item 2 — implemented); AI integration (existing)
 
 ## Item 71: AI-Powered Meeting Notes and Action Item Extraction
+
 **Status:** Planned
 **Description:** An AI-enhanced meeting notes system that automatically extracts action items, decisions, and key discussion points from free-form meeting notes. Instead of manually tracking follow-ups after meetings, the AI analyzes the note content to identify commitments, deadlines, owners, and next steps — then offers to create corresponding activities and tasks automatically. This turns unstructured meeting notes into structured, actionable CRM data.
 **Features:**
+
 - AI-powered parsing of meeting notes to extract action items (who, what, by when)
 - Detection of decisions made during the meeting and key discussion points
 - One-click creation of follow-up activities from extracted action items, with due dates and assigned contacts
@@ -1550,9 +1693,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); AI integration (existing infrastructure for lead recommendations); Contact Activity Timeline (Item 10 — implemented)
 
 ## Item 72: Contact Engagement Score and Health Monitoring
+
 **Status:** Planned
 **Description:** A composite engagement score that measures how actively each contact is engaging with your organization, providing a visual health indicator for every relationship. Unlike lead scoring (which predicts deal probability), engagement scoring measures the actual interaction velocity and quality — helping users identify at-risk relationships before they go cold and prioritize outreach to recently disengaged contacts.
 **Features:**
+
 - Composite engagement score (0-100) calculated from multiple weighted factors:
   - Recency of last interaction (30% weight)
   - Frequency of interactions over last 30/60/90 days (25% weight)
@@ -1581,9 +1726,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); Contact Tags (Item 6 — implemented); Dashboard (existing)
 
 ## Item 73: Document and Attachment Management
+
 **Status:** Planned
 **Description:** A comprehensive document management system that allows users to attach files (PDFs, images, spreadsheets, contracts, proposals) to contacts, leads, and activities. Currently, AICRM has no way to store or reference supporting documents, which forces users to maintain files outside the CRM and breaks the single-source-of-truth model. This feature enables users to keep all relationship-relevant materials — signed contracts, meeting photos, product specs, proposals — directly within the CRM context.
 **Features:**
+
 - Upload files to contacts, leads, and activities via drag-and-drop or file picker
 - Support for common file types: PDF, images (PNG/JPG/GIF), spreadsheets (CSV/XLSX), documents (DOCX/TXT), and presentations (PPTX)
 - File preview for images and PDFs rendered inline within the detail modal
@@ -1610,9 +1757,11 @@
 **Dependencies:** Contact Management (existing); Lead Management (existing); Activity Tracking (existing)
 
 ## Item 74: Webhook Integrations and External Service Connectivity
+
 **Status:** Planned
 **Description:** A webhook system that allows AICRM to push real-time event notifications to external services (Slack, Discord, Zapier, custom APIs) when CRM events occur. This enables users to integrate AICRM into their existing workflows without building custom connectors. For example, when a lead reaches "won" stage, a notification can be sent to a Slack channel; when a new contact is added, a Zapier workflow can trigger email personalization. Combined with incoming webhook support, this creates a bidirectional integration layer.
 **Features:**
+
 - Configure webhook endpoints with URL, HTTP method, and optional authentication headers
 - Event subscriptions: subscribe to specific CRM events (contact.created, contact.updated, lead.stage_changed, lead.converted, activity.completed, etc.)
 - Webhook payload customization: choose which fields to include in the notification
@@ -1639,9 +1788,11 @@
 **Dependencies:** Contact Management (existing); Lead Management (existing); Activity Tracking (existing); Dashboard (existing)
 
 ## Item 75: Contact Communication Timeline View ✅ IMPLEMENTED
+
 **Status:** Implemented (see also Items 10, 41, 66)
 **Description:** A unified chronological timeline view for each contact that consolidates all interactions — calls, emails, meetings, notes, tasks, stage changes, and tag updates — into a single scrollable feed. This gives users a complete narrative of their relationship with a contact at a glance, replacing the need to cross-reference separate activity logs, contact notes, and lead history.
 **Features:**
+
 - ✅ Chronological timeline feed showing all contact interactions
 - ✅ Each timeline entry shows: icon + type badge (📞 Call, 📧 Email, 🤝 Meeting, 📝 Note, ✅ Task), timestamp, and content preview
 - ✅ Timeline accessible from contact detail modal
@@ -1668,9 +1819,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); Lead Management (existing)
 
 ## Item 76: Automated Lead Follow-Up Scheduler
+
 **Status:** Planned
 **Description:** An intelligent system that automatically schedules and reminds users to follow up with leads based on configurable rules, lead behavior, and AI-generated timing recommendations. Eliminates the risk of dropping leads through the cracks by ensuring every lead receives timely attention according to its priority and engagement level.
 **Features:**
+
 - Configurable follow-up cadence templates (e.g., "Standard Pipeline": Day 1 call, Day 3 email, Day 7 meeting, Day 14 proposal)
 - Per-lead follow-up schedule visible on lead cards as upcoming milestones with countdown badges
 - Auto-creation of follow-up activities when a lead enters a new stage or passes a deadline without engagement
@@ -1696,9 +1849,11 @@
 **Dependencies:** Lead Management (existing); Activity Tracking (existing); Lead Scoring (existing); Dashboard (existing)
 
 ## Item 77: Win/Loss Reason Tracking and Deal Post-Mortem Analysis ✅ IMPLEMENTED
+
 **Status:** Implemented (v0.1.9)
 **Description:** Capture structured win/loss reasons when leads transition to Won or Lost stages, enabling deal post-mortem analysis and pipeline optimization. Sales teams can identify patterns in why deals succeed or fail, surface common objections, and track competitor mentions across the organization.
 **Features:**
+
 - ✅ Win/loss reason selection modal when moving a lead to Won or Lost stage via Kanban board
 - ✅ Pre-configured reason categories: Budget / Pricing, Competitor, Feature Gap, Timing, Decision Changed, Other
 - ✅ Custom reason text field for detailed explanation
@@ -1722,9 +1877,11 @@
 **Files Modified:** `app/index.html`, `app/js/app.js`, `app/js/api.js`, `app/css/styles.css`, `backend/app/api/deals.py`, `backend/app/models/deal_outcomes.py`, `backend/app/repositories/deal_outcomes_postgres_repository.py`, `backend/app/db/schema.py`
 
 ## Item 78: Contact Communication Preferences and Do-Not-Contact List
+
 **Status:** Planned
 **Description:** Manage how and when each contact can be contacted, ensuring compliance with communication preferences and regulatory requirements (e.g., GDPR, TCPA). Prevent accidental outreach to contacts who have opted out, and respect individual channel preferences (email, phone, SMS, mail).
 **Features:**
+
 - Per-contact communication preferences: allowed channels (email, phone, SMS, mail) with opt-in/opt-out toggles
 - Global Do-Not-Contact list accessible from Settings page
 - Visual indicator on contact cards when contact has restricted preferences (⚠️ icon)
@@ -1748,9 +1905,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); Dashboard (existing)
 
 ## Item 79: Lead Funnel Visualization and Conversion Analytics
+
 **Status:** Planned
 **Description:** A visual sales funnel chart showing lead progression through pipeline stages with conversion rates between each stage, helping sales managers identify bottlenecks and optimize the sales process. Combines visual analytics with actionable insights to improve pipeline health.
 **Features:**
+
 - Interactive funnel chart showing lead count and value at each stage (New → Contacted → Qualified → Proposal → Won/Lost)
 - Conversion rate between each adjacent stage (e.g., "35% of New leads become Contacted")
 - Bottleneck detection: automatically flag stages with below-average conversion rates
@@ -1773,9 +1932,11 @@
 **Dependencies:** Lead Management (existing); Dashboard (existing); Lead Scoring (existing)
 
 ## Item 80: Contact Merge and Duplicate Detection
+
 **Status:** Planned
 **Description:** Intelligent duplicate detection and contact merging to maintain data quality. Automatically identifies potential duplicates based on email, phone, and name similarity, and provides a guided merge workflow that preserves all activities, notes, and relationships from both records.
 **Features:**
+
 - Automatic duplicate detection on contact creation/edit: warns if a contact with matching email or phone already exists
 - Fuzzy name matching: detects contacts with similar names (e.g., "Jon Smith" vs "John Smith") even with typos
 - Duplicate candidates page: periodic scan surface all potential duplicates grouped by match confidence (High/Medium/Low)
@@ -1800,9 +1961,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); Contact Tags (existing)
 
 ## Item 81: AI-Powered Contact Insights and Next-Best-Action Recommendations
+
 **Status:** Planned
 **Description:** Leverage AI to analyze contact interaction history, engagement patterns, and deal context to surface actionable insights and recommend the next best action for each contact. Helps sales reps prioritize outreach and personalize their approach based on data-driven recommendations.
 **Features:**
+
 - Per-contact AI insight panel: summarizes contact engagement level, response patterns, and relationship health score
 - Next-best-action recommendation: AI suggests the optimal next step (e.g., "Schedule a follow-up call — contact hasn't been reached in 14 days")
 - Engagement trend analysis: tracks whether contact engagement is increasing, stable, or declining over time
@@ -1824,9 +1987,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); Lead Scoring (existing); Dashboard (existing)
 
 ## Item 82: Automated Sales Playbooks and Workflow Templates
+
 **Status:** Planned
 **Description:** Create reusable, step-by-step sales playbooks that guide reps through proven processes for common scenarios (e.g., new lead follow-up, proposal renewal, re-engagement). Playbooks enforce consistency, reduce ramp time for new reps, and ensure no critical steps are missed.
 **Features:**
+
 - Playbook creator: build multi-step playbooks with conditional branches, deadlines, and assigned tasks
 - Pre-built templates: include default playbooks for common scenarios (New Lead Follow-Up, Proposal Follow-Up, Quarterly Business Review, Churn Prevention)
 - Step types: email send, call log, meeting schedule, note add, wait period, conditional branch (if lead stage = X then step Y)
@@ -1848,9 +2013,11 @@
 **Dependencies:** Contact Management (existing); Lead Management (existing); Activity Tracking (existing); Email Templates (existing)
 
 ## Item 83: Activity Trend Charts and Time-Based Analytics ✅ IMPLEMENTED
+
 **Status:** Implemented (v0.2.0 / Session 16)
 **Description:** Visual charts showing activity volume trends over time (daily, weekly, monthly) to help users understand their engagement patterns and identify productive or slow periods. Extends the existing Analytics page with time-series visualization to complement the funnel chart.
 **Features:**
+
 - ✅ Activity volume chart: CSS-based stacked bar chart showing activity count over time (grouped by day/week)
 - ✅ Activity type breakdown: stacked bars showing distribution of calls, emails, meetings, notes, tasks over time
 - ✅ Configurable date range: last 7 days, 30 days, 90 days, 1 year
@@ -1875,9 +2042,11 @@
 **Tests:** Browser automation verified all range/grouping combinations (7d/30d/90d/1y × day/week), peak highlighting, legend rendering, and responsive layout.
 
 ## Item 84: Custom Dashboard Widgets and Layout Builder
+
 **Status:** Planned
 **Description:** Allow users to personalize their dashboard by adding, removing, resizing, and reordering widgets. Users can build a dashboard that matches their workflow priorities, surfacing the metrics and data that matter most to them.
 **Features:**
+
 - Widget marketplace: sidebar panel showing available widgets to add (stat cards, charts, lists, quick actions)
 - Drag-and-drop reordering: rearrange widgets on the dashboard via drag handles
 - Widget resize: toggle between small, medium, and large sizes for each widget
@@ -1901,9 +2070,11 @@
 **Dependencies:** Dashboard (existing); Settings backend (existing); Analytics (existing for chart widgets); Sales Goals (existing for goal widget)
 
 ## Item 85: Contact Communication Timeline View
+
 **Status:** Planned
 **Description:** A unified chronological timeline view for each contact that consolidates all interactions (calls, emails, meetings, notes, tasks, stage changes, tag updates) into a single visual feed. This gives users a complete interaction history at a glance, similar to the "activity feed" in modern CRMs like Salesforce or HubSpot.
 **Features:**
+
 - Unified timeline: chronological feed of all contact interactions with visual connectors and timestamps
 - Interaction types: calls, emails, meetings, notes, tasks, lead stage changes, tag additions/removals, deal value changes
 - Visual grouping: group events by date (e.g., "Today", "Yesterday", "Last Week") with collapsible sections
@@ -1926,9 +2097,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); Contact Tags (existing); Lead Management (existing); AI Recommendations (existing infrastructure)
 
 ## Item 86: Automated Lead Follow-Up Scheduler
+
 **Status:** Planned
 **Description:** Intelligent follow-up scheduling system that automatically creates follow-up activities based on configurable cadence templates, ensuring no lead falls through the cracks. The system learns from user behavior to optimize timing and suggests the best follow-up approach.
 **Features:**
+
 - Cadence templates: pre-built follow-up sequences (e.g., "New Lead Nurture": Day 1 call, Day 3 email, Day 7 meeting invite, Day 14 follow-up)
 - Template creator: build custom cadences with configurable steps (type, delay, message template, priority)
 - Auto-activation: automatically start a cadence when a lead enters a specific stage or matches criteria
@@ -1953,9 +2126,11 @@
 **Dependencies:** Lead Management (existing); Activity Tracking (existing); Email Templates (existing); Backend cron infrastructure (existing for reminders)
 
 ## Item 87: Activity Calendar View
+
 **Status:** Planned
 **Description:** A monthly and weekly calendar visualization for activities, providing an intuitive overview of scheduled tasks, meetings, calls, and follow-ups. Complements the existing timeline view by giving users a bird's-eye view of their schedule, making it easy to identify busy periods, gaps in outreach, and upcoming deadlines.
 **Features:**
+
 - Monthly calendar grid showing all activities color-coded by type (Call, Email, Meeting, Note, Task)
 - Week view for detailed daily planning with time slots
 - Click a day cell to see all activities for that day in a popup
@@ -1983,9 +2158,11 @@
 **Dependencies:** Activity Tracking (existing); Activity Due Date Tracking (existing); Dashboard (existing)
 
 ## Item 88: Contact Engagement Score and Health Monitoring
+
 **Status:** Planned
 **Description:** A composite engagement score (0-100) for each contact that measures relationship health based on interaction patterns. Unlike lead scoring (which predicts deal probability), engagement scoring measures actual interaction velocity and quality — helping users identify at-risk relationships before they go cold.
 **Features:**
+
 - Composite engagement score calculated from: recency of last interaction (30%), frequency over last 30/60/90 days (25%), diversity of interaction types (20%), reciprocity ratio (15%), trend direction (10%)
 - Visual health indicators on contact cards: Healthy (70-100), Cooling (40-69), At Risk (0-39)
 - Engagement score badge alongside existing tag badges on contact cards
@@ -2009,9 +2186,11 @@
 **Dependencies:** Contact Management (existing); Activity Tracking (existing); Contact Tags (existing); Dashboard (existing)
 
 ## Item 89: Contact Social Media Links and Profiles
+
 **Status:** Planned
 **Description:** Allow storing and managing social media profile links (LinkedIn, Twitter/X, GitHub, personal website) on contact records, enabling richer contact profiles and one-click access to external professional profiles. This helps sales reps research contacts before meetings and maintain a complete picture of professional relationships.
 **Features:**
+
 - Social media link fields on contact edit form: LinkedIn, Twitter/X, GitHub, Website, other custom URL
 - Clickable social media icons on contact cards and detail view, opening profiles in new tabs
 - LinkedIn profile enrichment — auto-fetch name and title from LinkedIn public profile URL
@@ -2032,9 +2211,11 @@
 **Dependencies:** Contact Management (existing)
 
 ## Item 90: Notes Templates and Standardized Documentation
+
 **Status:** Planned
 **Description:** A library of reusable note templates for common interaction scenarios (e.g., "Initial Discovery Call", "Product Demo Follow-up", "Quarterly Business Review"), enabling consistent documentation across the team and reducing time spent writing notes from scratch.
 **Features:**
+
 - Create, edit, and delete note templates with name, category, and pre-written content
 - Template categories: Discovery, Follow-up, Demo, QBR, Complaint, Upsell, Onboarding
 - Variable substitution in templates: {{contact_name}}, {{company}}, {{date}}, {{last_activity}}, {{lead_stage}}

@@ -1,6 +1,7 @@
 # Lifecycle Standards
 
 ## Lifecycle States
+
 - Trial
 - Approved
 - Preferred

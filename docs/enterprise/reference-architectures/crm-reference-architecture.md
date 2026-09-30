@@ -1,6 +1,7 @@
 # CRM Reference Architecture
 
 ## Preferred Small-Company Stack
+
 - frontend: standards-based web app
 - backend: Python with FastAPI or Node.js service
 - database: PostgreSQL
@@ -12,10 +13,13 @@
 - logs: OpenSearch or Loki
 
 ## Default Structural Pattern
+
 A CRM should usually start as a modular monolith unless scale or organizational boundaries justify service decomposition.
 
 ## Explicit Guidance on Backend Versus BaaS
+
 For CRM-style systems, a traditional backend is the preferred default because CRMs commonly accumulate:
+
 - custom workflows
 - role-based access control
 - reporting requirements

@@ -1,6 +1,7 @@
 # Documentation Standards
 
 ## Required Characteristics
+
 - version-controlled
 - clearly owned
 - written in plain language
@@ -8,7 +9,9 @@
 - updated when decisions change
 
 ## Application Minimums
+
 Every application should maintain:
+
 - system overview
 - technical stack
 - deployment architecture

@@ -5,6 +5,7 @@ Copyright (c) 2026 [Your Name or Company Name]. All rights reserved.
 Permission is granted to download, install, and use this software at no cost, subject to the restrictions below.
 
 You may not:
+
 1. modify, adapt, translate, reverse engineer, decompile, or create derivative works based on this software;
 2. copy, redistribute, publish, mirror, sublicense, rent, lease, lend, sell, resell, or otherwise transfer this software to any third party;
 3. include this software, in whole or in part, in another product, service, package, repository, or distribution;
