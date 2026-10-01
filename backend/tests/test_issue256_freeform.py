@@ -14,9 +14,9 @@ AC-2: only a successfully accepted send is recorded: an activity of
       type email / status completed / occurred_at now / the contact's
       name / description "Email accepted: <subject>" (body not stored)
       and an audit event with action email.sent whose details hold the
-      contact id and subject only.  A refused, unconfigured or failed
-      send creates neither.  The transport is replaced with a fake for
-      every branch.
+      contact id only (the subject is no longer stored, #284).  A
+      refused, unconfigured or failed send creates neither.  The
+      transport is replaced with a fake for every branch.
 """
 
 import uuid
@@ -137,10 +137,8 @@ def test_issue256_freeform(client, admin_headers, user_headers):
         assert event["entity_id"] == target_id
         assert set(event["details"].keys()) == {
             "contact_id",
-            "subject",
-        }, "audit details hold the contact id and subject only"
+        }, "audit details hold the contact id only (subject no longer stored)"
         assert event["details"]["contact_id"] == target_id
-        assert event["details"]["subject"] == SUBJECT
         for value in event["details"].values():
             assert value not in (
                 TARGET_EMAIL,
@@ -280,10 +278,11 @@ def test_issue256_freeform(client, admin_headers, user_headers):
             for e in client.get(
                 "/api/audit", params={"limit": 100}, headers=admin_headers
             ).json()
-            if e["action"] == "email.sent"
-            and e["details"].get("subject") == boundary_subject
+            if e["action"] == "email.sent" and e["details"] == {"contact_id": target_id}
         ]
-        assert len(boundary_audit) == 1
-        assert boundary_audit[0]["details"]["contact_id"] == target_id
+        assert (
+            len(boundary_audit) == 2
+        ), "both accepted sends store details holding the contact id only"
+        assert all(e["details"]["contact_id"] == target_id for e in boundary_audit)
     finally:
         email_transport.set_transport(None)
