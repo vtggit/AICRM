@@ -29,3 +29,21 @@ capabilities:
     markers: [unsubscribe]
     status: deferred
     decision: "Public unsubscribe links and ESP webhooks belong to the ESP integration epic"
+
+  - id: audit_details_minimization
+    markers: [gdpr]
+    status: shipped
+    proof: tests/test_issue284_freeform.py::test_issue284_freeform
+    mutation:
+      target: app.models.audit:minimize_details
+      returns: {}
+
+  # Audit-log retention limits and erasure of identifiers are not yet
+  # built; that work is tracked in #289. A marker counts as covered only
+  # when EVERY entry naming it is verified, so [gdpr] stays uncovered until
+  # this entry ships: audit_details_minimization records the shipped
+  # details_json minimization only, and the actor columns (actor_username,
+  # actor_email) stay unchanged under the operator-approved #219 policy.
+  - id: audit_retention_erasure
+    markers: [gdpr]
+    status: unverified
