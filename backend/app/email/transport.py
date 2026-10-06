@@ -36,6 +36,15 @@ class name.
 Tests may replace the transport implementation with a fake via
 set_transport() (or by assigning to the module-level ``transport``
 attribute); set_transport(None) restores the real implementation.
+
+Header injection hardening: before any MIME message is constructed,
+send_email() validates the recipient and sanitizes the subject.  A
+recipient (``to``) containing CR, LF or NUL characters is rejected with
+EmailValidationError (a ValueError) — it is never sanitized or silently
+modified.  The subject is sanitized: every CR, LF and NUL character is
+removed, so a hostile subject can never open a new header line (for
+example a forged Bcc header) in the rendered message.  The body is left
+untouched: it is message content, not a header.
 """
 
 from __future__ import annotations
@@ -74,6 +83,17 @@ class EmailSendError(Exception):
 
     The message is always the fixed generic string; the underlying
     exception is available via ``__cause__``.
+    """
+
+
+class EmailValidationError(ValueError):
+    """A send_email() argument failed validation.
+
+    Raised when the recipient address contains CR, LF or NUL characters,
+    before any MIME message is constructed and before any transport (or
+    connection) is used.  This is a caller input error, not a transport
+    failure: it is deliberately a ValueError and must not be confused
+    with (or caught as) EmailSendError.
     """
 
 
@@ -226,12 +246,53 @@ def set_transport(implementation: Callable[[str, str, str], None] | None) -> Non
     transport = _default_send if implementation is None else implementation
 
 
+# CR, LF and NUL must never reach the wire in a recipient address: they
+# are rejected outright (never sanitized) so a forged header line (e.g.
+# a Bcc header) can never be opened in the message.
+_RECIPIENT_FORBIDDEN_CHARS = ("\r", "\n", "\0")
+
+# The subject is sanitized instead of rejected: CR, LF and NUL are
+# removed so a hostile subject cannot open new header lines in the
+# rendered message.
+_SUBJECT_FORBIDDEN_CHARS = ("\r", "\n", "\0")
+
+
+def _validate_recipient(to: str) -> None:
+    """Raise EmailValidationError if ``to`` contains CR, LF or NUL.
+
+    The check runs before any MIME message is constructed and before any
+    transport (or connection) is used.  The recipient is never
+    sanitized: a recipient carrying CR, LF or NUL is rejected.
+    """
+    for char in _RECIPIENT_FORBIDDEN_CHARS:
+        if char in to:
+            raise EmailValidationError(
+                "Recipient address must not contain CR, LF or NUL characters."
+            )
+
+
+def _sanitize_subject(subject: str) -> str:
+    """Return ``subject`` with every CR, LF and NUL character removed.
+
+    Runs before any MIME message is constructed.  Removing the line
+    terminators makes it impossible for the subject to open a new header
+    line (e.g. a forged Bcc header) in the rendered message.
+    """
+    for char in _SUBJECT_FORBIDDEN_CHARS:
+        subject = subject.replace(char, "")
+    return subject
+
+
 def send_email(to: str, subject: str, body: str) -> None:
     """Send a plain-text email to ``to``.
 
     The SMTP configuration comes from the AICRM_SMTP_* environment
-    variables, read at call time; see the module docstring.  Raises
-    EmailNotConfigured when sending is not configured and EmailSendError
-    when the send fails.  Returns None on success.
+    variables, read at call time; see the module docstring.  Before any
+    MIME message is constructed, ``to`` is validated (CR, LF or NUL
+    raises EmailValidationError) and ``subject`` is sanitized (CR, LF and
+    NUL characters are removed).  Raises EmailNotConfigured when sending
+    is not configured and EmailSendError when the send fails.  Returns
+    None on success.
     """
-    transport(to, subject, body)
+    _validate_recipient(to)
+    transport(to, _sanitize_subject(subject), body)

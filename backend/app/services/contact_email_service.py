@@ -15,7 +15,12 @@ from pydantic import BaseModel, Field
 
 from app.auth.models import AuthUser
 from app.db.connection import transaction_scope
-from app.email.transport import EmailNotConfigured, EmailSendError, send_email
+from app.email.transport import (
+    EmailNotConfigured,
+    EmailSendError,
+    EmailValidationError,
+    send_email,
+)
 from app.models.audit import AuditEvent
 from app.repositories.activities_postgres_repository import (
     ActivitiesPostgresRepository,
@@ -56,6 +61,10 @@ class EmailNotConfiguredError(Exception):
 
 class EmailSendFailedError(Exception):
     """The email transport could not deliver the message."""
+
+
+class EmailRecipientInvalidError(Exception):
+    """The recipient address failed validation (CR, LF or NUL present)."""
 
 
 class ContactEmailService:
@@ -109,6 +118,8 @@ class ContactEmailService:
             raise EmailNotConfiguredError from exc
         except EmailSendError as exc:
             raise EmailSendFailedError from exc
+        except EmailValidationError as exc:
+            raise EmailRecipientInvalidError from exc
 
         now = datetime.now(timezone.utc)
         with transaction_scope():  # activity and audit event persist or vanish together
