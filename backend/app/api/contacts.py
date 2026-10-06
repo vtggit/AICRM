@@ -29,6 +29,7 @@ from app.services.contact_email_service import (
     ContactHasNoEmailError,
     ContactNotFoundError,
     EmailNotConfiguredError,
+    EmailRecipientInvalidError,
     EmailSendFailedError,
     SendGateRefusedError,
 )
@@ -202,4 +203,9 @@ def send_contact_email(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="the email could not be sent",
+        )
+    except EmailRecipientInvalidError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="the contact email address is not a valid recipient",
         )

@@ -3,6 +3,7 @@
 from .transport import (
     EmailNotConfigured,
     EmailSendError,
+    EmailValidationError,
     send_email,
     set_transport,
 )
@@ -10,6 +11,7 @@ from .transport import (
 __all__ = [
     "EmailNotConfigured",
     "EmailSendError",
+    "EmailValidationError",
     "send_email",
     "set_transport",
 ]
