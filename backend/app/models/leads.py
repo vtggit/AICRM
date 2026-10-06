@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.ids import EntityId
+
 # Allowed stage values — mirrored from the UI dropdown
 ALLOWED_STAGES: set[str] = {
     "new",
@@ -24,7 +26,7 @@ ALLOWED_SOURCES: set[str] = {
     "event",
 }
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+\Z")
 
 
 def _validate_email(value: str | None) -> str | None:
@@ -46,7 +48,7 @@ def _normalize_phone(value: str | None) -> str | None:
 class LeadCreate(BaseModel):
     """Request model for creating a lead."""
 
-    company_id: str | None = Field(default=None)
+    company_id: EntityId | None = Field(default=None)
 
     name: str = Field(..., min_length=1, max_length=200)
     company: str | None = Field(default=None, max_length=200)
@@ -75,7 +77,7 @@ class LeadCreate(BaseModel):
 class LeadUpdate(BaseModel):
     """Request model for updating a lead."""
 
-    company_id: str | None = Field(default=None)
+    company_id: EntityId | None = Field(default=None)
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     company: str | None = Field(default=None, max_length=200)

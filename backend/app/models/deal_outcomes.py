@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.models.ids import EntityId
+
 # Allowed reason categories — mirrored from the UI
 ALLOWED_REASON_CATEGORIES: set[str] = {
     "budget",
@@ -19,7 +21,7 @@ ALLOWED_REASON_CATEGORIES: set[str] = {
 class DealOutcomeCreate(BaseModel):
     """Request model for creating a deal outcome (win/loss reason)."""
 
-    lead_id: str = Field(..., min_length=1)
+    lead_id: EntityId = Field(...)
     outcome: Literal["won", "lost"] = Field(...)
     reason_category: Literal[
         "budget",

@@ -5,10 +5,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.ids import EntityId
+
 # Allowed status values — mirrored from the UI dropdown
 ALLOWED_STATUSES: set[str] = {"active", "inactive", "vip"}
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+\Z")
 
 
 def _validate_email(value: str | None) -> str | None:
@@ -30,7 +32,7 @@ def _normalize_phone(value: str | None) -> str | None:
 class ContactCreate(BaseModel):
     """Request model for creating a contact."""
 
-    company_id: str | None = Field(default=None)
+    company_id: EntityId | None = Field(default=None)
 
     name: str = Field(..., min_length=1, max_length=200)
     email: str | None = Field(default=None, max_length=300)
@@ -57,7 +59,7 @@ class ContactUpdate(BaseModel):
     email_consent_status: Literal["opted_in", "opted_out", "unknown"] | None = None
     consent_source: str | None = Field(default=None, max_length=64)
 
-    company_id: str | None = Field(default=None)
+    company_id: EntityId | None = Field(default=None)
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     email: str | None = Field(default=None, max_length=300)
