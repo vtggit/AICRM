@@ -5,6 +5,16 @@ const App = {
     currentPage: 'dashboard',
     editId: null,
     editType: null,
+    // Hash-router state (issue #306): _renderSequence guards async content
+    // writes against a newer route; _programmaticHash marks the hash update
+    // that navigate() just set so its hashchange echo is ignored.
+    _renderSequence: 0,
+    _programmaticHash: null,
+    // Active global-search query: the route's content render applies it,
+    // so search results are written by that single render and can never
+    // be clobbered by a concurrent full render. Consumed (reset to null)
+    // once the route's content write has finished.
+    _searchQuery: null,
 
     async init() {
         this._selectedContactIds = new Set();
@@ -26,6 +36,7 @@ const App = {
         this.bindPdfExport();
         this.bindVersion();
         this.bindAuth();
+        this.bindHashRouting();
         this.loadTheme();
 
         // Check backend availability before rendering
@@ -34,7 +45,9 @@ const App = {
             this._showBackendUnavailableBanner(true);
         }
 
-        this.renderDashboard();
+        // Open the page named by the URL hash (empty or unknown hash opens
+        // Dashboard). A reload on #/<page> therefore opens that page.
+        this._applyRoute(this._routeFromHash(window.location.hash));
         this.updateLastBackupDisplay();
         this.updateOverdueBadge();
         this.loadReminderSettings();
@@ -150,24 +163,109 @@ const App = {
         });
     },
 
-    async navigate(page) {
+    /**
+     * Hash routes (issue #306): each page has a route #/<data-page>,
+     * e.g. #/contacts or #/salesgoals. A nav click updates the hash and
+     * applies the route synchronously; the async hashchange that follows a
+     * programmatic hash update is ignored, so setting location.hash from
+     * navigate() never triggers a second navigate/render/API call. Back and
+     * forward (and manual hash edits) are user-originated hashchanges and
+     * apply the route read from the hash.
+     */
+    ROUTABLE_PAGES: ['dashboard', 'contacts', 'leads', 'analytics', 'activities', 'templates', 'winloss', 'salesgoals', 'companies', 'settings'],
+
+    navigate(page) {
+        if (!this.ROUTABLE_PAGES.includes(page)) page = 'dashboard';
+        const targetHash = `#/${page}`;
+        if (window.location.hash !== targetHash) {
+            // Record this programmatic update: its async hashchange echo
+            // must not navigate a second time.
+            this._programmaticHash = targetHash;
+            window.location.hash = targetHash;
+        }
+        // Apply the route synchronously: the active nav item, aria-current
+        // and the page title update before any async page content write.
+        this._applyRoute(page);
+    },
+
+    bindHashRouting() {
+        window.addEventListener('hashchange', () => this._onHashChange());
+    },
+
+    /** Map a URL hash to a page. An empty or unknown hash opens Dashboard. */
+    _routeFromHash(hash) {
+        const match = /^#\/([a-z0-9]+)\/?$/i.exec(hash || '');
+        if (!match) return 'dashboard';
+        const page = match[1].toLowerCase();
+        return this.ROUTABLE_PAGES.includes(page) ? page : 'dashboard';
+    },
+
+    _onHashChange() {
+        const hash = window.location.hash;
+        const wasProgrammatic = hash === this._programmaticHash;
+        this._programmaticHash = null;
+        // Ignore programmatic-originated updates (navigate() already applied
+        // that route synchronously) and same-page updates.
+        if (wasProgrammatic) return;
+        const page = this._routeFromHash(hash);
+        if (page === this.currentPage) return;
+        this._applyRoute(page);
+    },
+
+    /**
+     * Apply a route: synchronously update .nav-item.active, the
+     * aria-current="page" marker and #page-title, then start the page's
+     * async content write, guarded by the render sequence.
+     */
+    _applyRoute(page) {
         this.currentPage = page;
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(`page-${page}`).classList.add('active');
+        const sequence = ++this._renderSequence;
+
+        // Synchronous route state — updated before any async content write.
+        document.querySelectorAll('.nav-item').forEach(item => {
+            const active = item.dataset.page === page;
+            item.classList.toggle('active', active);
+            if (active) {
+                item.setAttribute('aria-current', 'page');
+            } else {
+                item.removeAttribute('aria-current');
+            }
+        });
+        document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === `page-${page}`));
         document.getElementById('page-title').textContent = this.getPageTitle(page);
 
-        if (page === 'dashboard') await this.renderDashboard();
-        if (page === 'contacts') await this.renderContacts();
-        if (page === 'leads') await this.renderLeads();
-        if (page === 'analytics') await this.renderAnalytics();
-        if (page === 'activities') await this._renderActivitiesView();
-        if (page === 'templates') this.renderTemplates();
-        if (page === 'winloss') await this.renderWinLossPage();
-        if (page === 'salesgoals') await this.renderSalesGoals();
-        if (page === 'settings') this.renderSettings();
-        if (page === 'companies') await this.renderCompanies();
+        this._renderPageContent(page, sequence);
+    },
+
+    /**
+     * Async page content write for a route. The render-sequence guard only
+     * guards this async work: if a newer route change happened while the
+     * content was loading, the stale route skips its follow-up work.
+     */
+    async _renderPageContent(page, sequence) {
+        const isStale = () => this._renderSequence !== sequence || this.currentPage !== page;
+        if (isStale()) return;
+        try {
+            if (page === 'dashboard') await this.renderDashboard();
+            if (page === 'contacts') await this.renderContacts();
+            if (page === 'leads') await this.renderLeads();
+            if (page === 'analytics') await this.renderAnalytics();
+            if (page === 'activities') await this._renderActivitiesView();
+            if (page === 'templates') this.renderTemplates();
+            if (page === 'winloss') await this.renderWinLossPage();
+            if (page === 'salesgoals') await this.renderSalesGoals();
+            if (page === 'settings') this.renderSettings();
+            if (page === 'companies') await this.renderCompanies();
+        } catch (err) {
+            console.error(`Failed to render ${page}:`, err);
+            return;
+        }
+        if (isStale()) return;
+
+        // The content write is complete: consume the search query that was
+        // applied. A stale render can never reach this line, so a fresh
+        // query set by a newer route change is never consumed early.
+        this._searchQuery = null;
 
         this.updateOverdueBadge();
 
@@ -184,6 +282,7 @@ const App = {
             activities: 'Activities',
             templates: 'Email Templates',
             winloss: 'Win/Loss Reasons',
+            salesgoals: 'Sales Goals',
             companies: 'Companies',
             settings: 'Settings'
         };
@@ -414,6 +513,7 @@ const App = {
             searchTimeout = setTimeout(() => {
                 const query = searchInput.value.toLowerCase().trim();
                 if (!query) {
+                    this._searchQuery = null;
                     this.renderCurrentPage();
                     return;
                 }
@@ -449,12 +549,17 @@ const App = {
             (l.source || '').toLowerCase().includes(query)
         );
 
+        // Single render path: the navigation below triggers the page's
+        // content render, which applies _searchQuery. Rendering the
+        // filtered list directly here would run concurrently with that
+        // full render and could be clobbered by it.
+        this._searchQuery = query;
         if (contacts.length > 0) {
             this.navigate('contacts');
-            this.renderContacts(contacts);
         } else if (leads.length > 0) {
             this.navigate('leads');
-            this.renderLeads(leads);
+        } else {
+            this._searchQuery = null;
         }
     },
 
@@ -893,6 +998,17 @@ const App = {
             document.getElementById('contacts-list').innerHTML =
                 `<div class="empty-state-card"><p>⚠️ ${this.escapeHtml(err.message)}</p></div>`;
             return;
+        }
+
+        // Apply the active global-search query so the route's full render
+        // shows the same filtered results the search produced.
+        if (this._searchQuery) {
+            const q = this._searchQuery;
+            contacts = contacts.filter(c =>
+                (c.name || '').toLowerCase().includes(q) ||
+                (c.email || '').toLowerCase().includes(q) ||
+                (c.company || '').toLowerCase().includes(q)
+            );
         }
 
         const filterStatus = document.getElementById('contact-filter-status').value;
@@ -2568,6 +2684,16 @@ const App = {
                     `<div class="empty-state-card"><p>⚠️ ${this.escapeHtml(err.message)}</p></div>`;
                 return;
             }
+        }
+        // Apply the active global-search query so the route's full render
+        // shows the same filtered results the search produced.
+        if (this._searchQuery) {
+            const q = this._searchQuery;
+            leads = leads.filter(l =>
+                (l.name || '').toLowerCase().includes(q) ||
+                (l.company || '').toLowerCase().includes(q) ||
+                (l.source || '').toLowerCase().includes(q)
+            );
         }
         const filterStage = document.getElementById('lead-filter-stage').value;
         const filterScore = document.getElementById('lead-filter-score').value;
