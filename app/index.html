@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AICRM - Customer Relationship Management</title>
     <link rel="stylesheet" href="css/styles.css?v=0.2.3">
+    <link rel="stylesheet" href="css/tokens.css?v=0.1.0">
+    <link rel="stylesheet" href="css/shell.css?v=0.1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
     <div id="app">
@@ -14,50 +18,53 @@
                 <h1 class="logo">AICRM</h1>
             </div>
             <ul class="nav-menu">
-                <li class="nav-item active" data-page="dashboard">
-                    <span class="nav-icon">📊</span>
+                <li class="nav-item active" data-page="dashboard" aria-current="page">
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Dashboard</span>
                 </li>
                 <li class="nav-item" data-page="contacts">
-                    <span class="nav-icon">👥</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Contacts</span>
                 </li>
                 <li class="nav-item" data-page="leads">
-                    <span class="nav-icon">🎯</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Leads</span>
                 </li>
                 <li class="nav-item" data-page="analytics">
-                    <span class="nav-icon">📈</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Analytics</span>
                 </li>
                 <li class="nav-item" data-page="activities">
-                    <span class="nav-icon">📋</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Activities</span>
                     <span id="overdue-badge" class="nav-badge" style="display:none;">0</span>
                 </li>
                 <li class="nav-item" data-page="templates">
-                    <span class="nav-icon">📝</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Templates</span>
                 </li>
                 <li class="nav-item" data-page="winloss">
-                    <span class="nav-icon">🏆</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Win/Loss</span>
                 </li>
                 <li class="nav-item" data-page="salesgoals">
-                    <span class="nav-icon">📐</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Sales Goals</span>
                 </li>
                                 <li class="nav-item" data-page="companies">
-                    <span class="nav-icon">📦</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Companies</span>
                 </li>
                 <li class="nav-item" data-page="settings">
-                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-icon"></span>
                     <span class="nav-label">Settings</span>
                 </li>
             </ul>
             <div class="sidebar-footer">
                 <span id="app-version-sidebar" class="version"></span>
+                <div id="auth-status" class="auth-status" title="Authentication status">
+                    <span class="auth-indicator">⏳</span>
+                </div>
             </div>
         </nav>
 
@@ -70,9 +77,6 @@
                     <h2 id="page-title">Dashboard</h2>
                 </div>
                 <div class="header-right">
-                    <div id="auth-status" class="auth-status" title="Authentication status">
-                        <span class="auth-indicator">⏳</span>
-                    </div>
                     <div class="search-box">
                         <input type="text" id="global-search" placeholder="Search contacts, leads..." aria-label="Global search">
                         <span class="search-icon">🔍</span>

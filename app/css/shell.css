@@ -1,0 +1,251 @@
+/* ============================================================================
+   AICRM — application shell (issue #306)
+   ----------------------------------------------------------------------------
+   Wraps the existing screens in the family shell from
+   docs/design/design-system.md:
+
+     • A fixed-height layout (height: 100vh, never taller). On desktop the
+       document itself never scrolls; only the content region below the
+       header scrolls on its own.
+     • A dark sidebar (--sidebar-width, 232 px, --color-sidebar) with the
+       product mark, the navigation and — at its foot — the signed-in user
+       (#auth-status).
+     • A main-area header with the page title (#page-title) and, below it,
+       the scrolling content region (#page-container).
+     • At 900 px and below the sidebar becomes a top bar; nothing scrolls
+       sideways, and the page may scroll vertically only.
+
+   Shell design tokens (--color-*, --sidebar-width, --page-padding, ...) come
+   from css/tokens.css. They are applied to shell chrome only: no rule in
+   this file paints html, body, or an unported .page element, so the
+   existing page styles keep their own look.
+   ========================================================================== */
+
+/* ── Desktop: fixed-height shell, document never scrolls ────────────────── */
+@media (min-width: 901px) {
+    html, body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    #app {
+        display: flex;
+        height: 100vh;
+        min-height: 0;
+    }
+
+    /* Sidebar: --sidebar-width wide, --color-sidebar ground. */
+    .sidebar {
+        width: var(--sidebar-width);
+        flex: 0 0 var(--sidebar-width);
+        height: 100vh;
+        background: var(--color-sidebar);
+        font-family: var(--font-sans);
+    }
+
+    .sidebar-header {
+        padding: var(--space-5) var(--space-5) var(--space-4);
+        border-bottom: 1px solid color-mix(in srgb, var(--color-surface) 10%, transparent);
+    }
+
+    .logo {
+        color: var(--color-surface);
+        font-family: var(--font-sans);
+        letter-spacing: 0.2px;
+    }
+
+    /* Shell navigation: plain-text labels, token colours only. */
+    .nav-menu {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .nav-item {
+        color: color-mix(in srgb, var(--color-surface) 72%, transparent);
+        min-height: var(--size-touch-target);
+    }
+
+    .nav-item:hover {
+        background: color-mix(in srgb, var(--color-surface) 6%, transparent);
+        color: var(--color-surface);
+    }
+
+    .nav-item.active {
+        background: color-mix(in srgb, var(--color-accent) 24%, var(--color-sidebar));
+        border-left-color: var(--color-accent);
+        color: var(--color-surface);
+    }
+
+    .nav-label {
+        font-size: 0.9375rem;
+        font-weight: 500;
+    }
+
+    /* Sidebar foot: version + signed-in user (#auth-status). */
+    .sidebar-footer {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        padding: var(--space-4) var(--space-5);
+        border-top: 1px solid color-mix(in srgb, var(--color-surface) 10%, transparent);
+    }
+
+    .version {
+        color: color-mix(in srgb, var(--color-surface) 55%, transparent);
+    }
+
+    #sidebar .auth-status {
+        align-self: flex-start;
+        background: color-mix(in srgb, var(--color-surface) 8%, transparent);
+        border-color: color-mix(in srgb, var(--color-surface) 16%, transparent);
+        color: var(--color-surface);
+    }
+
+    #sidebar .auth-username {
+        color: var(--color-surface);
+    }
+
+    /* Main area: header with the page title, then the scrolling region.
+       A flex column: the header keeps its natural height and the content
+       region (flex: 1, min-height: 0, overflow-y: auto) alone scrolls. */
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        margin-left: var(--sidebar-width);
+        height: 100vh;
+        min-height: 0;
+    }
+
+    .top-header {
+        position: static;
+        flex: 0 0 auto;
+        background: var(--color-surface);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    #page-title {
+        color: var(--color-ink);
+        font-family: var(--font-sans);
+        font-variant-numeric: var(--font-variant-numeric);
+    }
+
+    /* The content region alone scrolls. */
+    .page-container {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: var(--page-padding);
+        background: var(--color-ground);
+        font-variant-numeric: var(--font-variant-numeric);
+    }
+}
+
+/* ── Narrow (<= 900 px): the sidebar becomes a top bar ──────────────────── */
+@media (max-width: 900px) {
+    html, body {
+        height: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    #app {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        position: static;
+        width: 100%;
+        flex: 0 0 auto;
+        height: auto;
+        transform: none;
+        background: var(--color-sidebar);
+        border-bottom: 1px solid var(--color-border);
+        font-family: var(--font-sans);
+    }
+
+    .sidebar.open {
+        transform: none;
+    }
+
+    .sidebar-header {
+        padding: var(--space-2) var(--space-4);
+        border-bottom: 1px solid color-mix(in srgb, var(--color-surface) 10%, transparent);
+    }
+
+    .nav-menu {
+        display: flex;
+        flex-wrap: wrap;
+        flex: 0 0 auto;
+        width: 100%;
+        padding: 0;
+        overflow: visible;
+    }
+
+    .nav-item {
+        padding: var(--space-2) var(--space-3);
+        border-left: 0;
+        border-bottom: 3px solid transparent;
+        color: color-mix(in srgb, var(--color-surface) 72%, transparent);
+        font-size: 0.875rem;
+        min-height: 0;
+    }
+
+    .nav-item:hover {
+        background: color-mix(in srgb, var(--color-surface) 6%, transparent);
+        color: var(--color-surface);
+    }
+
+    .nav-item.active {
+        border-left: 0;
+        border-bottom-color: var(--color-accent);
+        background: color-mix(in srgb, var(--color-accent) 24%, var(--color-sidebar));
+        color: var(--color-surface);
+    }
+
+    .sidebar-footer {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-2) var(--space-4);
+        border-top: 0;
+    }
+
+    #sidebar .auth-status {
+        background: color-mix(in srgb, var(--color-surface) 8%, transparent);
+        border-color: color-mix(in srgb, var(--color-surface) 16%, transparent);
+        color: var(--color-surface);
+    }
+
+    #sidebar .auth-username {
+        color: var(--color-surface);
+    }
+
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        margin-left: 0;
+        height: auto;
+        min-height: 0;
+    }
+
+    .top-header {
+        position: static;
+        flex-wrap: wrap;
+        row-gap: var(--space-2);
+    }
+
+    /* The top bar is always visible: the drawer toggle is no longer needed. */
+    #menu-toggle {
+        display: none;
+    }
+
+    .page-container {
+        overflow: visible;
+        padding: var(--space-4);
+        background: var(--color-ground);
+    }
+}
