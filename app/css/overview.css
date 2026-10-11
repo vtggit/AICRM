@@ -1,0 +1,246 @@
+/* ============================================================================
+   AICRM — Dashboard Overview (issue #311)
+   ----------------------------------------------------------------------------
+   The Dashboard (#page-dashboard) is the family Overview pattern from
+   docs/design/design-system.md:
+
+     • Value tiles in a row — the seven #stat-* tiles, a label above and a
+       figure in IBM Plex Mono with tabular numbers; the money tiles read
+       whole dollars. No emoji on the tiles.
+     • One card per area — six cards in a 3x2 grid, each with its title in
+       the card header and a body that scrolls on its own when its list is
+       longer than the card.
+     • A fixed-height two-row grid (value-tile row + minmax(0, 1fr) card
+       grid), so on a desktop screen the page itself never scrolls: the
+       content region does not scroll either, and only card bodies do.
+     • "Export PDF Report" is a secondary button in the page header's
+       actions; it only acts on the Dashboard, so it shows while the
+       Dashboard is the active page.
+     • At 900 px and below the tiles wrap and the cards stack in one
+       column; nothing scrolls sideways.
+
+   Colours, radii and spacing come from css/tokens.css only — no raw colour
+   values in this file. The legacy styles in css/styles.css keep their own
+   look on every unported page.
+   ========================================================================== */
+
+/* ── Value tiles: label above the figure, tokens only ───────────────────── */
+#page-dashboard .stat-card {
+    display: block;
+    min-width: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    padding: var(--space-3) var(--space-4);
+    box-shadow: none;
+    transition: none;
+}
+
+#page-dashboard .stat-card:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+#page-dashboard .stat-card .stat-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+#page-dashboard .stat-label {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The figure: IBM Plex Mono with tabular numbers. */
+#page-dashboard .stat-info h3 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Money tiles keep their accent edge, in the family accent colour. */
+#page-dashboard .stat-card.revenue-card {
+    border-left: 3px solid var(--color-accent);
+}
+
+#page-dashboard .stat-card.revenue-card .stat-info h3 {
+    color: var(--color-accent);
+}
+
+/* ── Cards: title in the card header, body scrolls on its own ───────────── */
+#page-dashboard .dashboard-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    padding: var(--space-4);
+    box-shadow: none;
+}
+
+#page-dashboard .dashboard-card-header,
+#page-dashboard .dashboard-card-header-row {
+    flex: 0 0 auto;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+#page-dashboard .dashboard-card-header h3,
+#page-dashboard .dashboard-card-header-row h3 {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-dashboard .dashboard-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+}
+
+/* List rows keep the family minimum row height. */
+#page-dashboard .recent-item {
+    min-height: var(--size-list-row);
+}
+
+/* ── Desktop (>= 901 px): fixed-height two-row Overview ─────────────────── */
+@media (min-width: 901px) {
+    /* Fixed height, two rows: the value-tile row keeps its natural height,
+       the card grid takes the rest and may shrink to zero, so the Dashboard
+       can never be taller than the content region. */
+    #page-dashboard {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: var(--space-4);
+        height: 100%;
+        min-height: 0;
+    }
+
+    /* The seven value tiles in one row. */
+    #page-dashboard .stats-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: var(--space-3);
+        margin-bottom: 0;
+    }
+
+    /* 3 columns x 2 rows; every track can shrink, so only the card bodies
+       scroll. */
+    #page-dashboard .dashboard-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        gap: var(--space-4);
+    }
+
+    /* The card body is the designated scroll pane; the inner lists keep
+       their natural height. */
+    #page-dashboard .dashboard-card-body {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    #page-dashboard .activity-list {
+        max-height: none;
+        overflow: visible;
+    }
+}
+
+/* ── Narrow (<= 900 px): tiles wrap, cards stack, the page may scroll ───── */
+@media (max-width: 900px) {
+    #page-dashboard {
+        display: block;
+        height: auto;
+    }
+
+    #page-dashboard .stats-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
+    }
+
+    #page-dashboard .dashboard-grid {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: none;
+        gap: var(--space-4);
+    }
+
+    /* The whole page scrolls vertically; card bodies keep their content. */
+    #page-dashboard .dashboard-card-body {
+        overflow: visible;
+    }
+}
+
+/* ── "Export PDF Report" in the page header's actions ───────────────────── */
+#btn-export-pdf {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+#btn-export-pdf:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+/* It only acts on the Dashboard, so it shows while the Dashboard is the
+   active page and stays out of the way everywhere else. */
+.main-content:not(:has(#page-dashboard.active)) #btn-export-pdf {
+    display: none;
+}
+
+/* ── Print: the report keeps its long-form flow ─────────────────────────── */
+@media print {
+    #page-dashboard {
+        display: block;
+        height: auto;
+    }
+
+    #page-dashboard .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8pt;
+        margin-bottom: 20pt;
+    }
+
+    #page-dashboard .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12pt;
+    }
+
+    #page-dashboard .dashboard-card {
+        display: block;
+    }
+
+    #page-dashboard .dashboard-card-body {
+        overflow: visible;
+    }
+}
