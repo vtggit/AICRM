@@ -238,6 +238,26 @@
         row-gap: var(--space-2);
     }
 
+    /* The header must never push the page sideways: the two header groups
+       each take their own line, and the search field gives up its fixed
+       desktop width down to a usable minimum. */
+    .header-left,
+    .header-right {
+        flex-wrap: wrap;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .search-box {
+        flex: 1 1 200px;
+        min-width: 120px;
+        max-width: 240px;
+    }
+
+    .search-box input {
+        width: 100%;
+    }
+
     /* The top bar is always visible: the drawer toggle is no longer needed. */
     #menu-toggle {
         display: none;
