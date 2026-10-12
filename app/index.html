@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/shell.css?v=0.1.0">
     <link rel="stylesheet" href="css/overview.css?v=0.1.0">
     <link rel="stylesheet" href="css/contacts.css?v=0.1.0">
+    <link rel="stylesheet" href="css/leads.css?v=0.1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
@@ -327,14 +328,20 @@
                     </div>
                 </div>
 
-                <!-- Leads Page -->
+                <!-- Leads Page (issue #317): one toolbar bar above the view keeps every
+                     existing control (ids, plain-text labels); the list view
+                     (#leads-list) shows one compact row per lead and scrolls on its
+                     own; the board view (#kanban-board) fills the area under the
+                     toolbar and each stage column's cards scroll inside the column.
+                     At 900 px and below the board scrolls sideways inside its own
+                     region. -->
                 <div id="page-leads" class="page">
                     <div class="page-actions">
                         <button id="btn-add-lead" class="btn btn-primary">+ Add Lead</button>
                         <div class="filter-controls">
-                            <button id="btn-toggle-kanban" class="btn btn-secondary" title="Toggle Kanban Board View (K)">📊 Kanban</button>
-                            <button id="btn-export-leads-csv" class="btn btn-secondary" title="Export leads to CSV">📥 Export CSV</button>
-                            <button id="btn-import-leads-csv" class="btn btn-secondary" title="Import leads from CSV">📤 Import CSV</button>
+                            <button id="btn-toggle-kanban" class="btn btn-secondary" title="Toggle Board View (K)">Board</button>
+                            <button id="btn-export-leads-csv" class="btn btn-secondary" title="Export leads to CSV">Export CSV</button>
+                            <button id="btn-import-leads-csv" class="btn btn-secondary" title="Import leads from CSV">Import CSV</button>
                             <select id="lead-filter-stage" class="filter-select">
                                 <option value="">All Stages</option>
                                 <option value="new">New</option>
@@ -346,10 +353,10 @@
                             </select>
                             <select id="lead-filter-score" class="filter-select">
                                 <option value="">All Scores</option>
-                                <option value="critical">🔴 Critical (70+)</option>
-                                <option value="hot">🟠 Hot (45-69)</option>
-                                <option value="warm">🟡 Warm (25-44)</option>
-                                <option value="cold">⚪ Cold (0-24)</option>
+                                <option value="critical">Critical (70+)</option>
+                                <option value="hot">Hot (45-69)</option>
+                                <option value="warm">Warm (25-44)</option>
+                                <option value="cold">Cold (0-24)</option>
                             </select>
                             <select id="lead-sort" class="filter-select">
                                 <option value="recent">Most Recent</option>

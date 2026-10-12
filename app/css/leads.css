@@ -1,0 +1,354 @@
+/* ============================================================================
+   AICRM — Leads page (issue #317)
+   ----------------------------------------------------------------------------
+   The Leads page (#page-leads) fits the window in both views:
+
+     • Toolbar: one bar above the view holds the existing controls with
+       their ids and plain-text labels.
+     • Board view (#kanban-board): fills the area under the toolbar. Every
+       stage column keeps its header in view; the column's cards scroll
+       inside the column.
+     • List view (#leads-list): one compact row per lead (>= --size-list-row)
+       showing name, company, value, the stage badge and the score badge,
+       with word-labelled Edit/Delete buttons. The list scrolls on its own.
+     • Empty states: a centred empty state with no leads, and "No leads" in
+       an empty stage column.
+     • Desktop (>= 901 px): neither the document nor the content region
+       scrolls — only #leads-list (list view) or the columns' card regions
+       (board view) do. At 900 px and below the board scrolls sideways
+       inside its own region and nothing scrolls sideways on the page.
+
+   Colours, radii and spacing come from css/tokens.css only — no raw colour
+   values in this file.
+   ========================================================================== */
+
+/* ── Toolbar: one bar above the view, token chrome ─────────────────────── */
+#page-leads .page-actions {
+    margin-bottom: 0;
+}
+
+#page-leads .page-actions .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+#page-leads .page-actions .btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-leads .page-actions .btn-primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 90%, var(--color-ink));
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-leads .page-actions .btn-secondary:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+#page-leads .filter-select {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+}
+
+/* ── List view: one compact row per lead (both breakpoints) ────────────── */
+#page-leads #leads-list .lead-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    min-height: var(--size-list-row);
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    transition: border-color var(--transition);
+}
+
+#page-leads #leads-list .lead-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border-soft));
+}
+
+#page-leads #leads-list .lead-row-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-leads #leads-list .lead-row-company {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-leads #leads-list .lead-row-value {
+    flex: 0 0 auto;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+#page-leads #leads-list .lead-card .badge,
+#page-leads #leads-list .lead-card .score-badge {
+    flex: 0 0 auto;
+    margin-left: 0;
+    font-size: 0.6875rem;
+}
+
+#page-leads #leads-list .lead-card .card-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    gap: var(--space-1);
+}
+
+#page-leads #leads-list .card-action-btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-ink);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+}
+
+#page-leads #leads-list .card-action-btn:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-surface));
+    color: var(--color-accent);
+}
+
+/* Centred empty state: no leads (or the filters matched nothing). */
+#page-leads #leads-list .empty-state-card {
+    display: grid;
+    place-items: center;
+    min-height: 100%;
+    grid-column: auto;
+    padding: var(--space-6);
+    background: transparent;
+    border-radius: 0;
+    color: var(--color-ink-secondary);
+    font-family: var(--font-sans);
+}
+
+/* ── Board view: columns fill the board; card regions scroll ───────────── */
+#page-leads #kanban-board .kanban-column {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+}
+
+#page-leads #kanban-board .kanban-column.drag-over {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+}
+
+#page-leads #kanban-board .kanban-header {
+    flex: 0 0 auto;
+    padding: var(--space-3) var(--space-4) var(--space-2);
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+}
+
+#page-leads #kanban-board .kanban-stage-title {
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+}
+
+#page-leads #kanban-board .kanban-count {
+    background: var(--color-accent);
+    color: var(--color-surface);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+}
+
+#page-leads #kanban-board .kanban-value {
+    color: var(--color-ink-secondary);
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+}
+
+#page-leads #kanban-board .kanban-cards {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--space-2);
+    gap: var(--space-2);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#page-leads #kanban-board .kanban-card {
+    flex: 0 0 auto;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-control);
+    padding: var(--space-3);
+}
+
+#page-leads #kanban-board .kanban-card:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border-soft));
+}
+
+#page-leads #kanban-board .kanban-card-name {
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+}
+
+#page-leads #kanban-board .kanban-card-company {
+    color: var(--color-ink-secondary);
+}
+
+#page-leads #kanban-board .kanban-card-value {
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+}
+
+#page-leads #kanban-board .kanban-card-footer {
+    flex-wrap: wrap;
+}
+
+#page-leads #kanban-board .kanban-card-action {
+    color: var(--color-ink-secondary);
+}
+
+#page-leads #kanban-board .kanban-card-action:hover {
+    background: var(--color-border-soft);
+    color: var(--color-ink);
+}
+
+#page-leads #kanban-board .kanban-card-stage-select {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-ink);
+}
+
+/* Muted "No leads" note in an empty stage column. */
+#page-leads #kanban-board .kanban-empty-note {
+    margin: 0;
+    padding: var(--space-3) var(--space-2);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--color-ink-secondary);
+    text-align: center;
+}
+
+/* ── Desktop (>= 901 px): fixed height; only the views scroll ──────────── */
+@media (min-width: 901px) {
+    /* Fixed height: the toolbar keeps its natural height, the visible view
+       takes the rest and may shrink to zero, so neither the document nor
+       the content region scrolls — only #leads-list or the columns' card
+       regions do. */
+    #page-leads.active {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        height: 100%;
+        min-height: 0;
+    }
+
+    #page-leads .page-actions {
+        flex: 0 0 auto;
+    }
+
+    #page-leads #leads-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        padding: var(--space-2);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* The board fills the area under the toolbar; at >= 901 px the six
+       columns share the width exactly, so the board itself never scrolls. */
+    #page-leads #kanban-board {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+        padding: 0;
+        gap: var(--space-3);
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    #page-leads #kanban-board .kanban-column {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 100%;
+        max-height: 100%;
+    }
+}
+
+/* ── Narrow (<= 900 px): the views flow with the page; the board scrolls
+      sideways inside its own region ─────────────────────────────────────── */
+@media (max-width: 900px) {
+    #page-leads.active {
+        display: block;
+        height: auto;
+    }
+
+    #page-leads #leads-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        padding: 0;
+        overflow: visible;
+    }
+
+    #page-leads #kanban-board {
+        height: 70vh;
+        min-height: 0;
+        padding: 0;
+        gap: var(--space-3);
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    #page-leads #kanban-board .kanban-column {
+        flex: 0 0 240px;
+        min-width: 240px;
+        height: 100%;
+        max-height: 100%;
+    }
+}
