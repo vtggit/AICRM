@@ -89,6 +89,35 @@ class SettingsPostgresRepository(SettingsRepository):
 
         return _row_to_dict(row) if row else None
 
+    def reset_settings(self) -> dict | None:
+        """Reset the payload to the empty object, in place.
+
+        The record is never deleted: the existing row keeps its identity,
+        created_at and history; only its payload is replaced by {}.
+        """
+        now = datetime.now(timezone.utc)
+
+        try:
+            with get_cursor() as cur:
+                cur.execute(
+                    """UPDATE settings
+                       SET payload = %s::jsonb,
+                           updated_at = %s
+                       WHERE id = %s
+                       RETURNING *""",
+                    (json.dumps({}), now, _SETTINGS_ID),
+                )
+                row = cur.fetchone()
+        except Exception as exc:
+            logger.error(
+                "settings: failed to reset settings — %s%s",
+                exc,
+                _req(),
+            )
+            raise
+
+        return _row_to_dict(row) if row else None
+
     def _seed_default(self) -> dict:
         """Create a default empty settings record."""
         now = datetime.now(timezone.utc)

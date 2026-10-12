@@ -77,6 +77,55 @@ class SettingsService:
 
         return settings
 
+    def reset_settings(self, actor: AuthUser) -> dict:
+        """Reset the settings record's payload to the empty object.
+
+        When the stored payload is not already empty the reset updates the
+        stored row in place (the record is never deleted) and writes one
+        audit event — action "reset" — naming the removed keys without any
+        of their values, in the same transaction as the row update.  When
+        the payload is already empty the empty record is returned and no
+        audit event is written.
+        """
+        with transaction_scope():  # row update and audit event persist together
+            current = self.repository.get_settings()
+            current_payload = (current or {}).get("payload") or {}
+
+            if not current_payload:
+                # Already empty: nothing to remove, nothing to audit.
+                return _ensure_authoritative_shape(
+                    current
+                    or {
+                        "id": "app",
+                        "payload": {},
+                        "created_at": "",
+                        "updated_at": "",
+                    }
+                )
+
+            result = self.repository.reset_settings()
+            if result is None:
+                raise ValueError("Failed to reset settings.")
+
+            settings = _ensure_authoritative_shape(result)
+
+            self.audit_service.write(
+                AuditEvent(
+                    entity_type="settings",
+                    entity_id=settings["id"],
+                    action="reset",
+                    actor_sub=actor.sub,
+                    actor_username=actor.username,
+                    actor_email=actor.email,
+                    actor_roles=actor.roles,
+                    details={
+                        "changed_fields": list(current_payload.keys()),
+                    },
+                )
+            )
+
+        return settings
+
 
 # --------------------------------------------------------------------- #
 #  Validation helpers                                                     #
