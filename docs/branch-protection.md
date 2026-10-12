@@ -5,6 +5,14 @@ a failing verdict fails the job, so the check turns red. But a red check does no
 *block* merge until it is marked **required** in branch protection. Do that only
 after a soak.
 
+## Current state (2026-10-12)
+
+`main` has no branch protection rule today, so GitHub itself does not block a merge on a
+red gate. The gate is enforced by how merges are made: the engine's auto-merge and the
+maintainers' pinned merges both require every named check, `CodeAgent contract gate`
+included, to have succeeded on the exact commit being merged. Marking the check required
+in GitHub, as described below, is a separate switch for the repository owner.
+
 ## Roll-out order
 
 1. **Merge the gate workflows to `main`** (PRs #130 → #131 → this one). The gate
