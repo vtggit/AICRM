@@ -12,7 +12,8 @@
 //         the nav labels are plain text in order, without emoji, with the
 //         .nav-icon elements retained but glyph-free; #auth-status sits at
 //         the sidebar foot; the header shows the page title and the content
-//         region below it alone scrolls; at 1440x900 the document itself
+//         region below it alone scrolls (on Contacts the split view's list
+//         pane scrolls instead — issue #313); at 1440x900 the document itself
 //         does not scroll (Dashboard, and Contacts with 200 mocked rows);
 //         each page has a hash route #/<data-page> — a nav click updates
 //         the hash, a reload on #/companies opens Companies, Back returns
@@ -359,17 +360,22 @@ test('issue306 freeform', async ({ page }) => {
   await page.evaluate(() => { history.replaceState(null, '', '#/contacts'); });
 
   // ── AC-1: at 1440x900 the document does not scroll on Contacts (200
-  //    rows) while the content region scrolls on its own ──
+  //    rows); since issue #313 the content region does not scroll either —
+  //    the split view's list pane scrolls on its own ──
   const scrollState = await page.evaluate(() => {
     const de = document.documentElement;
     const region = document.getElementById('page-container');
+    const list = document.getElementById('contacts-list');
     return {
       docScrolls: de.scrollHeight > de.clientHeight,
       regionScrolls: region.scrollHeight > region.clientHeight,
+      listScrolls: list.scrollHeight > list.clientHeight,
     };
   });
   expect(scrollState.docScrolls, 'no document scroll at 1440x900 (Contacts)').toBe(false);
-  expect(scrollState.regionScrolls, 'the content region scrolls').toBe(true);
+  expect(scrollState.regionScrolls,
+    'the content region no longer scrolls (issue #313 split view)').toBe(false);
+  expect(scrollState.listScrolls, 'the list pane scrolls on its own').toBe(true);
 
   // ── AC-1: a user hash edit routes; a reload on #/companies opens
   //    Companies; Back returns to the previous page; an unknown hash opens

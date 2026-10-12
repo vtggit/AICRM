@@ -99,14 +99,14 @@ test('issue257 freeform', async ({ page }) => {
     await page.waitForSelector('#contact-email-status-message', { timeout: 10000 });
   };
 
-  // ── Disabled state: contact has no email address ──
+  // ── Disabled state: contact has no email address (detail pane, issue #313) ──
   await page.evaluate(() => App.viewContact('c-nomail'));
   await emailButton.waitFor({ timeout: 10000 });
   await expect(emailButton).toBeDisabled();
   await expect(gateReason).toContainText('No email address');
-  await expect.poll(() => calls.some((c) => c.method === 'GET' && /\/suppressions\/may-send/.test(c.url)), { timeout: 10000 }).toBe(false);
+  await expect.poll(() => calls.some((c) => c.method === 'GET' && /\/suppressions\/may-send/.test(c.url) && !c.url.includes('email=alice%40example.com')), { timeout: 10000 }).toBe(false);
   await page.evaluate(() => { App.closeModal(); });
-  await expect(emailButton).toHaveCount(0);
+  await expect(page.locator('#contact-detail-pane .contact-detail-view')).toBeVisible();
 
   // ── Disabled state: send-gate reports may_send: false ──
   await page.evaluate(() => App.viewContact('c-carol'));
@@ -118,7 +118,7 @@ test('issue257 freeform', async ({ page }) => {
     && /\/suppressions\/may-send/.test(c.url)
     && c.url.includes('email=carol%40example.com')), { timeout: 10000 }).toBe(true);
   await page.evaluate(() => { App.closeModal(); });
-  await expect(emailButton).toHaveCount(0);
+  await expect(page.locator('#contact-detail-pane .contact-detail-view')).toBeVisible();
 
   // ── Enabled state + sent (202) ──
   await page.evaluate(() => App.viewContact('c-alice'));
@@ -177,7 +177,7 @@ test('issue257 freeform', async ({ page }) => {
   await page.locator('#contact-email-form button', { hasText: 'Cancel' }).click();
   await emailButton.waitFor({ timeout: 10000 });
   await page.evaluate(() => { App.closeModal(); });
-  await expect(emailButton).toHaveCount(0);
+  await expect(page.locator('#contact-detail-pane .contact-detail-view')).toBeVisible();
 
   expect(errors).toEqual([]);
 });
