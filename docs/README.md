@@ -7,46 +7,55 @@ AICRM is a AI First browser-based Customer Relationship Management (CRM) applica
 
 ### Implemented ✅
 
-- **Dashboard** — Overview with key metrics (total contacts, leads, activities, won deals, pipeline value, won revenue, average deal size)
+- **Dashboard** — Overview with key metrics (total contacts, total leads, converted leads, today's activities, pipeline value, won revenue, overdue activities)
 - **Contacts Management** — Add, edit, delete, search, and filter contacts by status
 - **Leads Pipeline** — Track leads through stages (New → Contacted → Qualified → Proposal → Won/Lost)
 - **Lead Scoring** — Automatic lead scoring based on source, stage, value, and engagement (Cold/Warm/Hot/Critical tiers)
 - **Activities Tracking** — Log calls, emails, meetings, notes, and tasks linked to contacts
-- **Email Templates** — Create, edit, and manage reusable email templates with variable substitution and category filtering
+- **Email Templates** — Create, edit, and manage reusable email templates with variable placeholders (for example `{{contact_name}}`, inserted from a chip list) and category filtering. Placeholders are stored as text; the application does not yet substitute contact or lead values into them
 - **CSV Import/Export (Contacts)** — Import and export contact data via CSV files
 - **CSV Import/Export (Leads)** — Import and export lead data via CSV files (with stage/source validation)
 - **vCard Import** — Import contacts from vCard (.vcf) files supporting vCard 2.1, 3.0, and 4.0 formats with automatic field mapping (name, email, phone, company, notes)
-- **Dashboard Revenue Summary** — Pipeline value, won revenue, average deal size, and per-stage revenue breakdown
-- **Dark/Light Theme** — Toggle between light and dark themes
-- **Global Search** — Search across contacts, leads, and activities
+- **Dashboard Revenue Summary** — Pipeline value, won revenue, and per-stage revenue breakdown
+- **Dark/Light Theme** — Toggle between light and dark themes; the choice is saved through the backend Settings API
+- **Global Search** — Search across contacts (name, email, company) and leads (name, company, source)
 - **AI-Powered Lead Recommendations** — Dashboard card showing prioritized lead recommendations with scoring, urgency indicators (stale lead detection), and click-to-navigate
 - **Keyboard Shortcuts** — Full keyboard navigation: number keys (1-5) for page navigation, `/` to focus search, `?` for shortcuts help, `Ctrl+N` for new contact, `Ctrl+L` for new lead, `Ctrl+E` for export, `Escape` to close modals
-- **Data Backup and Restore** — Create timestamped JSON backup files with metadata (app name, version, data summary), restore with Replace (overwrite all) or Merge (add new, keep existing) modes, and track last backup timestamp
+- **Settings Backup and Restore** — Export application Settings as a dated JSON file and import them again from the Settings page, with the last export time tracked in Settings. Business data (contacts, leads, activities, templates) is not included; see [Data Backup and Restore](#data-backup-and-restore)
 - **Activity Due Date Tracking** — Optional due dates on activities, overdue highlighting with red indicators, overdue count badge on navigation, dashboard overdue stat card, status filtering (All/Overdue/Completed/Active), mark complete functionality, and overdue sorting
 - **Contact Activity Quick-Add FAB** — Floating action button for one-tap activity creation with pre-filled type chips (Call, Email, Meeting, Note, Task), keyboard shortcut `Q` to toggle, and auto-collapse on outside click
-- **Dashboard Recent Items** — "Recent Contacts" and "Recent Leads" cards on the dashboard showing the 5 most recently modified items from each entity, with timestamps, "View All" navigation links, empty state messaging, and dark theme support
+- **Dashboard Recent Items** — "Recent Contacts" and "Recent Leads" cards on the dashboard showing the 5 most recently created items from each entity, with timestamps, "View All" navigation links, empty state messaging, and dark theme support
 - **Contact Tags** — Create, edit, and delete color-coded tags via Manage Tags modal; assign multiple tags to contacts through checkbox selector in contact edit form; tag badges rendered on contact cards; tags persist via backend API and pre-select on re-edit
-- **Bulk Contact Operations** — Select multiple contacts via checkboxes for batch operations: bulk delete, bulk status update (Active/Inactive/VIP), and bulk tag assignment. Bulk action bar shows selection count, supports select-all/select-none, and integrates with existing tag management.
+- **Bulk Contact Operations** — Select multiple contacts via checkboxes for batch operations: bulk delete, bulk status update (Active/Inactive/VIP), and bulk tag assignment. Bulk action bar shows selection count, supports select-all/select-none, and integrates with existing tag management. Bulk tag assignment currently has a known defect; see [Bulk Contact Operations](#bulk-contact-operations).
 - **Quick Activity Logging from Contact Cards** — One-click activity logging buttons (📞 Call, 📧 Email, 🤝 Meeting, 📝 Note) directly on each contact card. Opens activity modal with type pre-filled and contact auto-selected, enabling rapid activity creation without navigating away from the list view.
 - **Activity Reminders and Notifications** — Browser-based notification system for upcoming and overdue activities. Configurable reminder settings (enable/disable, daily reminder time, advance notice 0-3 days, overdue notifications). Supports both in-app toast notifications (click-to-navigate) and native browser notifications. Periodic background checker (every 5 minutes) scans for due/overdue activities and alerts the user. Settings persist via backend.
 - **Sales Pipeline Kanban Board View** — Visual Kanban board for leads with 6 stage columns (New, Contacted, Qualified, Proposal, Won, Lost), HTML5 drag-and-drop to move leads between stages, stage-specific PATCH API endpoint, column headers showing lead count and total pipeline value, per-card stage selector dropdown, lead scoring badges, days-in-stage aging indicators, and keyboard shortcut `K` to toggle between grid and Kanban views.
 - **Dashboard PDF Report Export** — One-click "Export PDF Report" button on the dashboard that generates a clean, shareable one-page PDF of all dashboard metrics (stat cards, pipeline breakdown, recent activities, revenue summary) using native browser `window.print()` with dedicated `@media print` CSS. No external dependencies required.
-- **Activity Trend Charts** — Visual stacked bar charts on the dashboard showing activity volume trends over time (calls, emails, meetings, notes, tasks). Supports configurable date ranges (7d, 30d, 90d, 1y) and grouping (by day or by week). Includes overview stats (total activities, peak day, average per period), peak activity highlighting, color-coded legend, responsive design, and dark theme support.
-- **Activity Calendar View** — Monthly calendar view for activities with month navigation, today highlighting, color-coded activity types (call/email/meeting/note/task), overdue indicators, completed activity styling, drag-and-drop date changes, click-to-add activity on any date, keyboard shortcut `C` to toggle between timeline and calendar views, responsive design with mobile support, and dark theme support.
+- **Activity Trend Charts** — Visual stacked bar charts on the dashboard showing activity volume trends over time (calls, emails, meetings, notes, tasks). Supports configurable date ranges (7d, 30d, 90d) and grouping (by day or by week). The range selector also lists "Last 1 year", but `GET /api/analytics/activity-trends` only recognises `7d`, `30d`, and `90d` and treats any other value as 30 days. Includes overview stats (total activities, peak day, average per period), peak activity highlighting, color-coded legend, responsive design, and dark theme support.
+- **Activity Calendar View** — Monthly calendar view for activities with month navigation, today highlighting, color-coded activity types (call/email/meeting/note/task), overdue indicators, completed activity styling, drag-and-drop date changes, double-click-to-add activity on any date, keyboard shortcut `C` to toggle between timeline and calendar views, responsive design with mobile support, and dark theme support.
+- **Companies** — Companies page listing company records (name, website, industry, employee count) with add, edit, and delete for admins, backed by `/api/companies` (deletes are soft deletes). Contacts and leads can reference a company through `company_id`.
+- **Contact Detail Pane** — The Contacts page is a split pane: selecting a contact shows its details and activity timeline beside the list without opening a modal.
+- **Contact Email** — An Email button in the contact detail pane opens a subject and body form and sends through `POST /api/contacts/{id}/send-email`. The button is enabled only when the suppression send gate (`GET /api/suppressions/may-send`) allows the address, and sending requires SMTP to be configured on the backend (`AICRM_SMTP_*` variables).
+- **Duplicate Contact Detection** — "Find Duplicates" on the Contacts page lists likely duplicate contacts, with duplicate badges on contact cards and a merge action.
+- **Analytics Page** — Lead conversion funnel with total leads, won deals, conversion rate, and pipeline value, plus a stage-by-stage breakdown from `GET /api/analytics/funnel`.
+- **Win/Loss Reasons** — Moving a lead to Won or Lost on the Kanban board prompts for a reason; the Win/Loss page shows win and loss reasons, competitor mentions, and all recorded outcomes from `/api/deal-outcomes`.
+- **Sales Goals** — Sales Goals page for defining goals (revenue, deals, contacts, or activities; monthly, quarterly, or yearly) and tracking progress, with a Recalculate action, backed by `/api/sales-goals`.
+- **Hash Routing** — Each page has a URL hash route (for example `#/contacts`), so reloads and browser back/forward keep the current page.
+- **Role-Aware UI** — Controls marked admin-only (for example Add Contact, Manage Tags, Import, Add Template, Add Company) are hidden unless the signed-in user has the `admin` role.
 
 ### Planned 📋
 
-- Calendar Integration
+- Calendar Integration (weekly view, conflict detection, and iCalendar export; the monthly Activity Calendar View above has shipped)
 
 ## Technology Stack
 
 - **Frontend**: Vanilla HTML5, CSS3, JavaScript (ES6+) — thin SPA client
 - **Backend**: FastAPI (Python) — REST API for all business domains
-- **Database**: PostgreSQL — system of record for Contacts, Templates, Leads, Activities, Settings, and audit log
-- **Authentication**: JWT (development shared token or production JWKS)
+- **Database**: PostgreSQL — system of record for Contacts, Companies, Tags, Templates, Leads, Activities, Deal Outcomes, Sales Goals, Consent, Suppressions, Settings, and audit log
+- **Authentication**: Bearer token (development shared token, or production JWT validated against the identity provider's JWKS)
 - **Session state**: Browser `sessionStorage` — transient auth token only; no business data stored client-side
-- **Testing**: Playwright (E2E)
-- **Package Manager**: npm (devDependencies only: markdownlint, playwright)
+- **Testing**: pytest (backend), Playwright (E2E)
+- **Package Manager**: npm, for test and lint tooling only (`markdownlint-cli2`, `playwright`, `@playwright/test`); the frontend has no build step or runtime npm dependencies
 
 ## Setup and Installation
 
@@ -60,15 +69,21 @@ AICRM is a AI First browser-based Customer Relationship Management (CRM) applica
 
 ### Docker Compose (Recommended)
 
-The application runs as a Docker Compose stack with three services:
+The application runs as a Docker Compose stack with three application services, plus an ephemeral test database:
 
 | Service | Container Name | Image | Host Port | Internal Port |
 |---------|---------------|-------|-----------|---------------|
 | Database | `aicrm-db` | postgres:15-alpine | 5432 | 5432 |
 | Backend | `aicrm-backend` | python:3.11-slim (custom) | 9000 | 9000 |
-| Frontend | `aicrm-frontend` | nginx:1.25-alpine (custom) | 8080 | 80 |
+| Frontend | `aicrm-frontend` | nginxinc/nginx-unprivileged:1.25-alpine (custom) | 8080 | 8080 |
+| Test database | `aicrm-test-db` | postgres:15-alpine | 5433 | 5432 |
+
+The `test-db` service has no persistent volume and is used by `backend/run_tests.sh`. It has no compose profile, so `docker compose up` starts it too. The database, backend, and frontend host ports can be changed with `DB_PORT_HOST`, `BACKEND_PORT_HOST`, and `FRONTEND_PORT_HOST` in `.env`.
 
 ```bash
+# Create the environment file (docker-compose.yml requires DB_NAME, DB_USER, DB_PASSWORD)
+cp .env.example .env
+
 # Start the full stack
 docker compose up -d
 
@@ -97,14 +112,16 @@ docker compose down
 Copy individual files into the running container:
 
 ```bash
-# Frontend changes (nginx serves from /usr/share/nginx/html/)
-docker cp app/index.html aicrm-frontend:/usr/share/nginx/html/app/index.html
-docker cp app/js/app.js aicrm-frontend:/usr/share/nginx/html/app/js/app.js
-docker cp app/css/styles.css aicrm-frontend:/usr/share/nginx/html/app/css/styles.css
+# Frontend changes (the contents of app/ are copied to /usr/share/nginx/html/)
+docker cp app/index.html aicrm-frontend:/usr/share/nginx/html/index.html
+docker cp app/js/app.js aicrm-frontend:/usr/share/nginx/html/js/app.js
+docker cp app/css/styles.css aicrm-frontend:/usr/share/nginx/html/css/styles.css
 
 # Backend changes (app lives at /app/)
 docker cp backend/app/main.py aicrm-backend:/app/app/main.py
 ```
+
+`docker-compose.yml` runs both containers with `read_only: true` (immutable root filesystem), so with the shipped compose file these paths are not writable in the running containers; use Option B, or remove `read_only` locally while iterating. The backend runs `uvicorn` without `--reload`, so a copied backend file takes effect only after the container restarts.
 
 #### Option B: Rebuild containers (Thorough — for major changes)
 
@@ -126,24 +143,37 @@ docker compose up -d --build
 ```bash
 # 1. Start PostgreSQL (if not already running)
 
-# 2. Set environment variables
-export DATABASE_URL="postgresql://user:pass@localhost:5432/aicrm"
+# 2. Set environment variables (defaults: localhost, 5432, aicrm, aicrm, aicrm)
+export DB_HOST="localhost"
+export DB_PORT="5432"
+export DB_NAME="aicrm"
+export DB_USER="aicrm"
+export DB_PASSWORD="aicrm"
 export AUTH_MODE="development"
 export AUTH_DEV_TOKEN="your-dev-token"
 
-# 3. Start the backend (auto-creates tables on first run)
+# 3. Install dependencies, apply migrations, and start the backend
 cd backend
-uvicorn main:app --reload --port 8000
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --port 9000
 
-# 4. In another terminal, serve the frontend
-cd ..
+# 4. In another terminal, serve the frontend from the repository root
 python3 -m http.server 8080
 
 # 5. Open in browser
 open http://localhost:8080/app/index.html
 ```
 
+The backend does not create tables at startup; the schema comes from the Alembic migrations in `backend/migrations/versions/`. There is no `DATABASE_URL` setting; the connection is built from the `DB_*` variables.
+
+`app/js/config.js` resolves the API base URL to the relative path `/api` unless `window.AICRM_CONFIG.API_BASE_URL` is set before it loads. A plain static server does not proxy `/api`, so for this setup add a script block before `js/config.js` in `app/index.html` that sets `window.AICRM_CONFIG = { API_BASE_URL: 'http://localhost:9000/api' }`. Under Docker Compose this is not needed because nginx proxies `/api/*` to the backend.
+
+To sign in, enter the dev token in the login dialog. The bare token gets the roles in `AUTH_DEV_ROLES` (default `user`, which cannot modify most data or read contacts); append `:admin` to the token for the `admin` role.
+
 ### Running Tests
+
+The Playwright verification scripts in `docs/testing/` are standalone Node scripts. They expect the frontend to be running at `http://localhost:8080` (a few also call the backend at `http://localhost:9000`) in development auth mode with the default dev token; they sign in with `dev-secret-token:admin` through `docs/testing/auth-helper.js`. They are not run by CI.
 
 ```bash
 # Install Playwright (one-time setup)
@@ -189,6 +219,20 @@ node docs/testing/test-activity-reminders.js
 node docs/testing/test-calendar-view.js
 ```
 
+`docs/testing/` also contains scripts for other features, run the same way: `test-activity-trends.js`, `test-add-contact.js`, `test-bulk-operations.js`, `test-communication-timeline.js`, `test-contact-duplicate-detection.js`, `test-contact-timeline.js`, `test-contact-timeline-v2.js`, `test-kanban.js`, `test-pdf-export.js`, `test-vcard-import.js`, `test-version-display.js`, `test-verification-core.js`, `test-verification-session.js`, `verify-session-start.js`, and `verify-timeline.js`.
+
+Two other suites live elsewhere in the repository:
+
+```bash
+# Backend API tests (pytest against an ephemeral PostgreSQL container)
+cd backend
+./run_tests.sh
+
+# Frontend specs (@playwright/test); the config serves app/ on port 8080 unless BASE_URL is set
+cd app/tests
+npx playwright test
+```
+
 ## Architecture
 
 ```text
@@ -196,26 +240,41 @@ AICRM/
 ├── app/
 │   ├── index.html          # Main application shell
 │   ├── css/
-│   │   └── styles.css      # All styles (light + dark themes)
-│   └── js/
-│       ├── app.js          # Application logic (routing, CRUD, scoring)
-│       ├── api.js          # API client (HTTP layer, auth token handling)
-│       ├── auth.js         # Auth state management (sessionStorage)
-│       ├── config.js       # Configuration (API base URL)
-│       ├── version.js      # Version info
-│       ├── contacts-data-source.js
-│       ├── templates-data-source.js
-│       ├── leads-data-source.js
-│       ├── activities-data-source.js
-│       └── settings-data-source.js
+│   │   ├── styles.css      # Base styles (light + dark themes)
+│   │   ├── tokens.css      # Design tokens
+│   │   ├── shell.css       # Application shell layout
+│   │   ├── overview.css    # Dashboard page
+│   │   └── contacts.css    # Contacts split pane
+│   ├── js/
+│   │   ├── app.js          # Application logic (routing, CRUD, scoring)
+│   │   ├── api.js          # API client (HTTP layer, auth token handling)
+│   │   ├── auth.js         # Auth state management (sessionStorage)
+│   │   ├── config.js       # Configuration (API base URL)
+│   │   ├── version.js      # Version info (fetched from /api/health)
+│   │   ├── contacts-data-source.js
+│   │   ├── companies-data-source.js
+│   │   ├── templates-data-source.js
+│   │   ├── leads-data-source.js
+│   │   ├── activities-data-source.js
+│   │   ├── settings-data-source.js
+│   │   └── sales-goals-data-source.js
+│   └── tests/              # Playwright specs (@playwright/test)
 ├── backend/
-│   ├── main.py             # FastAPI application entry point
-│   ├── api/                # Route modules
-│   ├── models/             # Pydantic models
-│   ├── repositories/       # PostgreSQL repository layer
-│   ├── services/           # Business logic services
-│   ├── security/           # Auth, RBAC, audit
-│   └── database.py         # Database connection and migration
+│   ├── app/
+│   │   ├── main.py         # FastAPI application entry point
+│   │   ├── config.py       # Environment-driven configuration
+│   │   ├── api/            # Route modules
+│   │   ├── models/         # Pydantic models
+│   │   ├── repositories/   # PostgreSQL repository layer
+│   │   ├── services/       # Business logic services
+│   │   ├── auth/           # Authentication and role checks
+│   │   ├── db/             # Database connection
+│   │   ├── email/          # Outbound email (SMTP) transport
+│   │   └── observability/  # Logging and request middleware
+│   ├── migrations/         # Alembic migrations
+│   ├── tests/              # pytest suite
+│   └── openapi.json        # Committed OpenAPI contract artifact
+├── scripts/                # Release metadata check, OpenAPI export, contract gate
 └── docs/
 ```
 
@@ -225,12 +284,21 @@ All business data is stored in PostgreSQL. The frontend accesses data exclusivel
 
 | Entity | Table | Key Fields |
 |--------|-------|------------|
-| Contacts | `contacts` | id, name, email, phone, company, status, notes, created_at, updated_at |
-| Leads | `leads` | id, name, company, email, phone, value, stage, source, notes, created_at, updated_at |
-| Activities | `activities` | id, type, description, contact_id, contact_name, date, due_date, status, created_at, updated_at |
-| Templates | `templates` | id, name, category, subject, body, created_at, updated_at |
-| Settings | `settings` | key, value, updated_at |
-| Audit Log | `audit_log` | id, entity_type, entity_id, action, actor_subject, actor_username, actor_email, actor_roles, details, created_at |
+| Contacts | `contacts` | id, name, email, phone, company, company_id, status, notes, created_at, updated_at |
+| Leads | `leads` | id, name, company, company_id, email, phone, value, stage, source, notes, created_at, updated_at |
+| Activities | `activities` | id, type, description, contact_name, occurred_at, due_date, status, created_at, updated_at |
+| Templates | `templates` | id, name, category, subject, content, created_at, updated_at |
+| Settings | `settings` | id, payload (JSONB), created_at, updated_at |
+| Audit Log | `audit_log` | id, entity_type, entity_id, action, actor_sub, actor_username, actor_email, actor_roles, timestamp, details_json |
+| Companies | `companies` | id, name, website, industry, employee_count, created_at, updated_at, deleted_at |
+| Contact Tags | `contact_tags` | id, name, color, created_at |
+| Contact Tag Assignments | `contact_tag_mapping` | contact_id, tag_id, assigned_at |
+| Deal Outcomes | `deal_outcomes` | id, lead_id, outcome, reason_category, reason_text, competitor_name, created_at, updated_at |
+| Sales Goals | `sales_goals` | id, name, type, target_value, current_value, period, start_date, end_date, created_at, updated_at |
+| Contact Consent | `contact_consent` | id, contact_id, channel, status, source, updated_at |
+| Suppressions | `suppressions` | id, email, reason, note, created_at |
+
+Activities reference a contact by name (`contact_name`), not by id, and have no lead reference. Activity `status` is `pending` or `completed`.
 
 ### Revenue Calculations
 
@@ -240,10 +308,9 @@ Dashboard revenue stats are calculated dynamically from leads data:
 |--------|-------------|
 | **Total Pipeline Value** | Sum of `value` for leads where stage ≠ "lost" and ≠ "won" |
 | **Won Revenue** | Sum of `value` for leads where stage = "won" |
-| **Average Deal Size** | Won Revenue / count of won leads (or $0.00 if none) |
-| **Per-Stage Revenue** | Sum of `value` for leads at each pipeline stage |
+| **Per-Stage Revenue** | Sum of `value` for leads at each pipeline stage shown on the dashboard (new, contacted, qualified, proposal, won) |
 
-Revenue values are formatted using `Intl.NumberFormat` with USD locale and displayed with a green left border on stat cards.
+Revenue values are formatted as whole US dollars (`$` prefix, `toLocaleString('en-US')`, no decimals) and the revenue stat cards have a colored left border.
 
 ### Lead Scoring Algorithm
 
@@ -261,14 +328,16 @@ Leads are automatically scored (0–100) based on:
 | | Qualified | +25 |
 | | Proposal | +40 |
 | | Won | +50 |
-| **Value** | $0–$10K | +5 |
-| | $10K–$50K | +15 |
-| | $50K–$100K | +25 |
-| | $100K+ | +35 |
+| **Value** | Above $0 and below $50K | +5 |
+| | $50K to below $100K | +15 |
+| | $100K to below $500K | +25 |
+| | $500K+ | +35 |
 | **Engagement** | Has email | +5 |
 | | Has phone | +5 |
 | | Has company | +10 |
 | | Has notes | +5 |
+
+A "Lost" stage adds 0 points, and the total is capped at 100.
 
 **Score Tiers:** Cold (0–24), Warm (25–44), Hot (45–69), Critical (70–100)
 
@@ -284,13 +353,14 @@ Leads can be exported to and imported from CSV files. The CSV format includes:
 | Phone | Contact phone |
 | Value | Deal value (numeric) |
 | Stage | Pipeline stage (new, contacted, qualified, proposal, won, lost) |
-| Source | Lead source (website, referral, social media, cold call, event) |
+| Source | Lead source. Export writes the stored values: `website`, `referral`, `social`, `cold-call`, `event` |
 | Notes | Additional notes |
 
 **Import Validation:**
 
 - Invalid stages default to "new"
-- Invalid sources are cleared
+- Invalid sources are cleared. The import validator recognises `website`, `referral`, `social media`, `cold call`, and `event`, so the stored values `social` and `cold-call` written by export are cleared on re-import
+- The backend accepts only `website`, `referral`, `social`, `cold-call`, and `event`, so rows whose source is `social media` or `cold call` are rejected by the API and counted as skipped
 - Rows without a name are skipped
 - Dashboard stats are updated after import
 
@@ -300,27 +370,27 @@ The dashboard displays a "Recommended Actions" card that analyzes active leads a
 
 1. **Filters** — Only active leads (excludes "won" and "lost" stages) are considered
 2. **Scores** — Each lead is scored using the existing lead scoring algorithm (0–100)
-3. **Detects Staleness** — Leads without activity for 14+ days are marked urgent; 7–13 days are high priority
-4. **Generates Suggestions** — Context-aware suggestions based on lead stage:
-   - `new` → "Initial outreach recommended"
-   - `contacted` → "Follow up to advance the conversation"
-   - `qualified` → "Prepare proposal or presentation"
-   - `proposal` → "Close the deal — negotiate and finalize"
-5. **Ranks** — Results are sorted by score (highest first), with stale leads boosted
+3. **Detects Staleness** — Days since last contact are measured from the lead's creation date (activities carry no lead reference, so no activity date is available per lead). Leads at 7 or more days are treated as stale
+4. **Generates Suggestions** — Stale leads get "Follow up — last contacted N days ago". Otherwise the suggestion depends on lead stage:
+   - `new` → "Schedule initial outreach"
+   - `contacted` → "Move to qualification stage"
+   - `qualified` → "Prepare proposal"
+   - `proposal` → "Follow up on proposal"
+5. **Ranks** — Results are sorted by a priority value: 40% of the lead score, plus a recency component (30 points at day 0, falling to 0 at day 14), plus a value component (up to 30 points, reached at $500K), plus 15 points for stale leads
 6. **Limits** — Maximum 3 recommendations displayed
 
-**Urgency Tiers:**
+**Urgency Classes:**
 
-| Days Since Creation | Urgency Class | Border Color |
-|---------------------|---------------|--------------|
-| 14+ days | `recommendation-urgent` | Red (danger) |
-| 7–13 days | `recommendation-high` | Orange (warning) |
-| < 7 days | `recommendation-normal` | Blue (accent) |
+| Condition | Urgency Class | Border Color |
+|-----------|---------------|--------------|
+| 7+ days since last contact, or stage `proposal` | `recommendation-urgent` | `--danger` (red) |
+| Stage `qualified` (under 7 days) | `recommendation-high` | `--warning` (amber) |
+| Stage `new` or `contacted` (under 7 days) | `recommendation-normal` | `--accent` (indigo) |
 
 **Files Modified:**
 
 - `app/index.html` — Recommended Actions card HTML
-- `app/js/app.js` — `renderRecommendedActions()` method, called from `renderDashboard()`
+- `app/js/app.js` — `getLeadRecommendations()` and `renderRecommendedActions()` methods, called from `renderDashboard()`
 - `app/css/styles.css` — Recommendation card and item styles
 - `docs/testing/test-ai-recommendations.js` — 9-test Playwright suite
 
@@ -343,7 +413,7 @@ Full keyboard navigation for power users. A keyboard icon button in the header o
 | `C` | Toggle Calendar view (Activities page) |
 | `Escape` | Close modals |
 
-Shortcuts are disabled while typing in input fields (except `/`, `?`, `Escape`).
+Shortcuts are disabled while typing in input fields (except `Escape`). The number keys cover only the five pages listed; Analytics, Win/Loss, Sales Goals, Companies, and Settings have no number shortcut. `K` and `C` are consumed on every page but only act on the Leads and Activities pages respectively.
 
 **Files Modified:**
 
@@ -355,6 +425,8 @@ Shortcuts are disabled while typing in input fields (except `/`, `?`, `Escape`).
 ### Data Backup and Restore
 
 The frontend provides CSV import/export for Contacts and Leads as a client-side convenience feature. This is **not** a full application backup — it only exports the currently visible domain data and does not include audit logs, settings, or relational integrity. Full data backup and recovery should be handled at the PostgreSQL level (e.g. `pg_dump`).
+
+The Settings page separately offers **Export Settings**, **Import Settings**, and **Reset Settings**. These act on the application Settings record only (a JSON file download and upload through `/api/settings`); contacts, leads, activities, and templates are not included. The backend merges an updated settings payload into the stored record rather than replacing it.
 
 ### Activity Due Date Tracking
 
@@ -370,7 +442,7 @@ Activities support optional due dates with overdue detection, visual indicators,
 - **Dashboard Stat** — "Overdue Activities" stat card on the dashboard
 - **Status Filter** — Dropdown with options: All, Overdue, Completed, Active
 - **Mark Complete** — ✅ button on each activity card; completed activities get strikethrough text and reduced opacity
-- **Status Field** — Activities use `status` field ("active" or "completed") for unified completion tracking
+- **Status Field** — Activities use the `status` field (`pending` or `completed`) for completion tracking; the "Active" filter option shows every activity that is not completed
 
 **Overdue Calculation:**
 An activity is overdue when: `dueDate` is set AND `dueDate < today` AND `status !== "completed"`
@@ -379,7 +451,7 @@ An activity is overdue when: `dueDate` is set AND `dueDate < today` AND `status 
 
 - `app/index.html` — Due date input in activity form, status filter dropdown, overdue badge on nav, overdue stat on dashboard
 - `app/js/app.js` — `getOverdueCount()`, `markActivityComplete()`, `updateOverdueBadge()`, `renderActivities()` (sorting, filtering, overdue styling)
-- `app/css/styles.css` — `.activity-card.overdue`, `.due-date-overdue`, `.due-date-future`, `.nav-badge`, completed activity styles
+- `app/css/styles.css` — `.timeline-item.activity-overdue`, `.activity-due-date.due-overdue`, `.nav-badge`, `.timeline-item.activity-completed` styles
 - `docs/testing/test-activity-due-date-tracking.js` — 15-test Playwright suite
 
 ### Contact Activity Quick-Add FAB
@@ -392,7 +464,7 @@ A floating action button (FAB) provides instant access to activity creation from
 - **Activity Type Chips** — Expandable menu with 5 pre-configured activity types: Call, Email, Meeting, Note, Task
 - **One-Tap Creation** — Click any chip to open the activity modal with that type pre-selected
 - **Keyboard Shortcut** — Press `Q` to toggle FAB expansion
-- **Auto-Collapse** — FAB collapses when clicking outside or pressing `Escape`
+- **Auto-Collapse** — FAB collapses when clicking outside it or after a type chip is chosen (`Escape` closes modals but does not collapse the FAB)
 - **Visual Feedback** — Button rotates from "+" to "×" when expanded, with smooth CSS transitions
 - **Dark Theme Support** — FAB adapts to dark/light theme automatically
 
@@ -418,10 +490,10 @@ Multi-select contacts for batch operations, enabling efficient management of lar
 **Features:**
 
 - **Multi-Select Checkboxes** — Each contact card displays a checkbox; select individual contacts or use "Select All"
-- **Bulk Action Bar** — Floating action bar appears when contacts are selected, showing selection count
+- **Bulk Action Bar** — An action bar appears above the contact list when contacts are selected, showing selection count
 - **Bulk Delete** — Delete all selected contacts in a single operation with confirmation dialog
 - **Bulk Status Update** — Change status of all selected contacts to Active, Inactive, or VIP
-- **Bulk Tag Assignment** — Assign existing tags to all selected contacts simultaneously
+- **Bulk Tag Assignment** — Add an existing tag to each selected contact (see the known defect under Implementation)
 - **Select All / Select None** — Quick toggles in the bulk action bar
 - **Visual Feedback** — Selected contacts are highlighted; action bar shows real-time count
 
@@ -429,16 +501,18 @@ Multi-select contacts for batch operations, enabling efficient management of lar
 
 - Bulk operation checkboxes added to contact cards in `app/index.html`
 - `bindBulkOperations()` method in `app/js/app.js` manages selection state, event delegation, and bulk action bar visibility
-- `updateBulkActionBar()` updates the floating action bar with selection count and action buttons
-- Backend bulk endpoints: `DELETE /api/contacts/bulk`, `PATCH /api/contacts/bulk/status`, `PATCH /api/contacts/bulk/tags`
-- Bulk operations are atomic — all succeed or all fail with rollback
+- `updateBulkActionBar()` updates the action bar with selection count and action buttons
+- Backend bulk endpoints: `POST /api/contacts/bulk-delete` and `POST /api/contacts/bulk-update-status` (admin role required). Each runs in a single database transaction together with its audit record
+- There is no bulk tag endpoint. `applyBulkTags()` updates contacts one at a time through `PUT /api/tags/contacts/{contact_id}/tags`, so bulk tag assignment is not atomic
+- Known defect: `applyBulkTags()` calls `ContactsDataSource.getContactTags()`, which is not defined in `app/js/contacts-data-source.js`, so the per-contact update fails and no tags are assigned
 
 **Files Modified:**
 
 - `app/index.html` — Bulk action bar HTML, contact card checkboxes
 - `app/js/app.js` — `bindBulkOperations()`, `updateBulkActionBar()`, bulk action handlers
 - `app/css/styles.css` — `.bulk-action-bar`, `.contact-checkbox`, selection highlight styles
-- `backend/app/api/contacts.py` — Bulk delete, status update, and tag assignment endpoints
+- `backend/app/api/contacts.py` — Bulk delete and bulk status update endpoints
+- `backend/app/api/tags.py` — Per-contact tag assignment endpoint
 
 ### Quick Activity Logging from Contact Cards
 
@@ -454,7 +528,7 @@ One-click activity logging buttons directly on contact cards enable rapid activi
 **Implementation:**
 
 - Quick action buttons rendered as part of the contact card template in `app/js/app.js`
-- Inline `onclick` handlers call `showActivityModal()` with pre-filled type and contact name
+- The buttons carry `data-action="quick-log-activity"`; the delegated click handler in `_bindDataActionDelegation()` calls `quickLogActivity()`, which opens `showActivityModal()` with pre-filled type and contact name
 - CSS styles for `.card-quick-actions` provide button row layout, hover states, and dark theme support
 
 **Files Modified:**
@@ -508,7 +582,7 @@ Monthly calendar view for visualizing and managing activities, providing an alte
 - **Overdue Indicators** — Overdue activities shown with red border and bold text for visibility
 - **Completed Styling** — Completed activities displayed with reduced opacity and strikethrough text
 - **Drag-and-Drop** — HTML5 drag-and-drop to move activities between days; drop target highlighted with dashed border
-- **Click-to-Add** — Click any empty day cell to open the activity modal with the date pre-filled
+- **Double-Click-to-Add** — Double-click a day cell (outside an existing event) to open the activity modal with the date pre-filled
 - **Filter Support** — Type and status filters apply to calendar view, updating displayed activities in real-time
 - **Responsive Design** — Calendar adapts to screen size; on small screens, events are hidden and dots indicate activity presence
 - **Dark Theme Support** — Calendar colors and backgrounds adapt to dark/light theme automatically
@@ -518,7 +592,7 @@ Monthly calendar view for visualizing and managing activities, providing an alte
 - Calendar HTML structure in `app/index.html` with header controls and grid container
 - `toggleCalendarView()`, `renderCalendar()`, `_navigateCalendar()`, `_goToToday()` methods in `app/js/app.js`
 - `_renderActivitiesView()` helper renders either timeline or calendar based on `_calendarViewActive` state
-- `bindCalendarDragDrop()` handles HTML5 drag-and-drop for moving activities between days
+- `_bindCalendarDrops()` handles HTML5 drag-and-drop for moving activities between days, and `_bindCalendarDayClicks()` handles double-click-to-add
 - Calendar grid generated dynamically with proper day alignment, today highlighting, and event rendering
 - CSS styles for `.activities-calendar`, `.calendar-grid`, `.calendar-day`, `.calendar-event`, and responsive breakpoints
 - Keyboard shortcut `C` integrated into `bindKeyboardShortcuts()` method
@@ -543,14 +617,27 @@ Monthly calendar view for visualizing and managing activities, providing an alte
 - [x] Email templates (CRUD, categories, variables)
 - [x] AI-Powered Lead Recommendations (dashboard card, scoring, urgency)
 - [x] Keyboard Shortcuts (full keyboard navigation)
-- [x] Data Backup and Restore (metadata, merge/replace modes, timestamp tracking)
+- [x] Settings Backup and Restore (JSON export and import of Settings only, last export timestamp)
 - [x] Activity Due Date Tracking (overdue indicators, status filtering, badge, dashboard stat, completion tracking)
 - [x] Contact Activity Quick-Add FAB (floating action button, pre-filled type chips, keyboard shortcut Q)
 - [x] Contact tags (color-coded tags, manage tags modal, contact assignment, backend persistence)
-- [x] Bulk contact operations (multi-select, bulk delete, bulk status update, bulk tag assignment)
+- [x] Bulk contact operations (multi-select, bulk delete, bulk status update; bulk tag assignment has a known defect, see above)
 - [x] Quick Activity Logging from Contact Cards (one-click call/email/meeting/note buttons on cards)
 - [x] Activity Reminders and Notifications (browser notifications, in-app toasts, configurable reminder time/advance notice, settings persistence)
-- [ ] Calendar integration
+- [x] vCard import
+- [x] Dashboard recent items (recent contacts and leads)
+- [x] Sales pipeline Kanban board (drag-and-drop stage changes)
+- [x] Dashboard PDF report export (browser print)
+- [x] Activity trend charts
+- [x] Activity calendar view (monthly)
+- [x] Duplicate contact detection and merge
+- [x] Analytics page (conversion funnel)
+- [x] Win/Loss reasons (deal outcomes)
+- [x] Sales goals
+- [x] Companies
+- [x] Contact detail pane and contact email (suppression send gate)
+- [x] Hash routing
+- [ ] Calendar integration (weekly view, conflict detection, iCalendar export)
 
 ## Documentation
 
@@ -559,3 +646,11 @@ Monthly calendar view for visualizing and managing activities, providing an alte
 - [Future Enhancements](roadmap/future-enhancements.md)
 - [Known Issues](operations/known-issues.md)
 - [Session Tracking](operations/session_tracking.md)
+- [Operations Runbook](operations/runbook.md)
+- [Release Process](operations/release-process.md)
+- [Support and Maintenance Model](operations/support-maintenance-model.md)
+- [Application Documentation](applications/aicrm/index.md)
+- [Enterprise Architecture Documentation](enterprise/index.md)
+- [Design System](design/design-system.md)
+- [Branch Protection for the Contract Gate](branch-protection.md)
+- [Repository README](../README.md) and [Backend README](../backend/README.md)

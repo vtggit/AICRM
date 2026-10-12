@@ -101,6 +101,7 @@ Both are shown on the Settings screen.
 ## Proof of a screen
 
 Each screen's browser proof checks:
+
 - the screen's own behaviour;
 - that the page does not scroll at 1440×900;
 - that there is no sideways scroll at 390×844;
