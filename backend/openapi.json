@@ -2290,6 +2290,54 @@
       }
     },
     "/api/settings": {
+      "delete": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Reset Settings",
+        "description": "Reset application settings to an empty payload. Requires admin role.\n\nThe stored record is updated in place (never deleted); when the stored\npayload was not already empty a \"reset\" audit event is written naming\nthe removed keys without their values.",
+        "operationId": "reset_settings_api_settings_delete",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "tags": [
           "settings"

@@ -1,4 +1,4 @@
-"""Settings API routes — get and update the single application settings record."""
+"""Settings API routes — get, update and reset the single application settings record."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -17,6 +17,23 @@ _repository = SettingsPostgresRepository()
 _audit_repository = AuditPostgresRepository()
 _audit_service = AuditService(_audit_repository)
 _service = SettingsService(_repository, _audit_service)
+
+
+@router.delete("", response_model=SettingsResponse)
+def reset_settings(
+    user: AuthUser = Depends(require_role(ROLE_ADMIN)),
+):
+    """Reset application settings to an empty payload. Requires admin role.
+
+    The stored record is updated in place (never deleted); when the stored
+    payload was not already empty a "reset" audit event is written naming
+    the removed keys without their values.
+    """
+    try:
+        settings = _service.reset_settings(user)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return settings
 
 
 @router.get("", response_model=SettingsResponse)
