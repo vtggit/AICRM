@@ -19,6 +19,11 @@ const App = {
     async init() {
         this._selectedContactIds = new Set();
         this._currentContactIds = [];
+        // Monotonic token for detail-pane renders (issue #315): each new
+        // detail load invalidates the ones still in flight, so an earlier
+        // load (e.g. a slow send-gate response) writes nothing once a newer
+        // selection has started — last selection wins.
+        this._contactDetailToken = 0;
         this.bindNavigation();
         this._bindDataActionDelegation();
         this.bindThemeToggle();
@@ -807,7 +812,7 @@ const App = {
                 <span class="recent-item-icon">🎯</span>
                 <div class="recent-item-details">
                     <div class="recent-item-name">${this.escapeHtml(l.name)}</div>
-                    <div class="recent-item-meta">${l.company ? this.escapeHtml(l.company) : 'No company'} · <span class="badge badge-${l.stage}">${l.stage}</span></div>
+                    <div class="recent-item-meta">${l.company ? this.escapeHtml(l.company) : 'No company'} · <span class="badge badge-${this.escapeAttr(l.stage)}">${this.escapeHtml(l.stage)}</span></div>
                 </div>
                 <span class="recent-item-time">${this.getRelativeTime(l.createdAt)}</span>
             </div>
@@ -1062,17 +1067,24 @@ const App = {
         const container = document.getElementById('contacts-list');
         if (contacts.length === 0) {
             container.innerHTML = '<div class="empty-state-card"><p>No contacts found.</p></div>';
-            this._contactDetailId = null;
-            this._renderContactPaneEmpty();
+            // While the email form is open (issue #315) the form — with the
+            // text typed into it — stays in the pane.
+            if (!this._contactEmailFormOpen()) {
+                this._contactDetailId = null;
+                this._renderContactPaneEmpty();
+            }
             this.updateBulkActionBar();
             return;
         }
 
         // Detail-pane selection (issue #313): keep the current selection if
         // it survived filtering/sorting/search, otherwise the first contact
-        // is selected.
+        // is selected. While the email form is open (issue #315) the
+        // selection is kept even when that contact is filtered out of the
+        // list, so the form's owner stays the pane's contact.
         let detailId = this._contactDetailId;
-        if (!detailId || !contacts.some(c => c.id === detailId)) {
+        const keepFormSelection = this._contactEmailFormOpen() && !!detailId;
+        if (!detailId || (!keepFormSelection && !contacts.some(c => c.id === detailId))) {
             detailId = contacts[0].id;
         }
         this._contactDetailId = detailId;
@@ -1145,8 +1157,12 @@ const App = {
 
         this.updateBulkActionBar();
         // The detail pane shows the selected contact — the content "view
-        // contact" used to show in the modal, rendered in place.
-        await this.showContactDetail(detailContact);
+        // contact" used to show in the modal, rendered in place. While the
+        // email form is open (issue #315) a list re-render leaves the form
+        // — and the text typed into its fields — untouched in the pane.
+        if (!this._contactEmailFormOpen()) {
+            await this.showContactDetail(detailContact);
+        }
     },
 
     _highlightSelectedCard(checkbox, contactId) {
@@ -1483,6 +1499,24 @@ const App = {
     },
 
     /**
+     * True while the freeform email form occupies the detail pane
+     * (issue #315).
+     */
+    _contactEmailFormOpen() {
+        const pane = document.getElementById('contact-detail-pane');
+        return !!(pane && pane.querySelector('#contact-email-form'));
+    },
+
+    /**
+     * True while the detail render that started with `token` may still
+     * write the pane: no newer render has started and the contact is still
+     * the selected one (issue #315).
+     */
+    _contactDetailWriteAllowed(contact, token) {
+        return token === this._contactDetailToken && contact.id === this._contactDetailId;
+    },
+
+    /**
      * Centred empty state for the detail pane (no contacts, or no
      * selectable contact).
      */
@@ -1508,6 +1542,12 @@ const App = {
         const pane = document.getElementById('contact-detail-pane');
         if (!pane) return;
 
+        // Starting this render invalidates every earlier one (issue #315):
+        // a load still in flight for a contact that has since been replaced
+        // must write nothing when it finishes, so the pane heading and the
+        // aria-current="true" row always name the same contact.
+        const token = ++this._contactDetailToken;
+
         let activities = [];
         try {
             const allActivities = await ActivitiesDataSource.getActivities();
@@ -1521,6 +1561,10 @@ const App = {
         const emailGate = contactEmail
             ? await this._emailSendGateFor(contactEmail)
             : { enabled: false, reason: 'No email address on file for this contact.' };
+
+        // The selection moved on while the activities or the send-gate were
+        // in flight — this load is stale and writes nothing (issue #315).
+        if (!this._contactDetailWriteAllowed(contact, token)) return;
 
         const timelineHtml = this._renderTimelineView(activities);
 
@@ -1617,6 +1661,9 @@ const App = {
             return;
         }
         const gate = await this._emailSendGateFor(email);
+        // The selection moved on while the send-gate was in flight — the
+        // form must not clobber the newer pane state (issue #315).
+        if (this._contactDetailId !== contact.id) return;
         if (!gate.enabled) {
             this._renderContactEmailBlocked(contact, gate.reason);
             return;
