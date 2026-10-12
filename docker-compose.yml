@@ -52,6 +52,11 @@ services:
       - ALL
     tmpfs:
       - /tmp
+    # Mount the repo VERSION file read-only: with APP_VERSION unset the
+    # backend reports the repo version (config.py runs from
+    # /app/app/config.py and resolves ../../VERSION to /VERSION).
+    volumes:
+      - ./VERSION:/VERSION:ro
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT_HOST:-9000}:9000"
