@@ -2871,23 +2871,15 @@ const App = {
             const score = this.calculateLeadScore(l);
             const tier = this.getScoreTier(score);
             return `
-            <div class="lead-card">
-                <div class="card-header">
-                    <h4>${this.escapeHtml(l.name)}</h4>
-                    <div class="card-actions">
-                        <button class="card-action-btn" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Edit">✏️</button>
-                        <button class="card-action-btn" data-action="delete-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Delete">🗑️</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    ${l.company ? `<p>🏢 ${this.escapeHtml(l.company)}</p>` : ''}
-                    ${l.email ? `<p>📧 ${this.escapeHtml(l.email)}</p>` : ''}
-                    ${l.value ? `<p class="lead-value">$${Number(l.value).toLocaleString()}</p>` : ''}
-                </div>
-                <div class="card-meta">
-                    <span class="badge badge-${l.stage}">${l.stage}</span>
-                    <span class="score-badge ${tier.class}" title="Score: ${score}/100">${score} ${tier.label}</span>
-                    <small class="text-secondary">${this.formatDate(l.createdAt)}</small>
+            <div class="lead-card" data-lead-id="${this.escapeAttr(l.id)}">
+                <h4 class="lead-row-name">${this.escapeHtml(l.name)}</h4>
+                ${l.company ? `<p class="lead-row-company">${this.escapeHtml(l.company)}</p>` : ''}
+                ${l.value ? `<span class="lead-row-value">$${Number(l.value).toLocaleString()}</span>` : ''}
+                <span class="badge badge-${this.escapeAttr(l.stage)}">${this.escapeHtml(l.stage)}</span>
+                <span class="score-badge ${tier.class}" title="Score: ${score}/100">${score} ${tier.label}</span>
+                <div class="card-actions">
+                    <button class="card-action-btn" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Edit">Edit</button>
+                    <button class="card-action-btn" data-action="delete-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Delete">Delete</button>
                 </div>
             </div>
         `;}).join('');
@@ -2908,14 +2900,14 @@ const App = {
         if (this._isKanbanView) {
             grid.style.display = 'none';
             board.style.display = 'flex';
-            btn.textContent = '📋 Grid';
-            btn.title = 'Toggle Grid View (K)';
+            btn.textContent = 'List';
+            btn.title = 'Toggle List View (K)';
             this.renderKanbanBoard();
         } else {
             grid.style.display = '';
             board.style.display = 'none';
-            btn.textContent = '📊 Kanban';
-            btn.title = 'Toggle Kanban Board View (K)';
+            btn.textContent = 'Board';
+            btn.title = 'Toggle Board View (K)';
         }
     },
 
@@ -2955,7 +2947,9 @@ const App = {
             column.querySelector('.kanban-count').textContent = stageLeads.length;
             column.querySelector('.kanban-value').textContent = totalValue > 0 ? `$${totalValue.toLocaleString()}` : '$0';
 
-            container.innerHTML = stageLeads.map(l => this._renderKanbanCard(l)).join('');
+            container.innerHTML = stageLeads.length
+                ? stageLeads.map(l => this._renderKanbanCard(l)).join('')
+                : '<p class="kanban-empty-note">No leads</p>';
         }
 
         this._bindKanbanDragDrop();
@@ -2981,8 +2975,8 @@ const App = {
                     <span class="kanban-card-age ${ageClass}">${daysInStage}d</span>
                     <select class="kanban-card-stage-select" data-lead-id="${this.escapeAttr(l.id)}" title="Change stage">${stageOptions}</select>
                     <div class="kanban-card-actions">
-                        <button class="kanban-card-action" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Edit">✏️</button>
-                        <button class="kanban-card-action" data-action="delete-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Delete">🗑️</button>
+                        <button class="kanban-card-action" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Edit">Edit</button>
+                        <button class="kanban-card-action" data-action="delete-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Delete">Delete</button>
                     </div>
                 </div>
             </div>
