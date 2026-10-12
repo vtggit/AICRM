@@ -1054,13 +1054,29 @@ const App = {
 
         // Store current contact IDs for bulk operations
         this._currentContactIds = contacts.map(c => c.id);
+        // The rendered rows (filtered + sorted). The detail pane and row
+        // selection read from this so neither triggers an extra /contacts
+        // fetch.
+        this._renderedContacts = contacts;
 
         const container = document.getElementById('contacts-list');
         if (contacts.length === 0) {
             container.innerHTML = '<div class="empty-state-card"><p>No contacts found.</p></div>';
+            this._contactDetailId = null;
+            this._renderContactPaneEmpty();
             this.updateBulkActionBar();
             return;
         }
+
+        // Detail-pane selection (issue #313): keep the current selection if
+        // it survived filtering/sorting/search, otherwise the first contact
+        // is selected.
+        let detailId = this._contactDetailId;
+        if (!detailId || !contacts.some(c => c.id === detailId)) {
+            detailId = contacts[0].id;
+        }
+        this._contactDetailId = detailId;
+        const detailContact = contacts.find(c => c.id === detailId);
 
         const isAdmin = Auth.isAdmin();
         container.innerHTML = contacts.map(c => {
@@ -1071,7 +1087,7 @@ const App = {
                 `<span class="contact-tag-badge" style="background-color:${this.safeTagColor(t.color)}" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>`
             ).join('');
             return `
-            <div class="contact-card${isDuplicate ? ' contact-card-duplicate' : ''}${isSelected ? ' contact-card-selected' : ''}" data-contact-id="${this.escapeAttr(c.id)}">
+            <div class="contact-card${isDuplicate ? ' contact-card-duplicate' : ''}${isSelected ? ' contact-card-selected' : ''}" data-contact-id="${this.escapeAttr(c.id)}"${c.id === detailId ? ' aria-current="true"' : ''}>
                 <div class="card-header">
                     <div class="card-header-left">
                         <input type="checkbox" class="contact-checkbox" data-contact-id="${this.escapeAttr(c.id)}" ${isSelected ? 'checked' : ''} title="Select for bulk operations">
@@ -1118,7 +1134,19 @@ const App = {
             });
         });
 
+        // A row click (outside the row's own controls) selects the contact:
+        // its detail shows in the detail pane, without opening a modal.
+        container.querySelectorAll('.contact-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('input, button, a, select, textarea, label')) return;
+                this.viewContact(card.dataset.contactId);
+            });
+        });
+
         this.updateBulkActionBar();
+        // The detail pane shows the selected contact — the content "view
+        // contact" used to show in the modal, rendered in place.
+        await this.showContactDetail(detailContact);
     },
 
     _highlightSelectedCard(checkbox, contactId) {
@@ -1398,22 +1426,88 @@ const App = {
 
     /**
      * View contact detail with activity timeline.
-     * Opens a modal showing contact info and all related activities.
+     *
+     * The detail renders in the Contacts split view's detail pane
+     * (#contact-detail-pane), never in a modal (issue #313). When called
+     * from another page (e.g. a dashboard recent item) it opens the
+     * Contacts route first and lands on this contact's detail.
      */
     async viewContact(contactId) {
-        const contacts = await ContactsDataSource.getContacts();
-        const contact = contacts.find(c => c.id === contactId);
+        let contact = null;
+        if (this.currentPage === 'contacts' && Array.isArray(this._renderedContacts)) {
+            contact = this._renderedContacts.find(c => c.id === contactId) || null;
+        }
+        if (!contact) {
+            try {
+                const contacts = await ContactsDataSource.getContacts();
+                contact = contacts.find(c => c.id === contactId) || null;
+            } catch (err) {
+                console.error('Failed to load contacts:', err);
+            }
+        }
         if (!contact) {
             this.showNotification('Contact not found.', 'error');
             return;
         }
+        if (this.currentPage !== 'contacts') {
+            this._contactDetailId = contact.id;
+            this.navigate('contacts');
+            return;
+        }
+        this._selectContactInPane(contact);
+    },
+
+    /**
+     * Select a contact in the already-rendered list: mark its row
+     * (aria-current + tint) and render its detail into the detail pane.
+     */
+    _selectContactInPane(contact) {
+        this._contactDetailId = contact.id;
+        this._updateContactRowSelection();
         this.showContactDetail(contact);
     },
 
     /**
-     * Show contact detail modal with activity history timeline.
+     * Move the aria-current="true" marker across the rendered rows.
+     */
+    _updateContactRowSelection() {
+        const container = document.getElementById('contacts-list');
+        if (!container) return;
+        container.querySelectorAll('.contact-card[data-contact-id]').forEach(card => {
+            if (card.dataset.contactId === this._contactDetailId) {
+                card.setAttribute('aria-current', 'true');
+            } else {
+                card.removeAttribute('aria-current');
+            }
+        });
+    },
+
+    /**
+     * Centred empty state for the detail pane (no contacts, or no
+     * selectable contact).
+     */
+    _renderContactPaneEmpty() {
+        const pane = document.getElementById('contact-detail-pane');
+        if (!pane) return;
+        pane.innerHTML = `
+            <div class="contact-pane-empty">
+                <h3>No contact selected</h3>
+                <p>Select a contact from the list to see their details here.</p>
+            </div>
+        `;
+    },
+
+    /**
+     * Show contact detail with activity history timeline.
+     *
+     * The detail lives in the detail pane (#contact-detail-pane) of the
+     * Contacts split view (issue #313): the same content "view contact"
+     * used to show in a modal, rendered without opening the modal.
      */
     async showContactDetail(contact) {
+        const pane = document.getElementById('contact-detail-pane');
+        if (!pane) return;
+
         let activities = [];
         try {
             const allActivities = await ActivitiesDataSource.getActivities();
@@ -1428,12 +1522,9 @@ const App = {
             ? await this._emailSendGateFor(contactEmail)
             : { enabled: false, reason: 'No email address on file for this contact.' };
 
-        document.getElementById('modal-title').textContent = 'Contact Details';
-        document.getElementById('modal-container').classList.add('modal-wide');
-
         const timelineHtml = this._renderTimelineView(activities);
 
-        document.getElementById('modal-body').innerHTML = `
+        pane.innerHTML = `
             <div class="contact-detail-view">
                 <div class="contact-detail-header">
                     <div class="contact-detail-info">
@@ -1441,12 +1532,12 @@ const App = {
                         <span class="badge badge-${contact.status}">${contact.status}</span>
                     </div>
                     <div class="contact-detail-actions">
-                        <button id="contact-email-btn" class="btn btn-secondary" ${emailGate.enabled ? '' : 'disabled'} title="${this.escapeAttr(emailGate.enabled ? `Send a freeform email to ${contactEmail}` : emailGate.reason)}" data-contact-id="${this.escapeAttr(contact.id)}">📧 Email</button>
+                        <button id="contact-email-btn" class="btn btn-secondary" ${emailGate.enabled ? '' : 'disabled'} title="${this.escapeAttr(emailGate.enabled ? `Send a freeform email to ${contactEmail}` : emailGate.reason)}" data-contact-id="${this.escapeAttr(contact.id)}">Email</button>
                         <button class="btn btn-secondary" data-action="quick-add-activity" data-contact-name="${this.escapeAttr(contact.name)}">+ Add Activity</button>
-                        <button class="btn btn-secondary" data-action="edit-contact-close" data-contact-id="${this.escapeAttr(contact.id)}">✏️ Edit</button>
+                        <button class="btn btn-secondary" data-action="edit-contact-close" data-contact-id="${this.escapeAttr(contact.id)}">Edit</button>
                     </div>
                 </div>
-                ${emailGate.enabled ? '' : `<div id="contact-email-gate-reason" style="margin-top:0.5rem;font-size:0.85rem;color:#b45309;">⚠️ ${this.escapeHtml(emailGate.reason)}</div>`}
+                ${emailGate.enabled ? '' : `<div id="contact-email-gate-reason" class="contact-email-gate-reason">⚠️ ${this.escapeHtml(emailGate.reason)}</div>`}
                 <div class="contact-detail-fields">
                     ${contact.email ? `<div class="detail-field"><span class="field-label">Email</span><span class="field-value">📧 ${this.escapeHtml(contact.email)}</span></div>` : ''}
                     ${contact.phone ? `<div class="detail-field"><span class="field-label">Phone</span><span class="field-value">📱 ${this.escapeHtml(contact.phone)}</span></div>` : ''}
@@ -1466,8 +1557,6 @@ const App = {
         document.getElementById('contact-email-btn').addEventListener('click', () => {
             this.openContactEmailForm(contact.id);
         });
-
-        this.openModal();
     },
 
     /**
@@ -1507,11 +1596,16 @@ const App = {
      */
     async openContactEmailForm(contactId) {
         let contact = null;
-        try {
-            const contacts = await ContactsDataSource.getContacts();
-            contact = contacts.find(c => c.id === contactId);
-        } catch (err) {
-            console.error('Failed to load contact:', err);
+        if (this.currentPage === 'contacts' && Array.isArray(this._renderedContacts)) {
+            contact = this._renderedContacts.find(c => c.id === contactId) || null;
+        }
+        if (!contact) {
+            try {
+                const contacts = await ContactsDataSource.getContacts();
+                contact = contacts.find(c => c.id === contactId);
+            } catch (err) {
+                console.error('Failed to load contact:', err);
+            }
         }
         if (!contact) {
             this.showNotification('Contact not found.', 'error');
@@ -1531,11 +1625,13 @@ const App = {
     },
 
     /**
-     * Render the email compose form (subject + body) inside the open modal.
+     * Render the email compose form (subject + body) in the detail pane,
+     * in place of the contact detail (issue #313).
      */
     _renderContactEmailForm(contact) {
-        document.getElementById('modal-title').textContent = 'Send Email';
-        document.getElementById('modal-body').innerHTML = `
+        const pane = document.getElementById('contact-detail-pane');
+        if (!pane) return;
+        pane.innerHTML = `
             <form id="contact-email-form">
                 <div class="form-group">
                     <label for="contact-email-recipient">To</label>
@@ -1562,15 +1658,16 @@ const App = {
         document.getElementById('contact-email-cancel').addEventListener('click', () => {
             this.viewContact(contact.id);
         });
-        this.openModal();
     },
 
     /**
      * Render the "sending not allowed" panel shown when the send-gate refuses.
+     * Shown in the detail pane, in place of the contact detail.
      */
     _renderContactEmailBlocked(contact, reason) {
-        document.getElementById('modal-title').textContent = 'Send Email';
-        document.getElementById('modal-body').innerHTML = `
+        const pane = document.getElementById('contact-detail-pane');
+        if (!pane) return;
+        pane.innerHTML = `
             <div id="contact-email-status" role="status">
                 <div id="contact-email-status-message">⛔ ${this.escapeHtml(reason)}</div>
                 <div class="form-actions" style="margin-top:1rem;">
@@ -1581,7 +1678,6 @@ const App = {
         document.getElementById('contact-email-back').addEventListener('click', () => {
             this.viewContact(contact.id);
         });
-        this.openModal();
         this.showNotification(reason, 'error');
     },
 
@@ -1637,12 +1733,13 @@ const App = {
 
     /**
      * Render the post-submit status message (one distinct message per outcome)
-     * in place of the email form.
+     * in the detail pane, in place of the email form.
      */
     _renderContactEmailStatus(contact, kind, message) {
         const icons = { success: '✅', warning: '⚠️', error: '⛔' };
-        document.getElementById('modal-title').textContent = 'Send Email';
-        document.getElementById('modal-body').innerHTML = `
+        const pane = document.getElementById('contact-detail-pane');
+        if (!pane) return;
+        pane.innerHTML = `
             <div id="contact-email-status" role="status">
                 <div id="contact-email-status-message">${icons[kind] || '⛔'} ${this.escapeHtml(message)}</div>
                 <div class="form-actions" style="margin-top:1rem;">
@@ -1658,7 +1755,6 @@ const App = {
         if (tryAgainBtn) {
             tryAgainBtn.addEventListener('click', () => this.openContactEmailForm(contact.id));
         }
-        this.openModal();
         this.showNotification(message, kind === 'success' ? 'success' : 'error');
     },
 

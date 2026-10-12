@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/tokens.css?v=0.1.0">
     <link rel="stylesheet" href="css/shell.css?v=0.1.0">
     <link rel="stylesheet" href="css/overview.css?v=0.1.0">
+    <link rel="stylesheet" href="css/contacts.css?v=0.1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
@@ -255,16 +256,23 @@
                     </div>
                 </div>
 
-                <!-- Contacts Page -->
+                <!-- Contacts Page (issue #313): split pane. One toolbar bar above the
+                     panes keeps every existing control (ids, data-admin-only
+                     gating) with plain-text labels; the list pane (left)
+                     scrolls on its own, the detail pane (right,
+                     --detail-width) shows the selected contact's detail —
+                     the content "view contact" used to show in the modal —
+                     without opening it. At 900 px and below the panes
+                     stack. -->
                 <div id="page-contacts" class="page">
                     <div class="page-actions">
                         <button id="btn-add-contact" class="btn btn-primary" data-admin-only="true">+ Add Contact</button>
-                        <button id="btn-manage-tags" class="btn btn-secondary" data-admin-only="true" title="Manage contact tags">🏷️ Manage Tags</button>
+                        <button id="btn-manage-tags" class="btn btn-secondary" data-admin-only="true" title="Manage contact tags">Manage Tags</button>
                         <div class="filter-controls">
-                            <button id="btn-export-csv" class="btn btn-secondary" title="Export contacts to CSV">📥 Export CSV</button>
-                            <button id="btn-import-csv" class="btn btn-secondary" title="Import contacts from CSV" data-admin-only="true">📤 Import CSV</button>
-                            <button id="btn-import-vcard" class="btn btn-secondary" title="Import contacts from vCard (VCF)" data-admin-only="true">📇 Import vCard</button>
-                            <button id="btn-find-duplicates" class="btn btn-secondary" title="Find duplicate contacts">🔍 Find Duplicates</button>
+                            <button id="btn-export-csv" class="btn btn-secondary" title="Export contacts to CSV">Export CSV</button>
+                            <button id="btn-import-csv" class="btn btn-secondary" title="Import contacts from CSV" data-admin-only="true">Import CSV</button>
+                            <button id="btn-import-vcard" class="btn btn-secondary" title="Import contacts from vCard (VCF)" data-admin-only="true">Import vCard</button>
+                            <button id="btn-find-duplicates" class="btn btn-secondary" title="Find duplicate contacts">Find Duplicates</button>
                             <select id="contact-filter-status" class="filter-select">
                                 <option value="">All Statuses</option>
                                 <option value="active">Active</option>
@@ -280,31 +288,41 @@
                     </div>
                     <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
                     <input type="file" id="vcard-file-input" accept=".vcf,.vcard" style="display: none;">
-                    <div id="contacts-list" class="contacts-grid">
-                        <div class="empty-state-card">
-                            <p>No contacts yet. Click "Add Contact" to get started.</p>
+                    <div id="contacts-split">
+                        <div class="contacts-list-pane">
+                            <!-- Bulk Action Bar: above the list while rows are selected -->
+                            <div id="bulk-action-bar" class="bulk-action-bar hidden">
+                                <div class="bulk-selection-info">
+                                    <span id="bulk-selection-count">0</span> contact(s) selected
+                                    <button id="btn-select-all" class="btn btn-link">Select All</button>
+                                    <button id="btn-select-none" class="btn btn-link">Select None</button>
+                                </div>
+                                <div class="bulk-actions">
+                                    <select id="bulk-status-change" class="filter-select">
+                                        <option value="">Change Status...</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                        <option value="vip">VIP</option>
+                                    </select>
+                                    <button id="btn-bulk-status" class="btn btn-warning" disabled>Apply Status</button>
+                                    <select id="bulk-tag-select" class="filter-select">
+                                        <option value="">Add Tag...</option>
+                                    </select>
+                                    <button id="btn-bulk-tag" class="btn btn-info" disabled>Add Tag</button>
+                                    <button id="btn-bulk-delete" class="btn btn-danger">Delete Selected</button>
+                                </div>
+                            </div>
+                            <div id="contacts-list" class="contacts-grid">
+                                <div class="empty-state-card">
+                                    <p>No contacts yet. Click "Add Contact" to get started.</p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <!-- Bulk Action Bar -->
-                    <div id="bulk-action-bar" class="bulk-action-bar hidden">
-                        <div class="bulk-selection-info">
-                            <span id="bulk-selection-count">0</span> contact(s) selected
-                            <button id="btn-select-all" class="btn btn-link">Select All</button>
-                            <button id="btn-select-none" class="btn btn-link">Select None</button>
-                        </div>
-                        <div class="bulk-actions">
-                            <select id="bulk-status-change" class="filter-select">
-                                <option value="">Change Status...</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="vip">VIP</option>
-                            </select>
-                            <button id="btn-bulk-status" class="btn btn-warning" disabled>Apply Status</button>
-                            <select id="bulk-tag-select" class="filter-select">
-                                <option value="">Add Tag...</option>
-                            </select>
-                            <button id="btn-bulk-tag" class="btn btn-info" disabled>🏷️ Add Tag</button>
-                            <button id="btn-bulk-delete" class="btn btn-danger">🗑️ Delete Selected</button>
+                        <div id="contact-detail-pane" class="contact-detail-pane">
+                            <div class="contact-pane-empty">
+                                <h3>No contact selected</h3>
+                                <p>Select a contact from the list to see their details here.</p>
+                            </div>
                         </div>
                     </div>
                 </div>

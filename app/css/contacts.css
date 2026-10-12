@@ -1,0 +1,375 @@
+/* ============================================================================
+   AICRM — Contacts split pane (issue #313)
+   ----------------------------------------------------------------------------
+   The Contacts page (#page-contacts) is the family Work-queue pattern from
+   docs/design/design-system.md:
+
+     • List pane (left): #contacts-list holds one compact row per contact —
+       each row keeps its class (contact-card) and data-contact-id and shows
+       the name, company, status and the tag badges. The pane scrolls on its
+       own; the selected row is tinted with a 3 px accent bar and carries
+       aria-current="true".
+     • Detail pane (right, --detail-width): #contact-detail-pane shows the
+       selected contact's detail — the content "view contact" used to show
+       in the modal — without opening the modal. The Email form
+       (#contact-email-form) renders here as well. With no contacts the pane
+       shows a centred empty state.
+     • Toolbar: one bar above the panes holds the existing controls, with
+       their ids and their data-admin-only gating, and plain-text labels.
+       The bulk action bar (#bulk-action-bar) shows above the list while
+       rows are selected.
+     • Desktop (>= 901 px): fixed height — neither the document nor the
+       content region scrolls; only the list pane and, when needed, the
+       detail pane scroll. At 900 px and below the panes stack and nothing
+       scrolls sideways.
+
+   Colours, radii and spacing come from css/tokens.css only — no raw colour
+   values in this file.
+   ========================================================================== */
+
+/* The inactive Dashboard must stay hidden: overview.css's #page-dashboard
+   id rule (display: grid; height: 100%) would otherwise paint the dashboard
+   grid onto every other page and make the content region scroll. The
+   printing-report flow forces #page-dashboard with !important, so the PDF
+   report is unaffected. */
+#page-dashboard:not(.active) {
+    display: none;
+}
+
+/* ── Compact list rows (both breakpoints) ──────────────────────────────── */
+#page-contacts #contacts-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+}
+
+#page-contacts #contacts-list .contact-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-height: var(--size-list-row);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    cursor: pointer;
+}
+
+#page-contacts #contacts-list .contact-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border-soft));
+}
+
+/* Selected row: tinted, with the family's 3 px accent bar. */
+#page-contacts #contacts-list .contact-card[aria-current="true"] {
+    background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border-soft));
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+/* Row internals, compact. */
+#page-contacts #contacts-list .card-header {
+    margin-bottom: 0;
+    align-items: center;
+}
+
+#page-contacts #contacts-list .card-header-left {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: var(--space-2);
+}
+
+#page-contacts #contacts-list .card-header h4 {
+    margin: 0;
+    min-width: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-contacts #contacts-list .card-quick-actions {
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    padding: 0;
+    border-top: 0;
+    background: none;
+}
+
+#page-contacts #contacts-list .quick-activity-btn {
+    flex: 0 0 auto;
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.75rem;
+    border-radius: var(--radius-control);
+}
+
+#page-contacts #contacts-list .quick-activity-btn:hover {
+    transform: none;
+    box-shadow: none;
+    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-surface));
+    color: var(--color-accent);
+}
+
+#page-contacts #contacts-list .card-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    min-width: 0;
+}
+
+#page-contacts #contacts-list .card-body p {
+    margin: 0;
+    min-width: 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-contacts #contacts-list .contact-tags-row {
+    width: 100%;
+    margin-top: 0;
+}
+
+#page-contacts #contacts-list .card-meta {
+    gap: var(--space-2);
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+#page-contacts #contacts-list .card-meta .badge {
+    font-size: 0.6875rem;
+}
+
+/* ── Toolbar: one bar above the panes, token chrome ────────────────────── */
+#page-contacts .page-actions {
+    margin-bottom: 0;
+}
+
+#page-contacts .page-actions .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+#page-contacts .page-actions .btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-contacts .page-actions .btn-primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 90%, var(--color-ink));
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-contacts .page-actions .btn-secondary:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+#page-contacts .filter-select {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+}
+
+/* ── Bulk action bar: above the list while rows are selected ───────────── */
+#page-contacts #bulk-action-bar {
+    position: static;
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    gap: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+    border: 1px solid var(--color-border-soft);
+    border-left: 3px solid var(--color-accent);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    animation: none;
+}
+
+#page-contacts #bulk-action-bar .bulk-selection-info {
+    gap: var(--space-2);
+    font-size: 0.8125rem;
+}
+
+#page-contacts #bulk-action-bar .bulk-selection-info span {
+    color: var(--color-accent);
+    font-size: 0.9375rem;
+    font-weight: 700;
+}
+
+#page-contacts #bulk-action-bar .bulk-actions {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+}
+
+#page-contacts #bulk-action-bar .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-control);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+#page-contacts #bulk-action-bar .btn-link {
+    min-height: 0;
+    padding: 0 var(--space-1);
+    border: 0;
+    background: none;
+    color: var(--color-accent);
+    font-size: 0.8125rem;
+}
+
+#page-contacts #bulk-action-bar .btn-warning {
+    background: var(--color-risk-bg);
+    border: 1px solid var(--color-risk);
+    color: var(--color-risk);
+}
+
+#page-contacts #bulk-action-bar .btn-info {
+    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+    border: 1px solid color-mix(in srgb, var(--color-accent) 40%, var(--color-surface));
+    color: var(--color-accent);
+}
+
+#page-contacts #bulk-action-bar .btn-danger {
+    background: var(--color-risk);
+    border: 1px solid var(--color-risk);
+    color: var(--color-surface);
+}
+
+/* ── Detail pane (--detail-width): chrome + empty state ────────────────── */
+#contact-detail-pane {
+    min-width: 0;
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+}
+
+/* Centred empty state: no contacts (or nothing selected). */
+.contact-pane-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    min-height: 100%;
+    padding: var(--space-4);
+    text-align: center;
+    color: var(--color-ink-secondary);
+}
+
+.contact-pane-empty h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+.contact-pane-empty p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+/* Send-gate refusal note under the detail header (tokens only). */
+.contact-email-gate-reason {
+    margin-top: var(--space-2);
+    font-size: 0.85rem;
+    color: var(--color-risk);
+}
+
+/* ── Desktop (>= 901 px): fixed-height split; only the panes scroll ────── */
+@media (min-width: 901px) {
+    /* Fixed height, two rows: the toolbar keeps its natural height, the
+       split takes the rest and may shrink to zero, so neither the document
+       nor the content region scrolls — only the list pane and, when needed,
+       the detail pane do. */
+    #page-contacts.active {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: var(--space-4);
+        height: 100%;
+        min-height: 0;
+    }
+
+    #page-contacts #contacts-split {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) var(--detail-width);
+        gap: var(--space-4);
+        min-height: 0;
+        min-width: 0;
+    }
+
+    #page-contacts .contacts-list-pane {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+    }
+
+    #page-contacts #contacts-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: var(--space-2);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    #contact-detail-pane {
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+}
+
+/* ── Narrow (<= 900 px): the panes stack, nothing scrolls sideways ─────── */
+@media (max-width: 900px) {
+    #page-contacts.active {
+        display: block;
+        height: auto;
+    }
+
+    #page-contacts #contacts-split {
+        display: block;
+    }
+
+    #page-contacts .contacts-list-pane {
+        display: block;
+        min-height: 0;
+    }
+
+    #page-contacts #contacts-list {
+        padding: 0;
+        overflow: visible;
+    }
+
+    #contact-detail-pane {
+        margin-top: var(--space-4);
+        overflow: visible;
+    }
+}
