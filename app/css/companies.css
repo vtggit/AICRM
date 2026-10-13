@@ -1,0 +1,253 @@
+/* ============================================================================
+   AICRM — Companies page (issue #344)
+   ----------------------------------------------------------------------------
+   The Companies page (#page-companies) fits the window:
+
+     • Toolbar: one bar above the list holds #btn-add-company with its
+       data-admin-only gating; the label reads "Add company" — no "+", no
+       emoji.
+     • List (#companies-list): one compact row per company (>= --size-
+       list-row, 52 px). A row keeps the class contact-card and its
+       data-company-id and shows, left to right: the name
+       (.company-row-name), the industry (.company-row-industry), the
+       website (.company-row-website), the employee count
+       (.company-row-employees, e.g. "1,250 employees") and the created
+       date (.company-row-created) — with word-labelled Edit/Delete
+       buttons (.card-action-btn) at the right for an admin only. A
+       missing optional field simply has no element. A long name or
+       website is cut with an ellipsis on one line and never pushes the
+       buttons out: the name and the website are capped (max-width: 280px), the
+       row, the list and the content region carry min-width: 0 so the
+       page's min-content can never widen them past the window, and the
+       actions keep a margin-left: auto so they sit at the row's right
+       edge in every case. The list scrolls on its own; the empty state
+       and the failed-load message are centred in it.
+     • Desktop (>= 901 px): neither the document nor the content region
+       scrolls — only #companies-list does. At 900 px and below the
+       website drops out of the row and nothing scrolls sideways.
+
+   Colours, radii and spacing come from css/tokens.css only — no raw colour
+   values in this file.
+   ========================================================================== */
+
+/* The content region is a stretched flex item of .main-content, whose
+   automatic minimum size is the page's min-content. An explicit min-width
+   of 0 keeps the Companies page's min-content from widening the region
+   (and, with it, the document) past the window. */
+#page-container {
+    min-width: 0;
+}
+
+/* ── Toolbar: one bar above the list, token chrome ─────────────────────── */
+#page-companies .page-actions {
+    margin-bottom: 0;
+}
+
+#page-companies .page-actions .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+#page-companies .page-actions .btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-companies .page-actions .btn-primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 90%, var(--color-ink));
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+/* ── List: one compact row per company (both breakpoints) ────────────────
+   The row never wraps at >= 901 px: the name grows/shrinks with the row,
+   the other parts may shrink to zero, and the name, website, employee
+   count, created date and the buttons all stay on the row's single line,
+   inside its right edge. (At <= 900 px the website drops out and the row
+   may wrap to further lines instead of overflowing the narrow page.) */
+#page-companies #companies-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+#page-companies #companies-list .contact-card {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    min-height: var(--size-list-row);
+    min-width: 0;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    transition: border-color var(--transition);
+}
+
+#page-companies #companies-list .contact-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border-soft));
+}
+
+/* The name takes the row's slack and is cut with an ellipsis on one line.
+   The cap keeps a user-controllable 150+ character name from ever filling
+   the row (and with it, pushing the buttons out) no matter how wide the
+   row ends up. */
+#page-companies #companies-list .company-row-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 280px;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-companies #companies-list .company-row-website {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 280px;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-companies #companies-list .company-row-industry,
+#page-companies #companies-list .company-row-employees,
+#page-companies #companies-list .company-row-created {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 160px;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Word-labelled actions, pinned to the row's right edge by an auto margin
+   so they can never be pushed out of the row. */
+#page-companies #companies-list .card-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    display: flex;
+    gap: var(--space-2);
+}
+
+#page-companies #companies-list .card-action-btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: border-color var(--transition), color var(--transition);
+}
+
+#page-companies #companies-list .card-action-btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+/* Centred empty state and failed-load message. */
+#page-companies #companies-list .empty-state-card {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-5);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+}
+
+#page-companies #companies-list .empty-state-card p {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    color: var(--color-ink-secondary);
+    text-align: center;
+}
+
+/* ── Desktop (>= 901 px): fixed height; only #companies-list scrolls ─────
+   The toolbar keeps its natural height, the list takes the rest and may
+   shrink to zero, so neither the document nor the content region scrolls. */
+@media (min-width: 901px) {
+    #page-companies.active {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        height: 100%;
+        min-height: 0;
+    }
+
+    #page-companies .page-actions {
+        flex: 0 0 auto;
+    }
+
+    #page-companies #companies-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        padding: var(--space-2);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+}
+
+/* ── Narrow (<= 900 px): the rows flow with the page ───────────────────── */
+@media (max-width: 900px) {
+    #page-companies.active {
+        display: block;
+        height: auto;
+    }
+
+    #page-companies .page-actions {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    #page-companies #companies-list {
+        padding: 0;
+        overflow: visible;
+    }
+
+    /* The website drops out on narrow rows; the remaining parts may wrap
+       to further lines — wrapping, not sideways page overflow. */
+    #page-companies #companies-list .contact-card {
+        flex-wrap: wrap;
+    }
+
+    #page-companies #companies-list .company-row-website {
+        display: none;
+    }
+}

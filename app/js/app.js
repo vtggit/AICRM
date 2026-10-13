@@ -164,6 +164,12 @@ const App = {
                 case 'delete-tag':
                     this.deleteTagConfirm(data.tagId, data.tagName);
                     break;
+                case 'edit':
+                    this._companyRowAction('edit', element);
+                    break;
+                case 'delete':
+                    this._companyRowAction('delete', element);
+                    break;
             }
         });
     },
@@ -886,51 +892,96 @@ const App = {
         document.getElementById('btn-find-duplicates').addEventListener('click', () => this.findDuplicates());
     },
 
+    /**
+     * Render one compact company row. Every value from the API passes
+     * through the escaping helpers; a missing industry, website, employee
+     * count or created date simply has no element, so the row never shows
+     * "undefined", "null" or "Invalid Date".
+     */
+    _companyRow(item, isAdmin) {
+        const name = item.name == null ? '' : String(item.name);
+        const industry = item.industry == null ? '' : String(item.industry);
+        const website = item.website == null ? '' : String(item.website);
+
+        let industryHtml = '';
+        if (industry.trim() !== '') {
+            industryHtml = `<span class="company-row-industry" title="${this.escapeAttr(industry)}">${this.escapeHtml(industry)}</span>`;
+        }
+        let websiteHtml = '';
+        if (website.trim() !== '') {
+            websiteHtml = `<span class="company-row-website" title="${this.escapeAttr(website)}">${this.escapeHtml(website)}</span>`;
+        }
+        let employeesHtml = '';
+        // A count that is missing, blank or non-numeric has no element, so
+        // the row never shows "0 employees" (a whitespace-only value is
+        // blank) or "NaN employees".
+        const rawEmployeeCount = item.employeeCount;
+        if (rawEmployeeCount !== null && rawEmployeeCount !== undefined
+                && String(rawEmployeeCount).trim() !== '') {
+            const count = Number(rawEmployeeCount);
+            if (Number.isFinite(count)) {
+                const employeesText = count.toLocaleString('en-US') + ' employees';
+                employeesHtml = `<span class="company-row-employees" title="${this.escapeAttr(employeesText)}">${employeesText}</span>`;
+            }
+        }
+        let createdHtml = '';
+        const createdAt = item.createdAt;
+        if (createdAt !== null && createdAt !== undefined && String(createdAt).trim() !== ''
+                && !Number.isNaN(new Date(createdAt).getTime())) {
+            const createdText = this.formatDate(createdAt);
+            createdHtml = `<span class="company-row-created" title="${this.escapeAttr(createdText)}">${this.escapeHtml(createdText)}</span>`;
+        }
+        const actionsHtml = isAdmin
+            ? `<div class="card-actions" data-admin-only="true">
+                <button class="card-action-btn" data-action="edit" title="Edit">Edit</button>
+                <button class="card-action-btn" data-action="delete" title="Delete">Delete</button>
+              </div>`
+            : '';
+        return `<div class="contact-card" data-company-id="${this.escapeAttr(item.id)}">
+            <span class="company-row-name" title="${this.escapeAttr(name)}">${this.escapeHtml(name)}</span>
+            ${industryHtml}
+            ${websiteHtml}
+            ${employeesHtml}
+            ${createdHtml}
+            ${actionsHtml}
+          </div>`;
+    },
+
     async renderCompanies(companiesOverride) {
+        const container = document.getElementById('companies-list');
         let companies;
         try {
             companies = companiesOverride || await CompaniesDataSource.getCompanies();
         } catch (err) {
             console.error('Failed to load companies:', err);
-            document.getElementById('companies-list').innerHTML =
-                `<div class="empty-state-card"><p>⚠️ ${this.escapeHtml(err.message)}</p></div>`;
+            container.innerHTML =
+                `<div class="empty-state-card"><p>${this.escapeHtml(err.message)}</p></div>`;
             return;
         }
 
-        const container = document.getElementById('companies-list');
         if (!companies || companies.length === 0) {
             container.innerHTML = '<div class="empty-state-card"><p>No companies found.</p></div>';
             return;
         }
 
         const isAdmin = Auth.isAdmin();
-        container.innerHTML = companies.map(item => `
-            <div class="contact-card" data-company-id="${this.escapeAttr(item.id)}">
-                <div class="card-header">
-                    <div class="card-header-left"><h4>${this.escapeHtml(item.name)}</h4></div>
-                    <div class="card-actions">
-                        ${isAdmin ? '<button class="card-action-btn" data-action="edit" title="Edit">✏️</button>' : ''}
-                        ${isAdmin ? '<button class="card-action-btn" data-action="delete" title="Delete">🗑️</button>' : ''}
-                    </div>
-                </div>
-                <div class="card-body">
-                    ${item.website != null && item.website !== '' ? `<p>Website: ${this.escapeHtml(String(item.website))}</p>` : ''}
-                    ${item.industry != null && item.industry !== '' ? `<p>Industry: ${this.escapeHtml(String(item.industry))}</p>` : ''}
-                    ${item.employeeCount != null && item.employeeCount !== '' ? `<p>Employee Count: ${this.escapeHtml(String(item.employeeCount))}</p>` : ''}
-                </div>
-                <div class="card-meta">
-                    <small class="text-secondary">${this.formatDate(item.createdAt)}</small>
-                </div>
-            </div>`).join('');
-        container.querySelectorAll('.card-action-btn[data-action]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const rawId = btn.closest('[data-company-id]').getAttribute('data-company-id');
-                // Data attributes round-trip as strings; restore the backend's
-                // numeric company id so strict lookups (x.id === id) keep working.
-                const id = /^\d+$/.test(rawId) ? Number(rawId) : rawId;
-                if (btn.dataset.action === 'edit') { this.editCompany(id); } else { this.deleteCompany(id); }
-            });
-        });
+        container.innerHTML = companies.map(item => this._companyRow(item, isAdmin)).join('');
+    },
+
+    /**
+     * Companies row actions (issue #344): the Edit/Delete buttons carry
+     * data-action edit/delete and sit in the row's data-company-id. The id
+     * round-trips as a string, so restore the backend's numeric company id
+     * so strict lookups (x.id === id) keep working. Dispatched from the
+     * delegated document click handler, so the buttons stay wired no matter
+     * how often the list is re-rendered.
+     */
+    _companyRowAction(action, element) {
+        const row = element.closest('[data-company-id]');
+        if (!row) return;
+        const rawId = row.getAttribute('data-company-id');
+        const id = /^\d+$/.test(rawId) ? Number(rawId) : rawId;
+        if (action === 'edit') { this.editCompany(id); } else { this.deleteCompany(id); }
     },
 
     showCompanyModal(item) {
