@@ -2897,13 +2897,16 @@ const App = {
         container.innerHTML = leads.map(l => {
             const score = this.calculateLeadScore(l);
             const tier = this.getScoreTier(score);
+            const hasCreated = !!l.createdAt && !isNaN(new Date(l.createdAt).getTime());
             return `
             <div class="lead-card" data-lead-id="${this.escapeAttr(l.id)}">
                 <h4 class="lead-row-name">${this.escapeHtml(l.name)}</h4>
                 ${l.company ? `<p class="lead-row-company">${this.escapeHtml(l.company)}</p>` : ''}
+                ${l.email ? `<p class="lead-row-email">${this.escapeHtml(l.email)}</p>` : ''}
                 ${l.value ? `<span class="lead-row-value">$${Number(l.value).toLocaleString()}</span>` : ''}
                 <span class="badge badge-${this.escapeAttr(l.stage)}">${this.escapeHtml(l.stage)}</span>
                 <span class="score-badge ${tier.class}" title="Score: ${score}/100">${score} ${tier.label}</span>
+                ${hasCreated ? `<span class="lead-row-created">${this.escapeHtml(this.formatDate(l.createdAt))}</span>` : ''}
                 <div class="card-actions">
                     <button class="card-action-btn" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Edit">Edit</button>
                     <button class="card-action-btn" data-action="delete-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Delete">Delete</button>
