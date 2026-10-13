@@ -26,4 +26,13 @@ const SettingsDataSource = {
     async updateSettings(payload) {
         return await ApiClient.updateSettingsInApi(payload);
     },
+
+    /**
+     * Reset settings to an empty payload via the backend (admin only).
+     * DELETE /api/settings — no follow-up PUT.
+     * Throws ApiError on failure — no local fallback.
+     */
+    async reset() {
+        return await ApiClient.resetSettingsInApi();
+    },
 };
