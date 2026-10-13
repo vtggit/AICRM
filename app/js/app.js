@@ -1286,6 +1286,41 @@ const App = {
         }
     },
 
+    /**
+     * Rebuild the bulk action bar's tag dropdown (#bulk-tag-select) from a
+     * freshly loaded tag list (issue #346). The existing first option stays
+     * first and each tag is offered once, in the order GET /api/tags
+     * returned them, inserted as text so a hostile name can never execute.
+     * The chosen tag stays chosen while it still exists; a deleted choice
+     * returns the dropdown to its first option and disables "Add Tag".
+     */
+    _syncBulkTagOptions(tags) {
+        const tagSelect = document.getElementById('bulk-tag-select');
+        if (!tagSelect || !Array.isArray(tags)) return;
+        this._allTags = tags;
+        const firstOption = tagSelect.options[0];
+        const placeholderValue = firstOption ? firstOption.value : '';
+        const placeholderText = firstOption ? firstOption.textContent : 'Add Tag...';
+        const previousValue = tagSelect.value;
+        tagSelect.length = 0;
+        const placeholder = document.createElement('option');
+        placeholder.value = placeholderValue;
+        placeholder.textContent = placeholderText;
+        tagSelect.appendChild(placeholder);
+        tags.forEach(tag => {
+            const option = document.createElement('option');
+            option.value = tag.id;
+            option.textContent = tag.name;
+            tagSelect.appendChild(option);
+        });
+        if (previousValue && tags.some(t => t.id === previousValue)) {
+            tagSelect.value = previousValue;
+        } else {
+            tagSelect.selectedIndex = 0;
+        }
+        this.updateBulkActionBar();
+    },
+
     bindBulkOperations() {
         const bar = document.getElementById('bulk-action-bar');
         if (!bar) return;
@@ -2187,8 +2222,10 @@ const App = {
      */
     async showManageTagsModal() {
         let tags = [];
+        let tagsLoaded = false;
         try {
             tags = await TagsDataSource.getTags();
+            tagsLoaded = true;
         } catch (err) {
             console.error('Failed to load tags:', err);
         }
@@ -2218,6 +2255,14 @@ const App = {
             </div>
         `;
         this.openModal();
+
+        // The bulk action bar's tag dropdown mirrors this same list, so a
+        // tag created, renamed or deleted through this modal is reflected
+        // there without a page reload (issue #346). A failed load leaves
+        // the dropdown exactly as it was.
+        if (tagsLoaded) {
+            this._syncBulkTagOptions(tags);
+        }
     },
 
     showCreateTagForm() {
