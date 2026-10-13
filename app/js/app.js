@@ -1085,6 +1085,19 @@ const App = {
         // fetch.
         this._renderedContacts = contacts;
 
+        // Cache the tag definitions once so the bulk bar's "Add Tag"
+        // dropdown can be populated, and applyBulkTags() can read each
+        // selected contact's current tags from the records the page
+        // already loaded — no per-contact tag fetch (issue #325).
+        if (!this._allTags) {
+            try {
+                this._allTags = await TagsDataSource.getTags();
+            } catch (err) {
+                console.error('Failed to load tags for the bulk action bar:', err);
+                this._allTags = [];
+            }
+        }
+
         const container = document.getElementById('contacts-list');
         if (contacts.length === 0) {
             container.innerHTML = '<div class="empty-state-card"><p>No contacts found.</p></div>';
@@ -1324,25 +1337,43 @@ const App = {
         if (!tagId || !this._selectedContactIds || this._selectedContactIds.size === 0) return;
 
         const ids = Array.from(this._selectedContactIds);
-        let successCount = 0;
 
+        // Current tags come from the contact records the page already
+        // loaded (the tags list on each contact from GET /api/contacts).
+        // A selected id missing from the rendered rows falls back to a
+        // single records-level load, never a per-contact tag fetch.
+        const byId = new Map((this._renderedContacts || []).map(c => [c.id, c]));
+        if (ids.some(id => !byId.has(id))) {
+            const allContacts = await ContactsDataSource.getContacts();
+            allContacts.forEach(c => byId.set(c.id, c));
+        }
+
+        let successCount = 0;
+        let failedCount = 0;
         for (const id of ids) {
+            const contact = byId.get(id);
+            const currentTagIds = ((contact && contact.tags) || []).map(t => t.id);
+            if (currentTagIds.includes(tagId)) {
+                successCount++;
+                continue;
+            }
             try {
-                const existing = await ContactsDataSource.getContactTags(id);
-                const existingIds = (existing || []).map(t => t.id);
-                if (!existingIds.includes(tagId)) {
-                    existingIds.push(tagId);
-                    await ContactsDataSource.setContactTags(id, existingIds);
-                }
+                await ContactsDataSource.setContactTags(id, [...currentTagIds, tagId]);
                 successCount++;
             } catch (err) {
+                failedCount++;
                 console.error(`Failed to assign tag to contact ${id}:`, err);
             }
         }
 
         this._selectedContactIds = new Set();
         tagSelect.value = '';
-        this.showNotification(`Tag assigned to ${successCount} contact(s)`, 'success');
+        if (failedCount > 0) {
+            this.showNotification(
+                `Failed to assign tag to ${failedCount} of ${ids.length} contact(s)`, 'error');
+        } else {
+            this.showNotification(`Tag assigned to ${successCount} contact(s)`, 'success');
+        }
         await this.renderContacts();
     },
 
