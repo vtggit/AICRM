@@ -152,7 +152,7 @@ def get_funnel_analytics(
 
 
 # Allowed query parameter values
-_VALID_RANGES: dict[str, int] = {"7d": 7, "30d": 30, "90d": 90}
+_VALID_RANGES: dict[str, int] = {"7d": 7, "30d": 30, "90d": 90, "1y": 365}
 _VALID_GROUPS: set[str] = {"day", "week"}
 _ACTIVITY_TYPES: set[str] = {"call", "email", "meeting", "note", "task"}
 
