@@ -9,8 +9,11 @@
        stage column keeps its header in view; the column's cards scroll
        inside the column.
      • List view (#leads-list): one compact row per lead (>= --size-list-row)
-       showing name, company, value, the stage badge and the score badge,
-       with word-labelled Edit/Delete buttons. The list scrolls on its own.
+       showing name, company, the muted email, value, the stage badge, the
+       score badge and the muted created date, with word-labelled
+       Edit/Delete buttons. The list scrolls on its own. The email is cut
+       with an ellipsis (never wrapped) and hidden at <= 900 px, where the
+       created date stays.
      • Empty states: a centred empty state with no leads, and "No leads" in
        an empty stage column.
      • Desktop (>= 901 px): neither the document nor the content region
@@ -68,10 +71,15 @@
     font-size: 0.875rem;
 }
 
-/* ── List view: one compact row per lead (both breakpoints) ────────────── */
+/* ── List view: one compact row per lead (both breakpoints) ──────────────
+   The row never wraps at >= 901 px: the name/company/email may shrink to
+   zero, the email is cut with an ellipsis, and the value, badges, created
+   date and buttons always stay on the row's single line, inside its right
+   edge. (At <= 900 px the email is hidden and the row may wrap to a second
+   line instead of overflowing the narrow page — see the narrow block.) */
 #page-leads #leads-list .lead-card {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: var(--space-1) var(--space-3);
     min-height: var(--size-list-row);
@@ -113,6 +121,20 @@
     text-overflow: ellipsis;
 }
 
+/* Muted email after the company: one line, cut with an ellipsis when the
+   row is tight — it may shrink to nothing, never wrap, and never pushes
+   the row's buttons out. */
+#page-leads #leads-list .lead-row-email {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 #page-leads #leads-list .lead-row-value {
     flex: 0 0 auto;
     margin: 0;
@@ -121,6 +143,15 @@
     font-size: 0.8125rem;
     font-weight: 600;
     color: var(--color-ink);
+}
+
+/* Muted created date (formatDate form) before the buttons. */
+#page-leads #leads-list .lead-row-created {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
 }
 
 #page-leads #leads-list .lead-card .badge,
@@ -334,6 +365,17 @@
         gap: var(--space-2);
         padding: 0;
         overflow: visible;
+    }
+
+    /* The email drops out on narrow rows; the created date stays. The row
+       may wrap to a second line (its fixed-width parts no longer all fit
+       in the narrow page) — wrapping, not sideways page overflow. */
+    #page-leads #leads-list .lead-card {
+        flex-wrap: wrap;
+    }
+
+    #page-leads #leads-list .lead-row-email {
+        display: none;
     }
 
     #page-leads #kanban-board {
