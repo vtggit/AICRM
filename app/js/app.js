@@ -2641,7 +2641,11 @@ const App = {
         if (!file) return;
 
         const validStages = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'];
-        const validSources = ['website', 'referral', 'social media', 'cold call', 'event'];
+        const validSources = ['website', 'referral', 'social', 'cold-call', 'event'];
+        // The lead form labels two sources 'Social Media' and 'Cold Call';
+        // accept those labels too (any letter case, surrounding spaces
+        // ignored) and store the mapped value.
+        const sourceLabels = { 'social media': 'social', 'cold call': 'cold-call' };
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -2665,7 +2669,7 @@ const App = {
                     }
 
                     const stage = (values[5] || 'new').toLowerCase();
-                    const source = (values[6] || '').toLowerCase();
+                    const source = (values[6] || '').trim().toLowerCase();
 
                     const leadData = {
                         name: values[0] || '',
@@ -2674,7 +2678,9 @@ const App = {
                         phone: values[3] || '',
                         value: Number(values[4]) || 0,
                         stage: validStages.includes(stage) ? stage : 'new',
-                        source: validSources.includes(source) ? source : '',
+                        source: validSources.includes(source)
+                            ? source
+                            : (sourceLabels[source] || ''),
                         notes: values[7] || '',
                     };
 
