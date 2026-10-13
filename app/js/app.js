@@ -338,6 +338,7 @@ const App = {
                     this._updateAuthStatus();
                     this._showAuthBanner(true);
                     this._applyAdminOnlyVisibility();
+                    this.applySettingsRoleVisibility();
                 }
             } else {
                 this._openLoginModal();
@@ -349,6 +350,7 @@ const App = {
             this._updateAuthStatus();
             this._showAuthBanner(!Auth.isAuthenticated());
             this._applyAdminOnlyVisibility();
+            this.applySettingsRoleVisibility();
         });
     },
 
@@ -360,6 +362,24 @@ const App = {
         document.querySelectorAll('[data-admin-only="true"]').forEach(el => {
             el.style.display = Auth.isAdmin() ? '' : 'none';
         });
+    },
+
+    /**
+     * Hide the admin-only Settings controls from non-admins.
+     *
+     * Import Settings and Reset Settings drive the admin-only
+     * PUT /api/settings and DELETE /api/settings routes, so they stay
+     * hidden for anyone without the admin role. Export Settings (GET
+     * /api/settings) needs only authentication and stays visible.
+     * Called on every Settings render and whenever the auth state
+     * changes, so a reload or role change re-applies the rule.
+     */
+    applySettingsRoleVisibility() {
+        const isAdmin = Auth.isAdmin();
+        const importBtn = document.getElementById('btn-restore-backup');
+        if (importBtn) importBtn.style.display = isAdmin ? '' : 'none';
+        const clearBtn = document.getElementById('btn-clear-data');
+        if (clearBtn) clearBtn.style.display = isAdmin ? '' : 'none';
     },
 
     /** Update the header auth indicator to reflect current state. */
@@ -460,6 +480,7 @@ const App = {
                 this._updateAuthStatus();
                 this._showAuthBanner(false);
                 this._applyAdminOnlyVisibility();
+                this.applySettingsRoleVisibility();
                 // Refresh the current page so data loads with the new auth token
                 if (this.currentPage === 'dashboard') {
                     await this.renderDashboard();
@@ -4454,7 +4475,9 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
     async clearData() {
         if (!confirm('Reset settings to defaults?\n\nThis will clear all current settings on the backend. Business data (Contacts, Templates, Leads, Activities) will not be affected.')) return;
         try {
-            await SettingsDataSource.updateSettings({});
+            // Reset is the DELETE /api/settings route (admin only) — the
+            // record is wiped in place, no follow-up PUT.
+            await SettingsDataSource.reset();
             this.showNotification('Settings reset to defaults on the backend.', 'success');
             this.renderCurrentPage();
             this.renderDashboard();
@@ -4524,11 +4547,14 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
     _showRestoreDialog(backup) {
         const modalBody = document.getElementById('modal-body');
         document.getElementById('modal-title').textContent = 'Restore Settings Backup';
+        // Backup metadata is caller-controlled (any file can be chosen):
+        // render it escaped so a hostile version value cannot inject HTML.
+        const backupVersion = this.escapeHtml(backup.metadata.version) || 'Unknown';
         modalBody.innerHTML = `
             <div class="restore-dialog">
                 <div class="restore-info">
                     <p><strong>Backup date:</strong> ${new Date(backup.metadata.createdAt).toLocaleString()}</p>
-                    <p><strong>Version:</strong> ${backup.metadata.version || 'Unknown'}</p>
+                    <p><strong>Version:</strong> ${backupVersion}</p>
                     <p><strong>Contents:</strong> Settings</p>
                 </div>
                 <p>How would you like to restore this backup?</p>
@@ -4564,6 +4590,9 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
 
         try {
             if (mode === 'replace') {
+                // Replace: wipe the stored record (DELETE /api/settings),
+                // then write the backup's settings with one PUT.
+                await SettingsDataSource.reset();
                 await SettingsDataSource.updateSettings(backupSettings);
             } else {
                 // Merge: get current backend settings, merge, push back
@@ -5077,64 +5106,15 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
     // === Settings Page ===
 
     renderSettings() {
-        // Bind settings export/import/reset buttons
-        const exportBtn = document.getElementById('btn-create-backup');
-        if (exportBtn) {
-            exportBtn.onclick = async () => {
-                try {
-                    const settings = await ApiClient.getSettingsFromApi();
-                    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `aicrm-settings-backup-${new Date().toISOString().slice(0, 10)}.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    this.showNotification('Settings exported', 'success');
-                } catch (err) {
-                    this.showNotification('Failed to export settings', 'error');
-                }
-            };
-        }
-
-        const importBtn = document.getElementById('btn-restore-backup');
-        if (importBtn) {
-            importBtn.onclick = () => {
-                document.getElementById('backup-file-input').click();
-            };
-        }
-
-        const fileInput = document.getElementById('backup-file-input');
-        if (fileInput) {
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                try {
-                    const text = await file.text();
-                    const settings = JSON.parse(text);
-                    await ApiClient.updateSettingsInApi(settings);
-                    this.showNotification('Settings restored', 'success');
-                    this.navigate('settings');
-                } catch (err) {
-                    this.showNotification('Failed to import settings', 'error');
-                }
-                fileInput.value = '';
-            };
-        }
-
-        const clearBtn = document.getElementById('btn-clear-data');
-        if (clearBtn) {
-            clearBtn.onclick = async () => {
-                if (!confirm('This will reset all settings to defaults. Continue?')) return;
-                try {
-                    await ApiClient.resetSettingsInApi();
-                    this.showNotification('Settings reset', 'success');
-                    this.navigate('settings');
-                } catch (err) {
-                    this.showNotification('Failed to reset settings', 'error');
-                }
-            };
-        }
+        // Issue #320 — each Settings page button acts exactly once per
+        // click. The Export/Import/Reset controls keep only the listeners
+        // bindSettings() attached at init, so this render must not assign
+        // any additional onclick/onchange handlers on #btn-create-backup,
+        // #btn-restore-backup, #backup-file-input or #btn-clear-data.
+        // Re-rendering used to re-attach a second copy of every handler,
+        // so one click fired the whole flow twice: two downloads, two file
+        // choosers, two restore dialogs, two confirms, two requests.
+        this.applySettingsRoleVisibility();
     },
 
     // === Win/Loss Reason Tracking ===
