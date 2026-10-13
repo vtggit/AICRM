@@ -319,14 +319,20 @@ const App = {
     bindVersion() {
         const sidebarEl = document.getElementById('app-version-sidebar');
         const settingsEl = document.getElementById('app-version-settings');
-        // APP_VERSION is now a Promise (fetched from backend at runtime).
-        // Show initial placeholder, then update once resolved.
-        if (sidebarEl) sidebarEl.textContent = `v${APP_VERSION_INITIAL}`;
-        if (settingsEl) settingsEl.textContent = APP_VERSION_INITIAL;
-
+        // The version is fetched from /api/health at runtime (issue #349).
+        // While the request is out both elements stay empty (never a
+        // "loading" placeholder); once it answers the sidebar reads
+        // "v<version>" and the Settings page reads the bare version. On a
+        // failed request the sidebar stays empty and the Settings page
+        // reads "unavailable". APP_VERSION never rejects, so no page
+        // error can escape this handler.
         APP_VERSION.then(version => {
-            if (sidebarEl) sidebarEl.textContent = `v${version}`;
-            if (settingsEl) settingsEl.textContent = version;
+            if (version) {
+                if (sidebarEl) sidebarEl.textContent = `v${version}`;
+                if (settingsEl) settingsEl.textContent = version;
+            } else if (settingsEl) {
+                settingsEl.textContent = 'unavailable';
+            }
         });
     },
 
@@ -388,18 +394,35 @@ const App = {
         if (clearBtn) clearBtn.style.display = isAdmin ? '' : 'none';
     },
 
-    /** Update the header auth indicator to reflect current state. */
+    /**
+     * Resolve the name to display for the signed-in user (issue #349):
+     * the first of display_name, username, email, sub that is not empty.
+     */
+    _authDisplayName(user) {
+        if (!user) return '';
+        for (const key of ['display_name', 'username', 'email', 'sub']) {
+            const value = user[key];
+            if (value === null || value === undefined) continue;
+            const text = String(value);
+            if (text !== '') return text;
+        }
+        return '';
+    },
+
+    /** Update the sidebar auth chip to reflect current state. */
     _updateAuthStatus() {
         const statusEl = document.getElementById('auth-status');
         if (!statusEl) return;
 
         if (Auth.isAuthenticated()) {
             const user = Auth.getCurrentUser();
-            const displayName = this.escapeAttr(user.display_name || user.sub);
+            const name = this._authDisplayName(user);
             statusEl.innerHTML =
                 `<span class="auth-indicator">🟢</span>` +
-                `<span class="auth-username" title="${displayName}">${this.escapeHtml(user.display_name || user.sub)}</span>`;
-            statusEl.title = `Logged in as ${user.display_name || user.sub}`;
+                `<span class="auth-username" title="${this.escapeAttr(name)}">${this.escapeHtml(name)}</span>`;
+            // The full, unclipped name stays in the title (the chip text is
+            // cut with an ellipsis by CSS for long names).
+            statusEl.title = `Logged in as ${name}`;
         } else {
             statusEl.innerHTML = `<span class="auth-indicator">🔴</span>`;
             statusEl.title = 'Not authenticated — click to log in';
@@ -493,7 +516,7 @@ const App = {
                 } else {
                     await this.renderCurrentPage();
                 }
-                this.showNotification(`Welcome, ${result.user.display_name || result.user.sub}`, 'success');
+                this.showNotification(`Welcome, ${this._authDisplayName(result.user)}`, 'success');
             } else {
                 errorEl.textContent = result.error || 'Invalid token.';
             }
@@ -4630,7 +4653,7 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
     async createBackup() {
         try {
             const settings = await SettingsDataSource.getSettings();
-            const version = await APP_VERSION;
+            const version = (await APP_VERSION) || 'unknown';
             const backup = {
                 metadata: {
                     appName: 'AICRM',
