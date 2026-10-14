@@ -367,12 +367,18 @@ const App = {
     },
 
     /**
-     * Hide or show elements marked with data-admin-only="true"
-     * based on the current user's admin role.
+     * Hide or show role-gated controls based on the current user's roles.
+     *
+     * data-admin-only="true" elements stay admin-only; data-requires-role
+     * elements carry the role they need (e.g. data-requires-role="admin")
+     * and are shown when the user holds that role.
      */
     _applyAdminOnlyVisibility() {
         document.querySelectorAll('[data-admin-only="true"]').forEach(el => {
             el.style.display = Auth.isAdmin() ? '' : 'none';
+        });
+        document.querySelectorAll('[data-requires-role]').forEach(el => {
+            el.style.display = Auth.hasRole(el.getAttribute('data-requires-role')) ? '' : 'none';
         });
     },
 
@@ -833,7 +839,7 @@ const App = {
             .slice(0, 5);
 
         container.innerHTML = recent.map(c => `
-            <div class="recent-item" data-action="view-contact" data-contact-id="${this.escapeAttr(c.id)}" title="Click to view ${this.escapeHtml(c.name)}">
+            <div class="recent-item" data-action="view-contact" data-contact-id="${this.escapeAttr(c.id)}" title="Click to view ${this.escapeAttr(c.name)}">
                 <span class="recent-item-icon">👤</span>
                 <div class="recent-item-details">
                     <div class="recent-item-name">${this.escapeHtml(c.name)}</div>
@@ -858,7 +864,7 @@ const App = {
             .slice(0, 5);
 
         container.innerHTML = recent.map(l => `
-            <div class="recent-item" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Click to view ${this.escapeHtml(l.name)}">
+            <div class="recent-item" data-action="edit-lead" data-lead-id="${this.escapeAttr(l.id)}" title="Click to view ${this.escapeAttr(l.name)}">
                 <span class="recent-item-icon">🎯</span>
                 <div class="recent-item-details">
                     <div class="recent-item-name">${this.escapeHtml(l.name)}</div>
@@ -4170,6 +4176,10 @@ const App = {
     },
 
     // === Email Templates ===
+    // The six known template categories (mirrors the backend's
+    // ALLOWED_CATEGORIES); any other value gets the "other" badge modifier.
+    TEMPLATE_CATEGORIES: ['follow-up', 'introduction', 'proposal', 'thank-you', 'meeting', 'other'],
+
     bindTemplates() {
         document.getElementById('btn-add-template').addEventListener('click', () => {
             if (!Auth.isAdmin()) {
@@ -4179,7 +4189,9 @@ const App = {
             this.showTemplateModal();
         });
 
-        document.getElementById('template-filter-category').addEventListener('change', () => this.renderTemplates());
+        // The filter is client-side: it re-renders from the last fetch,
+        // so narrowing the list never sends a request.
+        document.getElementById('template-filter-category').addEventListener('change', () => this.renderTemplates({ refresh: false }));
 
         // Variable help - click to insert
         document.querySelectorAll('#template-variable-help code').forEach(codeEl => {
@@ -4198,15 +4210,25 @@ const App = {
         });
     },
 
-    async renderTemplates() {
+    async renderTemplates(options) {
+        const refresh = !options || options.refresh !== false;
         let templates;
-        try {
-            templates = await TemplatesDataSource.getTemplates();
-        } catch (err) {
-            console.error('Failed to load templates:', err);
-            document.getElementById('templates-list').innerHTML =
-                `<div class="empty-state-card"><p>⚠️ ${this.escapeHtml(err.message)}</p></div>`;
+        if (refresh) {
+            try {
+                templates = await TemplatesDataSource.getTemplates();
+            } catch (err) {
+                console.error('Failed to load templates:', err);
+                this._cachedTemplates = null;
+                document.getElementById('templates-list').innerHTML =
+                    `<div class="empty-state-card"><p>${this.escapeHtml(err.message)}</p></div>`;
+                return;
+            }
+            this._cachedTemplates = templates;
+        } else if (!this._cachedTemplates) {
+            await this.renderTemplates({ refresh: true });
             return;
+        } else {
+            templates = this._cachedTemplates;
         }
 
         const filterCategory = document.getElementById('template-filter-category').value;
@@ -4215,7 +4237,7 @@ const App = {
         }
 
         // Sort by most recently created
-        templates.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        templates = templates.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         const container = document.getElementById('templates-list');
         if (templates.length === 0) {
@@ -4225,19 +4247,21 @@ const App = {
 
         const isAdmin = Auth.isAdmin();
         container.innerHTML = templates.map(t => {
-            const preview = (t.body || '').replace(/\{\{[^}]+\}\}/g, '[var]').slice(0, 150);
+            const body = typeof t.body === 'string' ? t.body : (t.body == null ? '' : String(t.body));
+            const preview = body.replace(/\{\{[^}]+\}\}/g, '[var]');
+            // The badge modifier is whitelisted to the six known categories;
+            // the category text itself is always escaped.
+            const category = this.TEMPLATE_CATEGORIES.includes(t.category) ? t.category : 'other';
             return `
                 <div class="template-card">
-                    <div class="template-card-header">
-                        <h4>${this.escapeHtml(t.name)}</h4>
-                        <span class="template-category-badge ${t.category}">${this.escapeHtml(t.category)}</span>
-                    </div>
+                    <h4 class="template-row-name">${this.escapeHtml(t.name)}</h4>
+                    <span class="template-category-badge ${category}">${this.escapeHtml(t.category)}</span>
                     <div class="template-subject">${this.escapeHtml(t.subject || 'No subject')}</div>
-                    <div class="template-preview">${this.escapeHtml(preview)}</div>
-                    <div class="template-actions">
-                        ${isAdmin ? `<button class="btn-edit-template" data-action="edit-template" data-template-id="${this.escapeAttr(t.id)}">Edit</button>` : ''}
-                        ${isAdmin ? `<button class="btn-delete-template" data-action="delete-template" data-template-id="${this.escapeAttr(t.id)}">Delete</button>` : ''}
-                    </div>
+                    <div class="template-preview" title="${this.escapeAttr(body.slice(0, 300))}">${this.escapeHtml(preview)}</div>
+                    ${isAdmin ? `<div class="template-actions">
+                        <button class="btn-edit-template" data-action="edit-template" data-template-id="${this.escapeAttr(t.id)}">Edit</button>
+                        <button class="btn-delete-template" data-action="delete-template" data-template-id="${this.escapeAttr(t.id)}">Delete</button>
+                    </div>` : ''}
                 </div>
             `;
         }).join('');
