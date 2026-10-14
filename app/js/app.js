@@ -3440,11 +3440,22 @@ const App = {
     },
 
     _renderActivitiesView() {
+        this._syncActivitiesView();
         if (this._calendarViewActive) {
             this.renderCalendar();
         } else {
             this.renderActivities();
         }
+    },
+
+    /**
+     * Keep the view-switch class on #page-activities in sync with the
+     * current view so the page's stylesheet alone decides which view is
+     * visible and how the fixed-height shell divides the space.
+     */
+    _syncActivitiesView() {
+        const page = document.getElementById('page-activities');
+        if (page) page.classList.toggle('view-calendar', !!this._calendarViewActive);
     },
 
     /**
@@ -3744,35 +3755,35 @@ const App = {
             return;
         }
 
+        // One compact row per activity: the type as a word (no emoji), the
+        // description (one line, cut with an ellipsis, full text in its
+        // title), the related contact when there is one, the activity's
+        // date, the due date when there is one ("Overdue: " in the risk
+        // colour, "Due: " otherwise) and the word-labelled actions. Every
+        // value from the API passes through the escaping helpers.
         container.innerHTML = activities.map(a => {
             const isCompleted = a.status === 'completed';
             const isOverdue = a.dueDate && !isCompleted && this.isOverdue(a.dueDate);
             const overdueClass = isOverdue ? ' activity-overdue' : '';
             const completedClass = isCompleted ? ' activity-completed' : '';
+            const typeWord = String(a.type || '');
+            const typeLabel = this.escapeHtml(typeWord.charAt(0).toUpperCase() + typeWord.slice(1));
+            const description = a.description == null ? '' : String(a.description);
             const dueDateHtml = a.dueDate ? `
-                <span class="activity-due-date ${isOverdue ? 'due-overdue' : ''}">
-                    ${isOverdue ? '⚠️ ' : '📅 '}Due: ${this.formatDateShort(a.dueDate)}
-                </span>` : '';
+                <span class="activity-due-date${isOverdue ? ' due-overdue' : ''}">${isOverdue ? 'Overdue: ' : 'Due: '}${this.formatDateShort(a.dueDate)}</span>` : '';
+            const contactHtml = a.contactName ? `
+                <span class="timeline-contact">Related: ${this.escapeHtml(a.contactName)}</span>` : '';
 
             return `
-            <div class="timeline-item${overdueClass}${completedClass}">
-                <div class="timeline-marker">
-                    <div class="timeline-dot"></div>
-                </div>
-                <div class="timeline-content">
-                    <div class="timeline-header">
-                        <h4>${this.getActivityIcon(a.type)} ${this.escapeHtml(a.type.charAt(0).toUpperCase() + a.type.slice(1))}</h4>
-                        <div class="card-actions">
-                            ${!isCompleted ? `<button class="card-action-btn btn-mark-complete" data-action="mark-activity-complete" data-activity-id="${this.escapeAttr(a.id)}" title="Mark Complete">✅</button>` : ''}
-                            <button class="card-action-btn" data-action="delete-activity" data-activity-id="${this.escapeAttr(a.id)}" title="Delete">🗑️</button>
-                        </div>
-                    </div>
-                    <p>${this.escapeHtml(a.description)}</p>
-                    ${a.contactName ? `<p><small>Related: ${this.escapeHtml(a.contactName)}</small></p>` : ''}
-                    <div class="activity-meta">
-                        <span class="timeline-date">${this.formatDate(a.date)}</span>
-                        ${dueDateHtml}
-                    </div>
+            <div class="timeline-item${overdueClass}${completedClass}" data-activity-id="${this.escapeAttr(a.id)}">
+                <span class="timeline-type">${typeLabel}</span>
+                <span class="timeline-desc" title="${this.escapeAttr(description)}">${this.escapeHtml(description)}</span>
+                ${contactHtml}
+                <span class="timeline-date">${this.formatDate(a.date)}</span>
+                ${dueDateHtml}
+                <div class="card-actions">
+                    ${!isCompleted ? `<button class="card-action-btn btn-mark-complete" data-action="mark-activity-complete" data-activity-id="${this.escapeAttr(a.id)}">Mark complete</button>` : ''}
+                    <button class="card-action-btn" data-action="delete-activity" data-activity-id="${this.escapeAttr(a.id)}">Delete</button>
                 </div>
             </div>
         `}).join('');
@@ -3784,14 +3795,11 @@ const App = {
 
     toggleCalendarView() {
         this._calendarViewActive = !this._calendarViewActive;
-        const timelineEl = document.getElementById('activities-list');
-        const calendarEl = document.getElementById('activities-calendar');
+        this._syncActivitiesView();
         const toggleBtn = document.getElementById('btn-toggle-calendar');
 
         if (this._calendarViewActive) {
-            timelineEl.style.display = 'none';
-            calendarEl.style.display = 'block';
-            toggleBtn.textContent = '📋 Timeline';
+            toggleBtn.textContent = 'Timeline';
             toggleBtn.classList.remove('btn-secondary');
             toggleBtn.classList.add('btn-primary');
             if (!this._calendarDate) {
@@ -3799,9 +3807,7 @@ const App = {
             }
             this.renderCalendar();
         } else {
-            timelineEl.style.display = 'block';
-            calendarEl.style.display = 'none';
-            toggleBtn.textContent = '📅 Calendar';
+            toggleBtn.textContent = 'Calendar';
             toggleBtn.classList.remove('btn-primary');
             toggleBtn.classList.add('btn-secondary');
         }
@@ -3872,7 +3878,7 @@ const App = {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const activitiesByDate = {};
+        const activitiesByDate = Object.create(null);
         activities.forEach(a => {
             const d = new Date(a.date);
             if (d.getFullYear() === year && d.getMonth() === month) {
@@ -3887,7 +3893,7 @@ const App = {
         let html = '';
 
         for (let i = 0; i < startDayOfWeek; i++) {
-            html += '<div class="calendar-day calendar-day-empty"></div>';
+            html += '<div class="calendar-day calendar-day-empty" aria-hidden="true"></div>';
         }
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -3896,24 +3902,31 @@ const App = {
             const isToday = dayDate.getTime() === today.getTime();
             const dayActivities = activitiesByDate[day] || [];
 
-            const eventsHtml = dayActivities.slice(0, 3).map(a => {
+            // Every event of the day renders; the day cell scrolls its own
+            // event region when there are more events than fit.
+            const eventsHtml = dayActivities.map(a => {
                 const isCompleted = a.status === 'completed';
                 const isOverdue = a.dueDate && !isCompleted && this.isOverdue(a.dueDate);
                 let cls = `calendar-event calendar-event-${a.type}`;
                 if (isCompleted) cls += ' calendar-event-completed';
                 if (isOverdue) cls += ' calendar-event-overdue';
-                return `<div class="${cls}" title="${this.escapeHtml(a.description)}">${this.getActivityIcon(a.type)} ${this.escapeHtml(a.description.length > 20 ? a.description.slice(0, 20) + '...' : a.description)}</div>`;
+                const label = a.description == null ? '' : String(a.description);
+                const shortLabel = label.length > 40 ? label.slice(0, 40) + '...' : label;
+                return `<div class="${cls}" data-activity-id="${this.escapeAttr(a.id)}" title="${this.escapeAttr(label)}">${this.escapeHtml(shortLabel)}</div>`;
             }).join('');
-
-            const overflowHtml = dayActivities.length > 3
-                ? `<div class="calendar-event-more">+${dayActivities.length - 3} more</div>` : '';
 
             html += `
                 <div class="calendar-day ${isToday ? 'calendar-day-today' : ''}" data-date="${dateStr}">
                     <div class="calendar-day-number">${day}</div>
-                    <div class="calendar-day-events">${eventsHtml}${overflowHtml}</div>
+                    <div class="calendar-day-events">${eventsHtml}</div>
                 </div>
             `;
+        }
+
+        // Trailing blanks so the month always fills exactly six weeks.
+        const renderedCells = startDayOfWeek + daysInMonth;
+        for (let i = 0; i < 42 - renderedCells; i++) {
+            html += '<div class="calendar-day calendar-day-empty" aria-hidden="true"></div>';
         }
 
         grid.innerHTML = html;
@@ -3943,9 +3956,7 @@ const App = {
         grid.querySelectorAll('.calendar-event').forEach(eventEl => {
             eventEl.draggable = true;
             eventEl.addEventListener('dragstart', (e) => {
-                const title = e.target.title;
-                const allActivities = activities;
-                draggedActivity = allActivities.find(a => this.escapeHtml(a.description.length > 20 ? a.description.slice(0, 20) + '...' : a.description) === title.replace(/^[^\s]+\s/, ''));
+                draggedActivity = activities.find(a => String(a.id) === eventEl.dataset.activityId);
                 e.dataTransfer.effectAllowed = 'move';
                 e.target.style.opacity = '0.5';
             });
