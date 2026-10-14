@@ -1,0 +1,324 @@
+/* ============================================================================
+   AICRM — Email Templates page (issue #356)
+   ----------------------------------------------------------------------------
+   The Templates page (#page-templates) fits the window:
+
+     • Toolbar: one bar above the list holds #btn-add-template with its
+       data-requires-role="admin" gating (the label reads "Add template" —
+       no "+", no emoji) and the #template-filter-category select.
+     • Variable help: #template-variable-help stays in view above the
+       list, on one line that wraps when it must.
+     • List (#templates-list): one compact row per template (>= --size-
+       list-row, 52 px). A row keeps the class template-card and shows,
+       left to right: the name (.template-row-name), the category badge
+       (.template-category-badge, its modifier one of the six known
+       categories), the subject (.template-subject, "No subject" when
+       there is none), a one-line preview of the body with each variable
+       shown as "[var]" (.template-preview, cut with an ellipsis, the
+       first 300 characters of the body in title) and — for an admin
+       only — the Edit and Delete buttons (.btn-edit-template /
+       .btn-delete-template), pinned to the row's right edge. The list
+       scrolls on its own; the empty state and the failed-load message
+       are centred in it.
+     • Desktop (>= 901 px): neither the document nor the content region
+       scrolls — only #templates-list does. At 900 px and below the
+       preview drops out and nothing scrolls sideways.
+
+   Colours, radii and spacing come from css/tokens.css only — no raw colour
+   values in this file. (The badge modifier colours stay the pre-existing
+   category rules in css/styles.css.)
+   ========================================================================== */
+
+/* The content region is a stretched flex item of .main-content, whose
+   automatic minimum size is the page's min-content. An explicit min-width
+   of 0 keeps the Templates page's min-content from widening the region
+   (and, with it, the document) past the window. */
+#page-container {
+    min-width: 0;
+}
+
+/* ── Toolbar: one bar above the list, token chrome ─────────────────────── */
+#page-templates .page-actions {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+}
+
+#page-templates .page-actions .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+#page-templates .page-actions .btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-templates .page-actions .btn-primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 90%, var(--color-ink));
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-templates .filter-controls .filter-select {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+/* ── Variable help: one line above the list that wraps when it must ────── */
+#page-templates #template-variable-help {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    min-width: 0;
+    margin-bottom: 0;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+}
+
+#page-templates #template-variable-help strong {
+    margin-right: 0;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+#page-templates #template-variable-help code {
+    padding: var(--space-1) var(--space-2);
+    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+    border-radius: var(--radius-control);
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+#page-templates #template-variable-help code:hover {
+    background: var(--color-accent);
+    color: var(--color-surface);
+}
+
+/* ── List: one compact row per template (both breakpoints) ───────────────
+   The row never wraps at >= 901 px: the name, the badge, the subject and
+   the preview may shrink (ellipsis), and the buttons stay on the row's
+   single line, inside its right edge. */
+#page-templates #templates-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+#page-templates #templates-list .template-card {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--size-list-row);
+    min-width: 0;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    transition: border-color var(--transition);
+}
+
+#page-templates #templates-list .template-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border-soft));
+}
+
+/* The name is capped so a hostile 300+ character name can never push the
+   buttons out of the row; it is cut with an ellipsis on one line. */
+#page-templates #templates-list .template-row-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 280px;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-templates #templates-list .template-category-badge {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 180px;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-templates #templates-list .template-subject {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 220px;
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The preview takes the row's slack: one line, cut with an ellipsis.
+   The cap, as on every other part of the row, keeps a 2,000+ character
+   body from widening the row's min-content past the window (which would
+   push the buttons out and stop the ellipsis from ever cutting). */
+#page-templates #templates-list .template-preview {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 280px;
+    margin: 0;
+    display: block;
+    -webkit-line-clamp: unset;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-wrap: normal;
+}
+
+/* Word-labelled actions, pinned to the row's right edge by an auto margin
+   so they can never be pushed out of the row. */
+#page-templates #templates-list .template-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-bottom: 0;
+    display: flex;
+    gap: var(--space-2);
+}
+
+#page-templates #templates-list .btn-edit-template,
+#page-templates #templates-list .btn-delete-template {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: border-color var(--transition), color var(--transition),
+        background var(--transition);
+}
+
+#page-templates #templates-list .btn-edit-template:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+#page-templates #templates-list .btn-delete-template {
+    border-color: var(--color-risk);
+    color: var(--color-risk);
+}
+
+#page-templates #templates-list .btn-delete-template:hover {
+    background: var(--color-risk);
+    border-color: var(--color-risk);
+    color: var(--color-surface);
+}
+
+/* Centred empty state and failed-load message. */
+#page-templates #templates-list .empty-state-card {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-5);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+}
+
+#page-templates #templates-list .empty-state-card p {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    color: var(--color-ink-secondary);
+    text-align: center;
+}
+
+/* ── Desktop (>= 901 px): fixed height; only #templates-list scrolls ─────
+   The toolbar and the variable help keep their natural heights, the list
+   takes the rest and may shrink to zero, so neither the document nor the
+   content region scrolls. */
+@media (min-width: 901px) {
+    #page-templates.active {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        height: 100%;
+        min-height: 0;
+    }
+
+    #page-templates #templates-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+}
+
+/* ── Narrow (<= 900 px): the rows flow with the page ───────────────────── */
+@media (max-width: 900px) {
+    #page-templates.active {
+        display: block;
+        height: auto;
+    }
+
+    #page-templates #templates-list {
+        padding: 0;
+        overflow: visible;
+    }
+
+    /* The preview drops out on narrow rows; the remaining parts may wrap
+       to further lines — wrapping, not sideways page overflow. */
+    #page-templates #templates-list .template-card {
+        flex-wrap: wrap;
+    }
+
+    #page-templates #templates-list .template-preview {
+        display: none;
+    }
+}

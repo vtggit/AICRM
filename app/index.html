@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/contacts.css?v=0.1.0">
     <link rel="stylesheet" href="css/leads.css?v=0.1.0">
     <link rel="stylesheet" href="css/companies.css?v=0.1.0">
+    <link rel="stylesheet" href="css/templates.css?v=0.1.0">
     <link rel="stylesheet" href="css/activities.css?v=0.1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -509,7 +510,7 @@
                 <!-- Templates Page -->
                 <div id="page-templates" class="page">
                     <div class="page-actions">
-                        <button id="btn-add-template" class="btn btn-primary" data-admin-only="true">+ Add Template</button>
+                        <button id="btn-add-template" class="btn btn-primary" data-requires-role="admin">Add template</button>
                         <div class="filter-controls">
                             <select id="template-filter-category" class="filter-select">
                                 <option value="">All Categories</option>
@@ -534,7 +535,7 @@
                     </div>
                     <div id="templates-list" class="templates-grid">
                         <div class="empty-state-card">
-                            <p>No templates yet. Click "Add Template" to get started.</p>
+                            <p>No templates found.</p>
                         </div>
                     </div>
                 </div>
