@@ -1,0 +1,483 @@
+/* ============================================================================
+   AICRM — Activities page (issue #353)
+   ----------------------------------------------------------------------------
+   The Activities page (#page-activities) fits the window in both views:
+
+     • Toolbar: one bar above the view holds the existing controls with
+       their ids and plain-text labels (no emoji, no "+"); the view button
+       reads "Calendar" in the timeline view and "Timeline" in the calendar
+       view, and the C shortcut still switches views.
+     • Timeline view (#activities-list): one compact row per activity
+       (>= --size-list-row) with the type as a word (no emoji), the
+       description (one line, cut with an ellipsis, full text in its title),
+       the related contact when there is one, the activity's date and the
+       due date when there is one ("Overdue: " in the risk colour, "Due: "
+       otherwise), then the word-labelled "Mark complete" (absent on a
+       completed activity) and "Delete" buttons. The list scrolls on its
+       own. The related contact is hidden at <= 900 px.
+     • Calendar view (#activities-calendar): the month fills the area under
+       the toolbar; the header and the weekday names stay in view, the six
+       weeks of #calendar-grid share the remaining height, and a day with
+       more events than fit scrolls inside its own cell.
+     • Empty state: with no activities the timeline shows a centred
+       "No activities found."
+     • Desktop (>= 901 px): the toolbar is an auto row and the active view
+       container is a 1fr row with min-height: 0, so neither the document
+       nor the content region scrolls — only #activities-list (timeline) or
+       the day cells' event regions (calendar) do. At 900 px and below the
+       page may scroll vertically and nothing scrolls sideways.
+
+   Colours, radii and spacing come from css/tokens.css only — no raw colour
+   values in this file.
+   ========================================================================== */
+
+/* ── Toolbar: one bar above the view, token chrome ─────────────────────── */
+#page-activities .page-actions {
+    margin-bottom: 0;
+}
+
+#page-activities .page-actions .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+#page-activities .page-actions .btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-activities .page-actions .btn-primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 90%, var(--color-ink));
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-activities .page-actions .btn-secondary:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+#page-activities .filter-select {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+}
+
+/* ── View switch: exactly one view is visible at a time ────────────────── */
+#page-activities #activities-list,
+#page-activities #activities-calendar {
+    max-width: none;
+}
+
+#page-activities #activities-calendar {
+    display: none;
+}
+
+#page-activities.view-calendar #activities-list {
+    display: none;
+}
+
+#page-activities.view-calendar #activities-calendar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: 0;
+}
+
+/* ── Timeline: one compact row per activity (both breakpoints) ───────────
+   The row never wraps at >= 901 px: the description may shrink to zero and
+   is cut with an ellipsis, while the type, contact, date, due date and
+   buttons always stay on the row's single line, inside its right edge.
+   (At <= 900 px the related contact is hidden and the row may wrap to a
+   second line instead of overflowing the narrow page — see the narrow
+   block.) */
+#page-activities #activities-list .timeline-item {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--size-list-row);
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+}
+
+#page-activities #activities-list .timeline-item:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border-soft));
+}
+
+/* An overdue row carries a risk bar and a pale risk ground. */
+#page-activities #activities-list .timeline-item.activity-overdue {
+    border-left: 3px solid var(--color-risk);
+    background: color-mix(in srgb, var(--color-risk-bg) 45%, var(--color-surface));
+    padding-left: calc(var(--space-4) - 3px);
+}
+
+/* A completed row is muted and its description struck through. */
+#page-activities #activities-list .timeline-item.activity-completed {
+    opacity: 0.65;
+}
+
+#page-activities #activities-list .timeline-item.activity-completed .timeline-desc {
+    text-decoration: line-through;
+}
+
+/* The type as a word — no emoji. */
+#page-activities #activities-list .timeline-type {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    white-space: nowrap;
+}
+
+/* The description: one line, cut with an ellipsis (full text in title). */
+#page-activities #activities-list .timeline-desc {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Muted related contact: one line, may shrink to nothing at >= 901 px. */
+#page-activities #activities-list .timeline-contact {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Muted activity date (formatDate form) before the due date. */
+#page-activities #activities-list .timeline-date {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+}
+
+/* Due date: "Due: ..." muted; an overdue one reads "Overdue: ..." in the
+   risk colour. */
+#page-activities #activities-list .activity-due-date {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+}
+
+#page-activities #activities-list .activity-due-date.due-overdue {
+    color: var(--color-risk);
+    font-weight: 600;
+}
+
+/* Word-labelled actions at the row's right edge. */
+#page-activities #activities-list .card-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    gap: var(--space-1);
+}
+
+#page-activities #activities-list .card-action-btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-ink);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+}
+
+#page-activities #activities-list .card-action-btn:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-surface));
+    color: var(--color-accent);
+}
+
+/* Centred empty state: no activities (or the filters matched nothing). */
+#page-activities #activities-list .empty-state-card {
+    display: grid;
+    place-items: center;
+    min-height: 100%;
+    grid-column: auto;
+    padding: var(--space-6);
+    background: transparent;
+    border-radius: 0;
+    color: var(--color-ink-secondary);
+    font-family: var(--font-sans);
+}
+
+/* ── Calendar: the month fills the area under the toolbar ──────────────── */
+#page-activities #activities-calendar .calendar-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+}
+
+#page-activities #activities-calendar .calendar-header .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+#page-activities #activities-calendar .calendar-header .btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+#page-activities #activities-calendar .calendar-header h3 {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+#page-activities #activities-calendar .calendar-weekdays {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    margin: 0;
+}
+
+#page-activities #activities-calendar .calendar-weekdays div {
+    text-align: center;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-ink-secondary);
+    padding: var(--space-1) 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* The six weeks share the remaining height under the header and the
+   weekday names. */
+#page-activities #activities-calendar #calendar-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: 1px;
+    background: var(--color-border);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+}
+
+/* A day cell: the number stays in view, the events scroll inside the cell
+   when there are more than fit. */
+#page-activities #activities-calendar .calendar-day {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    background: var(--color-surface);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+#page-activities #activities-calendar .calendar-day-empty {
+    background: color-mix(in srgb, var(--color-ground) 55%, var(--color-surface));
+    cursor: default;
+}
+
+#page-activities #activities-calendar .calendar-day-today {
+    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+}
+
+#page-activities #activities-calendar .calendar-day-today .calendar-day-number {
+    background: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-activities #activities-calendar .calendar-day-number {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-pill);
+    color: var(--color-ink);
+    margin: 0 auto var(--space-1);
+}
+
+#page-activities #activities-calendar .calendar-day-events {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* One line per event, cut with an ellipsis (full text in title). */
+#page-activities #activities-calendar .calendar-event {
+    flex: 0 0 auto;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    padding: 1px var(--space-1);
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-left: 2px solid var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+    color: var(--color-ink);
+    cursor: grab;
+    line-height: 1.4;
+}
+
+#page-activities #activities-calendar .calendar-event:active {
+    cursor: grabbing;
+}
+
+#page-activities #activities-calendar .calendar-event-completed {
+    opacity: 0.45;
+    text-decoration: line-through;
+}
+
+#page-activities #activities-calendar .calendar-event-overdue {
+    border-left-color: var(--color-risk);
+    background: color-mix(in srgb, var(--color-risk-bg) 65%, var(--color-surface));
+    color: var(--color-risk);
+    font-weight: 600;
+}
+
+#page-activities #activities-calendar .calendar-drop-target {
+    background: color-mix(in srgb, var(--color-accent) 15%, var(--color-surface)) !important;
+    outline: 2px dashed var(--color-accent);
+    outline-offset: -2px;
+}
+
+/* ── Desktop (>= 901 px): fixed height; only the views scroll ──────────── */
+@media (min-width: 901px) {
+    /* Fixed height: the toolbar keeps its natural height (an auto row), the
+       active view container is a 1fr row with min-height: 0, so neither
+       the document nor the content region scrolls — only #activities-list
+       or the day cells' event regions do. */
+    #page-activities.active {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        height: 100%;
+        min-height: 0;
+    }
+
+    #page-activities .page-actions {
+        flex: 0 0 auto;
+    }
+
+    #page-activities #activities-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        padding: var(--space-2);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    #page-activities.view-calendar #activities-calendar {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+    }
+}
+
+/* ── Narrow (<= 900 px): the views flow with the page; nothing scrolls
+      sideways on the page ───────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    #page-activities.active {
+        display: block;
+        height: auto;
+    }
+
+    #page-activities .page-actions {
+        margin-bottom: var(--space-4);
+    }
+
+    #page-activities #activities-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        padding: 0;
+        overflow: visible;
+    }
+
+    /* The related contact drops out on narrow rows; the date and due date
+       stay. The row may wrap to a second line (its fixed-width parts no
+       longer all fit in the narrow page) — wrapping, not sideways page
+       overflow. */
+    #page-activities #activities-list .timeline-item {
+        flex-wrap: wrap;
+    }
+
+    #page-activities #activities-list .timeline-contact {
+        display: none;
+    }
+
+    #page-activities #activities-list .empty-state-card {
+        min-height: var(--space-7);
+    }
+
+    #page-activities.view-calendar #activities-calendar {
+        height: 70vh;
+        min-height: 0;
+    }
+}

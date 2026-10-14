@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/contacts.css?v=0.1.0">
     <link rel="stylesheet" href="css/leads.css?v=0.1.0">
     <link rel="stylesheet" href="css/companies.css?v=0.1.0">
+    <link rel="stylesheet" href="css/activities.css?v=0.1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
@@ -467,7 +468,7 @@
                 <!-- Activities Page -->
                 <div id="page-activities" class="page">
                     <div class="page-actions">
-                        <button id="btn-add-activity" class="btn btn-primary">+ Add Activity</button>
+                        <button id="btn-add-activity" class="btn btn-primary">Add Activity</button>
                         <div class="filter-controls">
                             <select id="activity-filter-type" class="filter-select">
                                 <option value="">All Types</option>
@@ -483,20 +484,20 @@
                                 <option value="overdue">Overdue</option>
                                 <option value="completed">Completed</option>
                             </select>
-                            <button id="btn-toggle-calendar" class="btn btn-secondary" title="Toggle Calendar View (C)">📅 Calendar</button>
+                            <button id="btn-toggle-calendar" class="btn btn-secondary" title="Toggle view (C)">Calendar</button>
                         </div>
                     </div>
                     <div id="activities-list" class="activities-timeline">
                         <div class="empty-state-card">
-                            <p>No activities recorded yet.</p>
+                            <p>No activities found.</p>
                         </div>
                     </div>
-                    <div id="activities-calendar" class="activities-calendar" style="display: none;">
+                    <div id="activities-calendar" class="activities-calendar">
                         <div class="calendar-header">
-                            <button id="calendar-prev-month" class="btn btn-secondary" title="Previous Month">◀</button>
+                            <button id="calendar-prev-month" class="btn btn-secondary" title="Previous Month">Previous</button>
                             <button id="calendar-today" class="btn btn-secondary" title="Go to Today">Today</button>
                             <h3 id="calendar-month-year"></h3>
-                            <button id="calendar-next-month" class="btn btn-secondary" title="Next Month">▶</button>
+                            <button id="calendar-next-month" class="btn btn-secondary" title="Next Month">Next</button>
                         </div>
                         <div class="calendar-weekdays">
                             <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
