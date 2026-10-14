@@ -1,0 +1,436 @@
+/* ============================================================================
+   AICRM — Sales Goals page (issue #360)
+   ----------------------------------------------------------------------------
+   The Sales Goals page (#page-salesgoals) fits the window:
+
+     • Summary and toolbar: one bar above the list holds the three summary
+       figures (#goal-overall-progress, #goal-active-count,
+       #goal-completed-count, each with its label and without its emoji
+       icon) and #btn-recalculate-goals reading "Recalculate" plus
+       #btn-add-goal reading "Add goal" — no emoji, no "+".
+     • List (#goals-list): one compact row per goal (>= --size-list-row,
+       52 px) keeping the class goal-card and its data-id, showing in order
+       the type badge (.goal-type-badge), the name (.goal-name — cut with an
+       ellipsis on one line, its title carrying the full name), the progress
+       bar with its percentage (.goal-progress-fill, .goal-progress-pct),
+       the current and target values (.goal-progress-values), the period
+       (.goal-period), the date range (.goal-date-range), the days left
+       (.goal-days-left: "N days left", "1 day left" or "Ended") and the
+       Edit/Delete buttons (.btn-edit-goal, .btn-delete-goal, word-labelled,
+       aria-labels "Edit goal" / "Delete goal"), pinned to the row's right
+       edge. A row at 100% shows the .goal-completed-badge reading
+       "Completed". The type's modifier class is one of
+       revenue/deals/contacts/activities; any other type gets no modifier
+       while its label is still shown.
+     • With no goals a centred empty state reads "No sales goals yet." with
+       an "Add goal" beside or below it.
+     • Desktop (>= 901 px): neither the document nor the content region
+       scrolls — only #goals-list does. At 900 px and below the period and
+       the date range drop out and nothing scrolls sideways.
+
+   Colours, radii and spacing come from css/tokens.css only — no raw colour
+   values in this file.
+   ========================================================================== */
+
+/* ── Summary and toolbar: one bar above the list ─────────────────────────── */
+#page-salesgoals .sales-goals-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    flex: 0 0 auto;
+}
+
+#page-salesgoals .sales-goals-summary {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+}
+
+/* Each figure: the value (mono, tabular) over its label. */
+#page-salesgoals .goal-summary-figure {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+#page-salesgoals .goal-summary-figure h3 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-ink);
+}
+
+#page-salesgoals .goal-summary-label {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-ink-secondary);
+}
+
+/* The two actions sit at the bar's right edge. */
+#page-salesgoals .sales-goals-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+#page-salesgoals .sales-goals-actions .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+
+#page-salesgoals .sales-goals-actions .btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+#page-salesgoals .sales-goals-actions .btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+#page-salesgoals .sales-goals-actions .btn-primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 90%, var(--color-ink));
+    border-color: var(--color-accent);
+    color: var(--color-surface);
+}
+
+/* ── List: one compact row per goal (>= --size-list-row) ─────────────────── */
+#page-salesgoals #goals-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+/* The row never wraps at >= 901 px: the name grows/shrinks with the row,
+   the other parts may shrink to zero, and the actions keep a margin-left:
+   auto so they sit at the row's right edge in every case. */
+#page-salesgoals #goals-list .goal-card {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    min-height: var(--size-list-row);
+    min-width: 0;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    transition: border-color var(--transition);
+}
+
+#page-salesgoals #goals-list .goal-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border-soft));
+}
+
+/* The type badge: a pill. The modifier tints come from the token set; an
+   unknown type keeps the neutral badge and its escaped label. The cap and
+   ellipsis treat the user-controllable type like the name: a 300+
+   character type is clipped inside the pill instead of stretching the
+   badge without bound and overflowing the row (where the overflow would
+   sit masked by the list's overflow-x: hidden). */
+#page-salesgoals #goals-list .goal-type-badge {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 160px;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: color-mix(in srgb, var(--color-ink-secondary) 12%, var(--color-surface));
+    color: var(--color-ink-secondary);
+}
+
+#page-salesgoals #goals-list .goal-type-badge.revenue {
+    background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
+    color: var(--color-accent);
+}
+
+#page-salesgoals #goals-list .goal-type-badge.deals {
+    background: color-mix(in srgb, var(--color-ink) 12%, var(--color-surface));
+    color: var(--color-ink);
+}
+
+#page-salesgoals #goals-list .goal-type-badge.contacts {
+    background: color-mix(in srgb, var(--color-ink-secondary) 22%, var(--color-surface));
+    color: var(--color-ink-secondary);
+}
+
+#page-salesgoals #goals-list .goal-type-badge.activities {
+    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+    color: color-mix(in srgb, var(--color-accent) 65%, var(--color-ink));
+}
+
+/* The name takes the row's slack and is cut with an ellipsis on one line.
+   The cap keeps a user-controllable 300+ character name from ever filling
+   the row (and with it, pushing the buttons out) no matter how wide the
+   row ends up. */
+#page-salesgoals #goals-list .goal-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 320px;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The "Completed" badge: a solid accent pill with white text (the family's
+   "Done" state). */
+#page-salesgoals #goals-list .goal-completed-badge {
+    flex: 0 0 auto;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+    color: var(--color-surface);
+    white-space: nowrap;
+}
+
+/* Progress: a short track with its percentage beside it. */
+#page-salesgoals #goals-list .goal-progress {
+    flex: 0 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+#page-salesgoals #goals-list .goal-progress-bar {
+    flex: 0 0 auto;
+    width: 96px;
+    height: 8px;
+    background: var(--color-border-soft);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+}
+
+#page-salesgoals #goals-list .goal-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--color-accent) 55%, var(--color-surface));
+    transition: width 0.4s ease;
+}
+
+#page-salesgoals #goals-list .goal-progress-fill.completed {
+    background: var(--color-accent);
+}
+
+#page-salesgoals #goals-list .goal-progress-pct {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+#page-salesgoals #goals-list .goal-progress-values {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-salesgoals #goals-list .goal-period,
+#page-salesgoals #goals-list .goal-date-range,
+#page-salesgoals #goals-list .goal-days-left {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--color-ink-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Word-labelled actions, pinned to the row's right edge by an auto margin
+   so they can never be pushed out of the row. */
+#page-salesgoals #goals-list .goal-card-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    display: flex;
+    gap: var(--space-2);
+}
+
+#page-salesgoals #goals-list .btn-edit-goal,
+#page-salesgoals #goals-list .btn-delete-goal {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+#page-salesgoals #goals-list .btn-edit-goal:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+#page-salesgoals #goals-list .btn-delete-goal {
+    color: var(--color-risk);
+    border-color: color-mix(in srgb, var(--color-risk) 40%, var(--color-border));
+}
+
+#page-salesgoals #goals-list .btn-delete-goal:hover {
+    background: var(--color-risk-bg);
+    border-color: var(--color-risk);
+    color: var(--color-risk);
+}
+
+/* ── Centred empty state ─────────────────────────────────────────────────── */
+#page-salesgoals #goals-list .goals-empty {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-7) var(--space-5);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+}
+
+#page-salesgoals #goals-list .goals-empty p {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    color: var(--color-ink-secondary);
+    text-align: center;
+}
+
+#page-salesgoals #goals-list .goals-empty .btn {
+    min-height: var(--size-touch-target);
+    padding: 0 var(--space-4);
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-control);
+    color: var(--color-surface);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+#page-salesgoals #goals-list .goals-empty .btn:hover {
+    background: color-mix(in srgb, var(--color-accent) 90%, var(--color-ink));
+}
+
+/* ── Desktop (>= 901 px): fixed height; only #goals-list scrolls ───────────
+   The bar keeps its natural height, the list takes the rest and may shrink
+   to zero, so neither the document nor the content region scrolls. */
+@media (min-width: 901px) {
+    #page-salesgoals.active {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        height: 100%;
+        min-height: 0;
+    }
+
+    #page-salesgoals .sales-goals-bar {
+        flex: 0 0 auto;
+    }
+
+    #page-salesgoals #goals-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        padding: var(--space-2);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+}
+
+/* ── Narrow (<= 900 px): the rows flow with the page ─────────────────────── */
+@media (max-width: 900px) {
+    #page-salesgoals .sales-goals-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #page-salesgoals .sales-goals-actions {
+        margin-left: 0;
+    }
+
+    #page-salesgoals #goals-list {
+        padding: 0;
+        overflow: visible;
+    }
+
+    /* The period and the date range drop out on narrow rows; the remaining
+       parts may wrap to further lines — wrapping, not sideways overflow. */
+    #page-salesgoals #goals-list .goal-card {
+        flex-wrap: wrap;
+    }
+
+    #page-salesgoals #goals-list .goal-name {
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+
+    #page-salesgoals #goals-list .goal-period,
+    #page-salesgoals #goals-list .goal-date-range {
+        display: none;
+    }
+
+    #page-salesgoals #goals-list .goal-card-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-left: 0;
+    }
+}

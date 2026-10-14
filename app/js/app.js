@@ -628,6 +628,7 @@ const App = {
         if (this.currentPage === 'contacts') await this.renderContacts();
         if (this.currentPage === 'leads') await this.renderLeads();
         if (this.currentPage === 'activities') await this._renderActivitiesView();
+        if (this.currentPage === 'salesgoals') await this.renderSalesGoals();
     },
 
     // === Dashboard ===
@@ -5528,77 +5529,84 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
     async renderSalesGoals() {
         const goals = await SalesGoalsDataSource.getGoals();
         const progress = await SalesGoalsDataSource.getProgress();
-        this.renderSalesGoalsList(goals, progress);
-        this.renderSalesGoalsSummary(goals, progress);
+        const rows = this._salesGoalsRows(goals, progress);
+        this.renderSalesGoalsList(rows);
+        this.renderSalesGoalsSummary(goals, rows);
         this.bindSalesGoalsEvents();
     },
 
-    renderSalesGoalsList(goals, progress) {
-        const container = document.getElementById('goals-list');
-        if (!container) return;
-
-        if (!goals || goals.length === 0) {
-            container.innerHTML = '<p class="empty-state">No sales goals defined yet. Click "Add Goal" to get started.</p>';
-            return;
-        }
-
+    /**
+     * Compute each row's display state. The current value is the progress
+     * endpoint's value for that goal (else the goal's own); the percentage
+     * keeps today's rule: current over target, rounded, capped at 100, 0
+     * when the target is 0. A goal is completed exactly when the
+     * percentage its row shows is at least 100.
+     */
+    _salesGoalsRows(goals, progress) {
         // Build a lookup from the progress goals array (backend computes current_value + progress_percent)
         const progressMap = {};
         (progress.goals || []).forEach(g => { progressMap[g.id] = g; });
 
         const sorted = [...goals].sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-
-        container.innerHTML = sorted.map(goal => {
+        return sorted.map(goal => {
             const pg = progressMap[goal.id] || {};
             const currentValue = pg.currentValue || goal.currentValue || 0;
             const pct = goal.targetValue > 0 ? Math.min(100, Math.round((currentValue / goal.targetValue) * 100)) : 0;
-            const isCompleted = pct >= 100;
-            const daysLeft = goal.endDate ? Math.max(0, Math.ceil((new Date(goal.endDate) - new Date()) / 86400000)) : '—';
+            return { goal, currentValue, pct, isCompleted: pct >= 100 };
+        });
+    },
 
+    renderSalesGoalsList(rows) {
+        const container = document.getElementById('goals-list');
+        if (!container) return;
+
+        if (!rows || rows.length === 0) {
+            container.innerHTML =
+                '<div class="goals-empty">' +
+                '<p>No sales goals yet.</p>' +
+                '<button class="btn goals-empty-add" type="button">Add goal</button>' +
+                '</div>';
+            return;
+        }
+
+        // Every API value passes through the escaping helpers: text via
+        // escapeHtml, attribute values via escapeAttr. The type's modifier
+        // class comes from a fixed allow-list, so a hostile type can never
+        // reach an attribute.
+        container.innerHTML = rows.map(({ goal, currentValue, pct, isCompleted }) => {
+            const modifier = this._salesGoalTypeModifier(goal.type);
+            const idAttr = this.escapeAttr(goal.id);
             return `
-                <div class="goal-card" data-id="${goal.id}">
-                    <div class="goal-card-header">
-                        <div class="goal-card-title">
-                            <span class="goal-type-badge ${goal.type}">${this._goalTypeLabel(goal.type)}</span>
-                            <span class="goal-name">${this._esc(goal.name)}</span>
-                            ${isCompleted ? '<span class="goal-completed-badge">✅ Completed</span>' : ''}
+                <div class="goal-card" data-id="${idAttr}">
+                    <span class="goal-type-badge${modifier ? ' ' + modifier : ''}">${this.escapeHtml(this._goalTypeLabel(goal.type))}</span>
+                    <span class="goal-name" title="${this.escapeAttr(goal.name)}">${this.escapeHtml(goal.name)}</span>
+                    ${isCompleted ? '<span class="goal-completed-badge">Completed</span>' : ''}
+                    <div class="goal-progress">
+                        <div class="goal-progress-bar">
+                            <div class="goal-progress-fill${isCompleted ? ' completed' : ''}" style="width: ${pct}%"></div>
                         </div>
-                        <div class="goal-card-actions">
-                            <button class="btn-icon btn-edit-goal" title="Edit" data-id="${goal.id}">✏️</button>
-                            <button class="btn-icon btn-delete-goal" title="Delete" data-id="${goal.id}">🗑️</button>
-                        </div>
+                        <span class="goal-progress-pct">${pct}%</span>
                     </div>
-                    <div class="goal-card-body">
-                        <div class="goal-progress-section">
-                            <div class="goal-progress-label">
-                                <span>Progress</span>
-                                <span class="goal-progress-pct">${pct}%</span>
-                            </div>
-                            <div class="goal-progress-bar">
-                                <div class="goal-progress-fill ${isCompleted ? 'completed' : ''}" style="width: ${pct}%"></div>
-                            </div>
-                            <div class="goal-progress-values">
-                                <span>${this._goalValueLabel(currentValue, goal.type)} / ${this._goalValueLabel(goal.targetValue, goal.type)}</span>
-                            </div>
-                        </div>
-                        <div class="goal-meta">
-                            <span class="goal-meta-item">📅 ${this._fmtPeriod(goal.period)}</span>
-                            <span class="goal-meta-item">🗓️ ${this._fmtDate(goal.startDate)} → ${this._fmtDate(goal.endDate)}</span>
-                            <span class="goal-meta-item">⏰ ${daysLeft} days left</span>
-                        </div>
+                    <span class="goal-progress-values">${this._goalValueLabel(currentValue, goal.type)} / ${this._goalValueLabel(goal.targetValue, goal.type)}</span>
+                    <span class="goal-period">${this.escapeHtml(this._fmtPeriod(goal.period))}</span>
+                    <span class="goal-date-range">${this.escapeHtml(this._fmtDate(goal.startDate))} – ${this.escapeHtml(this._fmtDate(goal.endDate))}</span>
+                    <span class="goal-days-left">${this.escapeHtml(this._salesGoalDaysLeft(goal))}</span>
+                    <div class="goal-card-actions">
+                        <button class="btn-edit-goal" type="button" data-id="${idAttr}" aria-label="Edit goal">Edit</button>
+                        <button class="btn-delete-goal" type="button" data-id="${idAttr}" aria-label="Delete goal">Delete</button>
                     </div>
                 </div>
             `;
         }).join('');
     },
 
-    renderSalesGoalsSummary(goals, progress) {
+    renderSalesGoalsSummary(goals, rows) {
         // Active = end_date is in the future
         const now = new Date();
         const activeGoals = goals.filter(g => new Date(g.endDate) >= now);
-        const completedGoals = goals.filter(g => {
-            return g.targetValue > 0 && (g.progressPercent || 0) >= 100;
-        });
+        // The completed count is the number of rows showing the
+        // "Completed" badge — i.e. whose displayed percentage is >= 100.
+        const completedCount = rows.filter(r => r.isCompleted).length;
 
         const totalTarget = activeGoals.reduce((s, g) => s + g.targetValue, 0);
         const totalCurrent = activeGoals.reduce((s, g) => s + (g.currentValue || 0), 0);
@@ -5607,7 +5615,7 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
         const el = (id) => document.getElementById(id);
         if (el('goal-overall-progress')) el('goal-overall-progress').textContent = overallPct + '%';
         if (el('goal-active-count')) el('goal-active-count').textContent = activeGoals.length;
-        if (el('goal-completed-count')) el('goal-completed-count').textContent = completedGoals.length;
+        if (el('goal-completed-count')) el('goal-completed-count').textContent = completedCount;
     },
 
     bindSalesGoalsEvents() {
@@ -5624,16 +5632,19 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
         const container = document.getElementById('goals-list');
         if (!container) return;
 
+        const emptyAddBtn = container.querySelector('.goals-empty-add');
+        if (emptyAddBtn) {
+            emptyAddBtn.onclick = () => this.showGoalModal();
+        }
+
         container.querySelectorAll('.btn-edit-goal').forEach(btn => {
-            btn.onclick = (e) => {
-                e.stopPropagation();
+            btn.onclick = () => {
                 this.showGoalModal(btn.dataset.id);
             };
         });
 
         container.querySelectorAll('.btn-delete-goal').forEach(btn => {
-            btn.onclick = (e) => {
-                e.stopPropagation();
+            btn.onclick = () => {
                 this.deleteGoal(btn.dataset.id);
             };
         });
@@ -5651,50 +5662,44 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             goal.endDate = (goal.endDate || '').slice(0, 10);
         }
 
-        const modal = document.getElementById('modal-container');
-        const title = document.getElementById('modal-title');
-        title.textContent = isEdit ? 'Edit Sales Goal' : 'Add Sales Goal';
-
-        modal.innerHTML = `
-            <div class="modal-header">
-                <h3 id="modal-title">${isEdit ? 'Edit Sales Goal' : 'Add Sales Goal'}</h3>
-                <button id="modal-close" class="modal-close-btn" aria-label="Close modal">&times;</button>
+        // The goal modal uses the shared modal chrome (the static
+        // #modal-title and #modal-close), so its fields live in
+        // #modal-body like every other modal's.
+        document.getElementById('modal-title').textContent = isEdit ? 'Edit Sales Goal' : 'Add Sales Goal';
+        document.getElementById('modal-body').innerHTML = `
+            <div class="form-group">
+                <label for="goal-name">Goal Name</label>
+                <input type="text" id="goal-name" class="form-control" value="${this._esc(goal.name)}" placeholder="e.g. Q1 Revenue Target">
             </div>
-            <div class="modal-body">
+            <div class="form-group">
+                <label for="goal-type">Type</label>
+                <select id="goal-type" class="form-control">
+                    <option value="revenue" ${goal.type === 'revenue' ? 'selected' : ''}>Revenue</option>
+                    <option value="deals" ${goal.type === 'deals' ? 'selected' : ''}>Deals Closed</option>
+                    <option value="contacts" ${goal.type === 'contacts' ? 'selected' : ''}>New Contacts</option>
+                    <option value="activities" ${goal.type === 'activities' ? 'selected' : ''}>Activities</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="goal-target">Target Value</label>
+                <input type="number" id="goal-target" class="form-control" value="${goal.targetValue}" min="0" step="1">
+            </div>
+            <div class="form-group">
+                <label for="goal-period">Period</label>
+                <select id="goal-period" class="form-control">
+                    <option value="monthly" ${goal.period === 'monthly' ? 'selected' : ''}>Monthly</option>
+                    <option value="quarterly" ${goal.period === 'quarterly' ? 'selected' : ''}>Quarterly</option>
+                    <option value="yearly" ${goal.period === 'yearly' ? 'selected' : ''}>Yearly</option>
+                </select>
+            </div>
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="goal-name">Goal Name</label>
-                    <input type="text" id="goal-name" class="form-control" value="${this._esc(goal.name)}" placeholder="e.g. Q1 Revenue Target">
+                    <label for="goal-start">Start Date</label>
+                    <input type="date" id="goal-start" class="form-control" value="${goal.startDate}">
                 </div>
                 <div class="form-group">
-                    <label for="goal-type">Type</label>
-                    <select id="goal-type" class="form-control">
-                        <option value="revenue" ${goal.type === 'revenue' ? 'selected' : ''}>Revenue</option>
-                        <option value="deals" ${goal.type === 'deals' ? 'selected' : ''}>Deals Closed</option>
-                        <option value="contacts" ${goal.type === 'contacts' ? 'selected' : ''}>New Contacts</option>
-                        <option value="activities" ${goal.type === 'activities' ? 'selected' : ''}>Activities</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="goal-target">Target Value</label>
-                    <input type="number" id="goal-target" class="form-control" value="${goal.targetValue}" min="0" step="1">
-                </div>
-                <div class="form-group">
-                    <label for="goal-period">Period</label>
-                    <select id="goal-period" class="form-control">
-                        <option value="monthly" ${goal.period === 'monthly' ? 'selected' : ''}>Monthly</option>
-                        <option value="quarterly" ${goal.period === 'quarterly' ? 'selected' : ''}>Quarterly</option>
-                        <option value="yearly" ${goal.period === 'yearly' ? 'selected' : ''}>Yearly</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="goal-start">Start Date</label>
-                        <input type="date" id="goal-start" class="form-control" value="${goal.startDate}">
-                    </div>
-                    <div class="form-group">
-                        <label for="goal-end">End Date</label>
-                        <input type="date" id="goal-end" class="form-control" value="${goal.endDate}">
-                    </div>
+                    <label for="goal-end">End Date</label>
+                    <input type="date" id="goal-end" class="form-control" value="${goal.endDate}">
                 </div>
             </div>
             <div class="modal-footer">
@@ -5703,11 +5708,10 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             </div>
         `;
 
-        this.showModal();
-
-        document.getElementById('modal-close').onclick = () => this.hideModal();
-        document.getElementById('btn-cancel-goal').onclick = () => this.hideModal();
+        document.getElementById('btn-cancel-goal').onclick = () => this.closeModal();
         document.getElementById('btn-save-goal').onclick = () => this.saveGoal(goalId);
+
+        this.openModal();
     },
 
     async saveGoal(goalId) {
@@ -5718,24 +5722,24 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
         const startDate = document.getElementById('goal-start').value;
         const endDate = document.getElementById('goal-end').value;
 
-        if (!name) { this.showToast('Please enter a goal name.', 'warning'); return; }
-        if (targetValue <= 0) { this.showToast('Target value must be greater than 0.', 'warning'); return; }
-        if (!startDate || !endDate) { this.showToast('Please select start and end dates.', 'warning'); return; }
-        if (endDate <= startDate) { this.showToast('End date must be after start date.', 'warning'); return; }
+        if (!name) { this.showNotification('Please enter a goal name.', 'warning'); return; }
+        if (targetValue <= 0) { this.showNotification('Target value must be greater than 0.', 'warning'); return; }
+        if (!startDate || !endDate) { this.showNotification('Please select start and end dates.', 'warning'); return; }
+        if (endDate <= startDate) { this.showNotification('End date must be after start date.', 'warning'); return; }
 
         try {
             const payload = { name, type, targetValue, period, startDate, endDate };
             if (goalId) {
                 await SalesGoalsDataSource.updateGoal(goalId, payload);
-                this.showToast('Goal updated successfully.', 'success');
+                this.showNotification('Goal updated successfully.', 'success');
             } else {
                 await SalesGoalsDataSource.createGoal(payload);
-                this.showToast('Goal created successfully.', 'success');
+                this.showNotification('Goal created successfully.', 'success');
             }
-            this.hideModal();
+            this.closeModal();
             await this.renderSalesGoals();
         } catch (e) {
-            this.showToast('Failed to save goal: ' + e.message, 'error');
+            this.showNotification('Failed to save goal: ' + e.message, 'error');
         }
     },
 
@@ -5743,31 +5747,48 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
         if (!confirm('Are you sure you want to delete this sales goal?')) return;
         try {
             await SalesGoalsDataSource.deleteGoal(goalId);
-            this.showToast('Goal deleted.', 'success');
+            this.showNotification('Goal deleted.', 'success');
             await this.renderSalesGoals();
         } catch (e) {
-            this.showToast('Failed to delete goal: ' + e.message, 'error');
+            this.showNotification('Failed to delete goal: ' + e.message, 'error');
         }
     },
 
     async recalculateGoals() {
         try {
             const btn = document.getElementById('btn-recalculate-goals');
-            if (btn) { btn.disabled = true; btn.textContent = '⏳ Calculating...'; }
+            if (btn) { btn.disabled = true; btn.textContent = 'Calculating...'; }
             await SalesGoalsDataSource.recalculateValues();
-            this.showToast('Goals recalculated.', 'success');
+            this.showNotification('Goals recalculated.', 'success');
             await this.renderSalesGoals();
-            if (btn) { btn.disabled = false; btn.textContent = '🔄 Recalculate'; }
+            if (btn) { btn.disabled = false; btn.textContent = 'Recalculate'; }
         } catch (e) {
-            this.showToast('Recalculation failed: ' + e.message, 'error');
+            this.showNotification('Recalculation failed: ' + e.message, 'error');
         }
     },
 
     // ── Sales Goals Helpers ──────────────────────────────────────────
 
+    /**
+     * The badge's modifier class is allow-listed to the four known types;
+     * any other type gets no modifier while its label is still shown.
+     */
+    _salesGoalTypeModifier(type) {
+        return ['revenue', 'deals', 'contacts', 'activities'].includes(type) ? type : '';
+    },
+
     _goalTypeLabel(type) {
-        const labels = { revenue: '💰 Revenue', deals: '🤝 Deals', contacts: '👤 Contacts', activities: '📋 Activities' };
-        return labels[type] || type;
+        const labels = { revenue: 'Revenue', deals: 'Deals', contacts: 'Contacts', activities: 'Activities' };
+        return labels[type] || String(type == null ? '' : type);
+    },
+
+    _salesGoalDaysLeft(goal) {
+        if (!goal.endDate) return '—';
+        const end = new Date(goal.endDate);
+        const now = new Date();
+        if (end <= now) return 'Ended';
+        const days = Math.ceil((end - now) / 86400000);
+        return days <= 1 ? '1 day left' : days + ' days left';
     },
 
     _fmtPeriod(p) {
