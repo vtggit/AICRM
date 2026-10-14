@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="css/companies.css?v=0.1.0">
     <link rel="stylesheet" href="css/templates.css?v=0.1.0">
     <link rel="stylesheet" href="css/activities.css?v=0.1.0">
+    <link rel="stylesheet" href="css/salesgoals.css?v=0.1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
@@ -650,40 +651,27 @@
 
                 <!-- Sales Goals Page -->
                 <div id="page-salesgoals" class="page">
-                    <div class="sales-goals-container">
-                        <div class="sales-goals-header">
-                            <div class="sales-goals-summary">
-                                <div class="goal-summary-card">
-                                    <div class="goal-summary-icon">📊</div>
-                                    <div class="goal-summary-info">
-                                        <h3 id="goal-overall-progress">0%</h3>
-                                        <p>Overall Progress</p>
-                                    </div>
-                                </div>
-                                <div class="goal-summary-card">
-                                    <div class="goal-summary-icon">🎯</div>
-                                    <div class="goal-summary-info">
-                                        <h3 id="goal-active-count">0</h3>
-                                        <p>Active Goals</p>
-                                    </div>
-                                </div>
-                                <div class="goal-summary-card">
-                                    <div class="goal-summary-icon">✅</div>
-                                    <div class="goal-summary-info">
-                                        <h3 id="goal-completed-count">0</h3>
-                                        <p>Completed</p>
-                                    </div>
-                                </div>
+                    <div class="sales-goals-bar">
+                        <div class="sales-goals-summary">
+                            <div class="goal-summary-figure">
+                                <h3 id="goal-overall-progress">0%</h3>
+                                <p class="goal-summary-label">Overall Progress</p>
                             </div>
-                            <div class="sales-goals-actions">
-                                <button id="btn-recalculate-goals" class="btn btn-secondary">🔄 Recalculate</button>
-                                <button id="btn-add-goal" class="btn btn-primary">+ Add Goal</button>
+                            <div class="goal-summary-figure">
+                                <h3 id="goal-active-count">0</h3>
+                                <p class="goal-summary-label">Active Goals</p>
+                            </div>
+                            <div class="goal-summary-figure">
+                                <h3 id="goal-completed-count">0</h3>
+                                <p class="goal-summary-label">Completed</p>
                             </div>
                         </div>
-                        <div id="goals-list" class="goals-list">
-                            <p class="empty-state">No sales goals defined yet. Click "Add Goal" to get started.</p>
+                        <div class="sales-goals-actions">
+                            <button id="btn-recalculate-goals" class="btn btn-secondary">Recalculate</button>
+                            <button id="btn-add-goal" class="btn btn-primary">Add goal</button>
                         </div>
                     </div>
+                    <div id="goals-list" class="goals-list"></div>
                 </div>
             </div>
         </main>
@@ -728,6 +716,6 @@
     <script src="js/settings-data-source.js"></script>
     <script src="js/sales-goals-data-source.js"></script>
     <script src="js/companies-data-source.js"></script>
-    <script src="js/app.js?v=0.1.9"></script>
+    <script src="js/app.js?v=0.1.10"></script>
 </body>
 </html>
