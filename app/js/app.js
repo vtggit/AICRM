@@ -583,6 +583,14 @@ const App = {
         });
     },
 
+    // Issue #368 — the text of one record field for the global search: a
+    // missing or non-string value is empty text, so a single record with a
+    // bad field can never throw the search (or the filtered render and name
+    // sort the search drives) out.
+    _searchFieldText(value) {
+        return typeof value === 'string' ? value : '';
+    },
+
     async performSearch(query) {
         let allContacts;
         try {
@@ -592,9 +600,9 @@ const App = {
             allContacts = [];
         }
         const contacts = allContacts.filter(c =>
-            c.name.toLowerCase().includes(query) ||
-            (c.email || '').toLowerCase().includes(query) ||
-            (c.company || '').toLowerCase().includes(query)
+            this._searchFieldText(c.name).toLowerCase().includes(query) ||
+            this._searchFieldText(c.email).toLowerCase().includes(query) ||
+            this._searchFieldText(c.company).toLowerCase().includes(query)
         );
 
         let allLeads;
@@ -605,9 +613,9 @@ const App = {
             allLeads = [];
         }
         const leads = allLeads.filter(l =>
-            l.name.toLowerCase().includes(query) ||
-            (l.company || '').toLowerCase().includes(query) ||
-            (l.source || '').toLowerCase().includes(query)
+            this._searchFieldText(l.name).toLowerCase().includes(query) ||
+            this._searchFieldText(l.company).toLowerCase().includes(query) ||
+            this._searchFieldText(l.source).toLowerCase().includes(query)
         );
 
         // Single render path: the navigation below triggers the page's
@@ -621,6 +629,14 @@ const App = {
             this.navigate('leads');
         } else {
             this._searchQuery = null;
+            // Nothing matched: a contacts or leads list that is still
+            // showing the filter of an earlier search re-renders
+            // unfiltered, and the user is told nothing matched (the query
+            // is inserted as text, never as markup).
+            if (this.currentPage === 'contacts' || this.currentPage === 'leads') {
+                this.renderCurrentPage();
+            }
+            this.showNotification(`No contacts or leads match "${query}".`);
         }
     },
 
@@ -878,9 +894,14 @@ const App = {
 
     getRelativeTime(dateStr) {
         if (!dateStr) return '';
-        const now = new Date();
         const date = new Date(dateStr);
+        // Issue #368 — an unreadable date has no relative time: the empty
+        // string keeps "NaN..." off the page, and a date in the future
+        // reads "Just now", exactly like a date in this moment.
+        if (isNaN(date.getTime())) return '';
+        const now = new Date();
         const diffMs = now - date;
+        if (diffMs < 0) return 'Just now';
         const diffSec = Math.floor(diffMs / 1000);
         const diffMin = Math.floor(diffSec / 60);
         const diffHour = Math.floor(diffMin / 60);
@@ -1112,9 +1133,9 @@ const App = {
         if (this._searchQuery) {
             const q = this._searchQuery;
             contacts = contacts.filter(c =>
-                (c.name || '').toLowerCase().includes(q) ||
-                (c.email || '').toLowerCase().includes(q) ||
-                (c.company || '').toLowerCase().includes(q)
+                this._searchFieldText(c.name).toLowerCase().includes(q) ||
+                this._searchFieldText(c.email).toLowerCase().includes(q) ||
+                this._searchFieldText(c.company).toLowerCase().includes(q)
             );
         }
 
@@ -1126,8 +1147,12 @@ const App = {
         }
 
         contacts.sort((a, b) => {
-            if (sortMode === 'name-asc') return a.name.localeCompare(b.name);
-            if (sortMode === 'name-desc') return b.name.localeCompare(a.name);
+            if (sortMode === 'name-asc') {
+                return this._searchFieldText(a.name).localeCompare(this._searchFieldText(b.name));
+            }
+            if (sortMode === 'name-desc') {
+                return this._searchFieldText(b.name).localeCompare(this._searchFieldText(a.name));
+            }
             return new Date(b.createdAt) - new Date(a.createdAt);
         });
 
@@ -3017,9 +3042,9 @@ const App = {
         if (this._searchQuery) {
             const q = this._searchQuery;
             leads = leads.filter(l =>
-                (l.name || '').toLowerCase().includes(q) ||
-                (l.company || '').toLowerCase().includes(q) ||
-                (l.source || '').toLowerCase().includes(q)
+                this._searchFieldText(l.name).toLowerCase().includes(q) ||
+                this._searchFieldText(l.company).toLowerCase().includes(q) ||
+                this._searchFieldText(l.source).toLowerCase().includes(q)
             );
         }
         const filterStage = document.getElementById('lead-filter-stage').value;
