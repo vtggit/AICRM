@@ -3498,7 +3498,15 @@ const App = {
         this._bindTrendControls();
     },
 
+    /**
+     * Issue #365 — bound once: renderDashboard() and renderAnalytics()
+     * both call this every time their page is shown, so without the guard
+     * the trend controls would accumulate one `change` listener per page
+     * load and a single change would fan out into many trend requests.
+     */
     _bindTrendControls() {
+        if (this._trendControlsBound) return;
+        this._trendControlsBound = true;
         const rangeSelect = document.getElementById('trend-range');
         const groupSelect = document.getElementById('trend-group');
         if (rangeSelect) {
@@ -3509,7 +3517,15 @@ const App = {
         }
     },
 
+    /**
+     * Issue #365 — newest answer wins: every trend request carries a
+     * sequence number (this._trendSeq); an answer for an older request is
+     * dropped, so the chart always shows the latest choice even when an
+     * earlier response arrives last.
+     */
     async _renderActivityTrends() {
+        const seq = (this._trendSeq || 0) + 1;
+        this._trendSeq = seq;
         const range = document.getElementById('trend-range')?.value || '30d';
         const group = document.getElementById('trend-group')?.value || 'day';
         const overviewEl = document.getElementById('activity-trend-overview');
@@ -3518,10 +3534,12 @@ const App = {
 
         try {
             const data = await ApiClient.getActivityTrendsFromApi(range, group);
+            if (seq !== this._trendSeq) return;
             this._renderTrendOverview(data);
             this._renderTrendChart(data);
             this._renderTrendLegend(data);
         } catch (err) {
+            if (seq !== this._trendSeq) return;
             console.error('Failed to load activity trends:', err);
             if (overviewEl) overviewEl.innerHTML = '<p class="empty-state">Failed to load trend data.</p>';
             if (chartEl) chartEl.innerHTML = '';
@@ -3529,11 +3547,21 @@ const App = {
         }
     },
 
+    /**
+     * Issue #365 — analytics figures are data: read them as numbers. A
+     * missing or non-numeric count, value, rate or drop-off yields 0
+     * instead of throwing or leaking raw text into the page.
+     */
+    _analyticsNum(value) {
+        const n = typeof value === 'number' ? value : Number(value);
+        return Number.isFinite(n) ? n : 0;
+    },
+
     _renderTrendOverview(data) {
         const el = document.getElementById('activity-trend-overview');
         if (!el) return;
-        const total = data.total_activities ?? 0;
-        const peak = data.peak_count ?? 0;
+        const total = this._analyticsNum(data.total_activities);
+        const peak = this._analyticsNum(data.peak_count);
         const peakLabel = data.peak_bucket ? new Date(data.peak_bucket).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
         const buckets = data.buckets || [];
         const avgPerBucket = buckets.length ? (total / buckets.length).toFixed(1) : '0';
@@ -3541,15 +3569,15 @@ const App = {
         el.innerHTML = `
             <div class="trend-stat">
                 <span class="trend-stat-label">Total Activities</span>
-                <span class="trend-stat-value">${total}</span>
+                <span class="trend-stat-value">${this.escapeHtml(String(total))}</span>
             </div>
             <div class="trend-stat">
                 <span class="trend-stat-label">Peak Day</span>
-                <span class="trend-stat-value accent-text">${peak} <small>(${peakLabel})</small></span>
+                <span class="trend-stat-value accent-text">${this.escapeHtml(String(peak))} <small>(${this.escapeHtml(peakLabel)})</small></span>
             </div>
             <div class="trend-stat">
                 <span class="trend-stat-label">Avg per ${data.group === 'week' ? 'Week' : 'Day'}</span>
-                <span class="trend-stat-value">${avgPerBucket}</span>
+                <span class="trend-stat-value">${this.escapeHtml(avgPerBucket)}</span>
             </div>
         `;
     },
@@ -3565,7 +3593,7 @@ const App = {
         }
 
         const types = ['call', 'email', 'meeting', 'note', 'task'];
-        const maxTotal = Math.max(...buckets.map(b => b.total), 1);
+        const maxTotal = Math.max(...buckets.map(b => this._analyticsNum(b.total)), 1);
 
         let html = '<div class="trend-chart-scroll"><div class="trend-chart-grid">';
 
@@ -3576,19 +3604,19 @@ const App = {
             const isPeak = b.bucket_date === data.peak_bucket;
 
             html += `<div class="trend-bar-group ${isPeak ? 'trend-peak' : ''}">`;
-            html += `<div class="trend-bar-label">${dateLabel}</div>`;
+            html += `<div class="trend-bar-label">${this.escapeHtml(dateLabel)}</div>`;
             html += `<div class="trend-bars">`;
 
             types.forEach(type => {
-                const val = b[type] || 0;
+                const val = this._analyticsNum(b[type]);
                 if (val > 0) {
                     const heightPct = (val / maxTotal) * 100;
-                    html += `<div class="trend-bar trend-bar-${type}" style="height: ${heightPct}%" title="${type}: ${val}"></div>`;
+                    html += `<div class="trend-bar trend-bar-${type}" style="height: ${heightPct}%" title="${this.escapeAttr(type + ': ' + val)}"></div>`;
                 }
             });
 
             html += `</div>`;
-            html += `<div class="trend-bar-total">${b.total}</div>`;
+            html += `<div class="trend-bar-total">${this.escapeHtml(String(this._analyticsNum(b.total)))}</div>`;
             html += `</div>`;
         });
 
@@ -3611,22 +3639,30 @@ const App = {
         const buckets = data.buckets || [];
         let html = '<div class="trend-legend-items">';
         types.forEach(t => {
-            const total = buckets.reduce((sum, b) => sum + (b[t.key] || 0), 0);
+            const total = buckets.reduce((sum, b) => sum + this._analyticsNum(b[t.key]), 0);
             if (total > 0) {
-                html += `<span class="trend-legend-item trend-bar-${t.key}"><span class="trend-legend-dot"></span>${t.icon} ${t.label} (${total})</span>`;
+                html += `<span class="trend-legend-item trend-bar-${t.key}"><span class="trend-legend-dot"></span>${t.icon} ${t.label} (${this.escapeHtml(String(total))})</span>`;
             }
         });
         html += '</div>';
         el.innerHTML = html;
     },
 
+    /**
+     * Issue #365 — the four figures read their API values as numbers: a
+     * missing or non-numeric figure shows 0, and a missing
+     * total_pipeline_value shows "$0.00" instead of throwing.
+     */
     _renderAnalyticsOverview(data) {
-        document.getElementById('analytics-total-leads').textContent = data.total_leads;
-        document.getElementById('analytics-won-leads').textContent = data.won_leads;
+        document.getElementById('analytics-total-leads').textContent =
+            this._analyticsNum(data.total_leads);
+        document.getElementById('analytics-won-leads').textContent =
+            this._analyticsNum(data.won_leads);
         document.getElementById('analytics-conversion-rate').textContent =
-            data.overall_conversion_rate + '%';
+            this._analyticsNum(data.overall_conversion_rate) + '%';
         document.getElementById('analytics-pipeline-value').textContent =
-            '$' + data.total_pipeline_value.toLocaleString('en-US', { minimumFractionDigits: 2 });
+            '$' + this._analyticsNum(data.total_pipeline_value)
+                .toLocaleString('en-US', { minimumFractionDigits: 2 });
     },
 
     _renderFunnelChart(data) {
@@ -3638,37 +3674,45 @@ const App = {
             return;
         }
 
-        const maxCount = Math.max(...steps.map(s => s.count), 1);
+        const counts = steps.map(s => this._analyticsNum(s.count));
+        const maxCount = Math.max(...counts, 1);
         let html = '';
 
         steps.forEach((step, i) => {
-            const widthPct = Math.max((step.count / maxCount) * 100, 15);
+            const count = counts[i];
+            const value = this._analyticsNum(step.value);
+            const widthPct = Math.max((count / maxCount) * 100, 15);
             const colorClass = 'funnel-color-' + i;
 
+            // The arrow rendered after step i shows steps[i+1]'s figures, so
+            // it leads the next step's row: it is the previous sibling of
+            // the row that wraps the step it belongs to.
+            if (i > 0) {
+                const rate = this._analyticsNum(step.conversion_rate);
+                const drop = this._analyticsNum(step.drop_off);
+                const dropClass = drop > 0 ? 'funnel-arrow-drop' : '';
+                html += `
+                    <div class="funnel-arrow">
+                        <span>▼</span>
+                        <span class="funnel-arrow-rate">${this.escapeHtml(String(rate))}% convert</span>
+                        ${drop > 0 ? '<span class="' + dropClass + '">(-' + this.escapeHtml(String(drop)) + ')</span>' : ''}
+                    </div>
+                `;
+            }
+
             html += `
-                <div class="funnel-step">
-                    <div class="funnel-bar ${colorClass}" style="width: ${widthPct}%">
-                        <div class="funnel-bar-content">
-                            <span class="funnel-stage-label">${step.label}</span>
-                            <span class="funnel-step-count">${step.count}</span>
-                            ${step.value > 0 ? '<span class="funnel-step-value">$' + step.value.toLocaleString() + '</span>' : ''}
+                <div class="funnel-step-wrap">
+                    <div class="funnel-step">
+                        <div class="funnel-bar ${colorClass}" style="width: ${widthPct}%">
+                            <div class="funnel-bar-content">
+                                <span class="funnel-stage-label">${this.escapeHtml(String(step.label))}</span>
+                                <span class="funnel-step-count">${this.escapeHtml(String(count))}</span>
+                                ${value > 0 ? '<span class="funnel-step-value">$' + this.escapeHtml(value.toLocaleString()) + '</span>' : ''}
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
-
-            // Arrow between steps showing conversion rate
-            if (i < steps.length - 1) {
-                const nextStep = steps[i + 1];
-                const dropClass = nextStep.drop_off > 0 ? 'funnel-arrow-drop' : '';
-                html += `
-                    <div class="funnel-arrow">
-                        <span>▼</span>
-                        <span class="funnel-arrow-rate">${nextStep.conversion_rate}% convert</span>
-                        ${nextStep.drop_off > 0 ? '<span class="' + dropClass + '">(-' + nextStep.drop_off + ')</span>' : ''}
-                    </div>
-                `;
-            }
         });
 
         container.innerHTML = html;
@@ -3699,19 +3743,27 @@ const App = {
         `;
 
         steps.forEach(step => {
-            const convClass = step.conversion_rate >= 70 ? 'metric-positive' :
-                              step.conversion_rate >= 40 ? 'metric-neutral' : 'metric-negative';
-            const dropClass = step.drop_off > 0 ? 'metric-negative' : 'metric-neutral';
-            const avgDays = step.avg_days_in_stage !== null ? step.avg_days_in_stage + 'd' : '—';
+            const count = this._analyticsNum(step.count);
+            const value = this._analyticsNum(step.value);
+            const rate = this._analyticsNum(step.conversion_rate);
+            const drop = this._analyticsNum(step.drop_off);
+            const convClass = rate >= 70 ? 'metric-positive' :
+                              rate >= 40 ? 'metric-neutral' : 'metric-negative';
+            const dropClass = drop > 0 ? 'metric-negative' : 'metric-neutral';
+            // The page shows a dash where the figure is missing (or not a
+            // number); a numeric average keeps the "Nd" reading.
+            const avgRaw = step.avg_days_in_stage;
+            const avgDays = (avgRaw === null || avgRaw === undefined || avgRaw === ''
+                || !Number.isFinite(Number(avgRaw))) ? '—' : this._analyticsNum(avgRaw) + 'd';
 
             html += `
                 <tr>
-                    <td><strong>${step.label}</strong></td>
-                    <td>${step.count}</td>
-                    <td>$${step.value.toLocaleString()}</td>
-                    <td class="${convClass}">${step.conversion_rate}%</td>
-                    <td class="${dropClass}">${step.drop_off > 0 ? '-' + step.drop_off : '—'}</td>
-                    <td>${avgDays}</td>
+                    <td><strong>${this.escapeHtml(String(step.label))}</strong></td>
+                    <td>${this.escapeHtml(String(count))}</td>
+                    <td>$${this.escapeHtml(value.toLocaleString())}</td>
+                    <td class="${convClass}">${this.escapeHtml(String(rate))}%</td>
+                    <td class="${dropClass}">${drop > 0 ? '-' + this.escapeHtml(String(drop)) : '—'}</td>
+                    <td>${this.escapeHtml(avgDays)}</td>
                 </tr>
             `;
         });
