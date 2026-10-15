@@ -1,0 +1,286 @@
+/* ============================================================================
+   AICRM — Win/Loss Reasons page (issue #362)
+   ----------------------------------------------------------------------------
+   The Win/Loss page (#page-winloss) fits the window:
+
+     • Top: the three figures (Total won, Total lost, Win rate) sit in one
+       bar at the top (#winloss-stats) — the same figures the page already
+       computes, in a single token-chromed bar.
+     • Charts: Win reasons, Loss reasons and Competitor mentions sit side
+       by side under the bar; each chart (#win-reasons-chart,
+       #loss-reasons-chart, #competitor-chart) is at most 220 px tall and
+       scrolls inside itself when it has more rows.
+     • All outcomes: the table (#winloss-table) fills the rest of the height
+       and scrolls inside its own region; its header row stays in view
+       (sticky), each row is one line, and the details cell is cut with an
+       ellipsis while its title carries the full text.
+     • Desktop (>= 901 px): neither the document nor the content region
+       scrolls — only the table region and the charts do. At 900 px and
+       below the charts stack and the page scrolls vertically; nothing
+       scrolls sideways (390x844 included).
+
+   Colours, radii and spacing come from css/tokens.css only — no raw colour
+   values in this file. (The bar-fill and outcome-badge colours stay the
+   pre-existing rules in css/styles.css.)
+   ========================================================================== */
+
+/* ── Stats: one bar at the top holding the three figures ─────────────────── */
+#page-winloss .winloss-overview {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    font-family: var(--font-sans);
+    font-variant-numeric: var(--font-variant-numeric);
+}
+
+/* The three stat cards sit on one line in the bar (they may wrap on
+   narrow screens, where the bar is no longer fixed-height). */
+#page-winloss .winloss-overview .analytics-overview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    width: 100%;
+    margin-bottom: 0;
+}
+
+#page-winloss .winloss-overview .analytics-stat-card {
+    flex: 1 1 120px;
+    min-width: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-ground);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-control);
+    text-align: left;
+}
+
+#page-winloss .winloss-overview .analytics-stat-label {
+    margin: 0 0 var(--space-1);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-ink-secondary);
+}
+
+#page-winloss .winloss-overview .analytics-stat-value {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-ink);
+}
+
+/* ── Charts: three cards side by side, each at most 220 px tall ──────────── */
+#page-winloss .winloss-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin-bottom: 0;
+}
+
+#page-winloss .winloss-card {
+    min-height: 0;
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    font-family: var(--font-sans);
+    font-variant-numeric: var(--font-variant-numeric);
+}
+
+#page-winloss .winloss-card h3 {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+/* The chart alone is capped at 220 px and scrolls inside itself. */
+#page-winloss .winloss-chart {
+    max-height: 220px;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#page-winloss .winloss-bar-row {
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+/* A hostile label is cut, never allowed to widen the row. */
+#page-winloss .winloss-bar-label {
+    flex: 0 0 110px;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#page-winloss .winloss-bar-track {
+    height: var(--space-6);
+    background: var(--color-ground);
+}
+
+/* A count of 0 (including a non-numeric one) is a bar of width 0 — the
+   pre-existing 2 px sliver must not survive. */
+#page-winloss .winloss-bar-fill {
+    min-width: 0;
+    border-radius: var(--radius-control);
+}
+
+#page-winloss .winloss-bar-count {
+    flex: 0 0 32px;
+    font-family: var(--font-mono);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+/* ── All outcomes: the table fills the rest and scrolls on its own ───────── */
+#page-winloss .winloss-outcomes {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    font-family: var(--font-sans);
+    font-variant-numeric: var(--font-variant-numeric);
+}
+
+#page-winloss .winloss-outcomes h3 {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+#page-winloss #winloss-table .data-table {
+    width: 100%;
+    table-layout: fixed;
+    /* separate + zero spacing: sticky headers need a non-collapsed table */
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--font-sans);
+    font-variant-numeric: var(--font-variant-numeric);
+    font-size: 0.875rem;
+    color: var(--color-ink);
+}
+
+/* Details takes the table's slack; the other columns keep fixed shares so
+   a huge cell value can never widen the table past its region. */
+#page-winloss #winloss-table .data-table th:nth-child(1) { width: 16%; }
+#page-winloss #winloss-table .data-table th:nth-child(2) { width: 11%; }
+#page-winloss #winloss-table .data-table th:nth-child(3) { width: 15%; }
+#page-winloss #winloss-table .data-table th:nth-child(5) { width: 16%; }
+#page-winloss #winloss-table .data-table th:nth-child(6) { width: 14%; }
+
+#page-winloss #winloss-table .data-table th {
+    text-align: left;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-ink-secondary);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+/* Each row is one line; long values are cut with an ellipsis. */
+#page-winloss #winloss-table .data-table td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-ink);
+}
+
+#page-winloss #winloss-table .data-table td.winloss-detail {
+    max-width: none;
+    color: var(--color-ink-secondary);
+}
+
+/* ── Desktop (>= 901 px): fixed height; only the charts and the table
+   region scroll — the document and the content region do not ────────────── */
+@media (min-width: 901px) {
+    #page-winloss.active {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        height: 100%;
+        min-height: 0;
+    }
+
+    #page-winloss .winloss-grid {
+        flex: 0 0 auto;
+    }
+
+    #page-winloss .winloss-outcomes {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #page-winloss .winloss-outcomes h3 {
+        flex: 0 0 auto;
+    }
+
+    #page-winloss #winloss-table {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* The header row stays in view while the body scrolls. */
+    #page-winloss #winloss-table .data-table th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--color-surface);
+    }
+}
+
+/* ── Narrow (<= 900 px): the charts stack and the page scrolls vertically;
+   nothing scrolls sideways ──────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    #page-winloss.active {
+        display: block;
+        height: auto;
+    }
+
+    #page-winloss .winloss-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #page-winloss .winloss-chart {
+        max-height: none;
+        overflow: visible;
+    }
+
+    #page-winloss #winloss-table {
+        overflow: visible;
+    }
+
+    #page-winloss .winloss-bar-label {
+        flex-basis: 90px;
+        font-size: 0.78rem;
+    }
+}

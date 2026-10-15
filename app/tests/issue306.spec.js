@@ -13,7 +13,9 @@
 //         .nav-icon elements retained but glyph-free; #auth-status sits at
 //         the sidebar foot; the header shows the page title and the content
 //         region below it alone scrolls (on Contacts the split view's list
-//         pane scrolls instead — issue #313); at 1440x900 the document itself
+//         pane scrolls instead — issue #313; on Win/Loss the charts and the
+//         outcomes table scroll inside the page, so the content region does
+//         not scroll there — issue #362); at 1440x900 the document itself
 //         does not scroll (Dashboard, and Contacts with 200 mocked rows);
 //         each page has a hash route #/<data-page> — a nav click updates
 //         the hash, a reload on #/companies opens Companies, Back returns
