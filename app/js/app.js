@@ -5400,6 +5400,17 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
 
     /**
      * Render the Win/Loss Reasons page.
+     *
+     * Issue #362: every value from the API is escaped. The lead name, the
+     * reason details, the competitor name, every reason label and every
+     * competitor in the three charts go through the escaping helpers, so
+     * a hostile value renders as inert text. A reason category the page
+     * does not know is shown as escaped text. The outcome badge's modifier
+     * is one of the two known classes (outcome-won / outcome-lost); any
+     * other outcome value gets no modifier and its text reads "Unknown",
+     * so the raw value never reaches the class attribute. Chart counts
+     * are read as numbers, so a non-numeric count gives a bar of width 0
+     * and the count shown as "0".
      */
     async renderWinLossPage() {
         let analytics = null;
@@ -5415,7 +5426,8 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             console.error('Failed to load deal outcomes:', err);
         }
 
-        // Stats overview
+        // Stats overview — the figures and how they are worked out are
+        // unchanged; the API values still pass through the escaping helper.
         const totalWon = analytics?.total_won || 0;
         const totalLost = analytics?.total_lost || 0;
         const winRate = analytics?.win_rate ?? 0;
@@ -5423,54 +5435,55 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             <div class="analytics-overview">
                 <div class="analytics-stat-card">
                     <div class="analytics-stat-label">Total Won</div>
-                    <div class="analytics-stat-value metric-positive">${totalWon}</div>
+                    <div class="analytics-stat-value metric-positive">${this.escapeHtml(String(totalWon))}</div>
                 </div>
                 <div class="analytics-stat-card">
                     <div class="analytics-stat-label">Total Lost</div>
-                    <div class="analytics-stat-value metric-negative">${totalLost}</div>
+                    <div class="analytics-stat-value metric-negative">${this.escapeHtml(String(totalLost))}</div>
                 </div>
                 <div class="analytics-stat-card">
                     <div class="analytics-stat-label">Win Rate</div>
-                    <div class="analytics-stat-value ${winRate >= 50 ? 'metric-positive' : 'metric-negative'}">${winRate.toFixed(1)}%</div>
+                    <div class="analytics-stat-value ${winRate >= 50 ? 'metric-positive' : 'metric-negative'}">${this.escapeHtml(winRate.toFixed(1))}%</div>
                 </div>
             </div>
         `;
 
         // Win reasons chart
         const topWins = analytics?.top_win_reasons || [];
-        const maxWinCount = Math.max(...topWins.map(r => r.count), 1);
+        const maxWinCount = Math.max(...topWins.map(r => this._winlossCount(r.count)), 1);
         document.getElementById('win-reasons-chart').innerHTML = topWins.length ? topWins.map(r => `
             <div class="winloss-bar-row">
                 <span class="winloss-bar-label">${this._formatReasonLabel(r.reason)}</span>
                 <div class="winloss-bar-track">
-                    <div class="winloss-bar-fill metric-positive" style="width:${(r.count / maxWinCount * 100).toFixed(0)}%"></div>
+                    <div class="winloss-bar-fill metric-positive" style="width:${(this._winlossCount(r.count) / maxWinCount * 100).toFixed(0)}%"></div>
                 </div>
-                <span class="winloss-bar-count">${r.count}</span>
+                <span class="winloss-bar-count">${this._winlossCount(r.count)}</span>
             </div>
         `).join('') : '<p class="empty-state">No win reasons recorded yet.</p>';
 
         // Loss reasons chart
         const topLosses = analytics?.top_loss_reasons || [];
-        const maxLossCount = Math.max(...topLosses.map(r => r.count), 1);
+        const maxLossCount = Math.max(...topLosses.map(r => this._winlossCount(r.count)), 1);
         document.getElementById('loss-reasons-chart').innerHTML = topLosses.length ? topLosses.map(r => `
             <div class="winloss-bar-row">
                 <span class="winloss-bar-label">${this._formatReasonLabel(r.reason)}</span>
                 <div class="winloss-bar-track">
-                    <div class="winloss-bar-fill metric-negative" style="width:${(r.count / maxLossCount * 100).toFixed(0)}%"></div>
+                    <div class="winloss-bar-fill metric-negative" style="width:${(this._winlossCount(r.count) / maxLossCount * 100).toFixed(0)}%"></div>
                 </div>
-                <span class="winloss-bar-count">${r.count}</span>
+                <span class="winloss-bar-count">${this._winlossCount(r.count)}</span>
             </div>
         `).join('') : '<p class="empty-state">No loss reasons recorded yet.</p>';
 
         // Competitor mentions
         const competitors = analytics?.competitor_mentions || [];
+        const maxCompetitorCount = Math.max(...competitors.map(c => this._winlossCount(c.count)), 1);
         document.getElementById('competitor-chart').innerHTML = competitors.length ? competitors.map(c => `
             <div class="winloss-bar-row">
-                <span class="winloss-bar-label">${c.competitor}</span>
+                <span class="winloss-bar-label">${this.escapeHtml(String(c.competitor))}</span>
                 <div class="winloss-bar-track">
-                    <div class="winloss-bar-fill accent-text" style="width:${(c.count / Math.max(...competitors.map(x => x.count), 1) * 100).toFixed(0)}%"></div>
+                    <div class="winloss-bar-fill accent-text" style="width:${(this._winlossCount(c.count) / maxCompetitorCount * 100).toFixed(0)}%"></div>
                 </div>
-                <span class="winloss-bar-count">${c.count}</span>
+                <span class="winloss-bar-count">${this._winlossCount(c.count)}</span>
             </div>
         `).join('') : '<p class="empty-state">No competitor mentions yet.</p>';
 
@@ -5489,21 +5502,55 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
                     </tr>
                 </thead>
                 <tbody>
-                    ${sortedOutcomes.map(o => `
+                    ${sortedOutcomes.map(o => {
+                        const outcome = o.outcome;
+                        // The modifier class is one of the two known values;
+                        // any other outcome value gets no modifier and its
+                        // text reads "Unknown" — the raw value never reaches
+                        // the class attribute.
+                        const badgeClass = outcome === 'won'
+                            ? 'outcome-badge outcome-won'
+                            : (outcome === 'lost'
+                                ? 'outcome-badge outcome-lost'
+                                : 'outcome-badge');
+                        const badgeText = outcome === 'won' ? 'Won'
+                            : (outcome === 'lost' ? 'Lost' : 'Unknown');
+                        const leadName = o.lead_name || o.lead_id;
+                        const details = o.reason_text || '—';
+                        const detailsTitle = o.reason_text
+                            ? ` title="${this.escapeAttr(o.reason_text)}"`
+                            : '';
+                        return `
                         <tr>
-                            <td class="winloss-lead-name">${o.lead_name || o.lead_id}</td>
-                            <td><span class="outcome-badge outcome-${o.outcome}">${o.outcome === 'won' ? 'Won' : 'Lost'}</span></td>
+                            <td class="winloss-lead-name">${this.escapeHtml(String(leadName))}</td>
+                            <td><span class="${badgeClass}">${badgeText}</span></td>
                             <td>${this._formatReasonLabel(o.reason_category)}</td>
-                            <td class="winloss-detail">${o.reason_text || '—'}</td>
-                            <td>${o.competitor_name || '—'}</td>
+                            <td class="winloss-detail"${detailsTitle}>${this.escapeHtml(details)}</td>
+                            <td>${this.escapeHtml(String(o.competitor_name || '—'))}</td>
                             <td>${this.formatDateTime(o.created_at)}</td>
-                        </tr>
-                    `).join('')}
+                        </tr>`;
+                    }).join('')}
                 </tbody>
             </table>
         ` : '<p class="empty-state">No outcomes recorded yet. Move leads to Won/Lost to track reasons.</p>';
     },
 
+    /**
+     * Issue #362 — a chart count is data: read it as a number so a
+     * non-numeric value (or a negative one) yields a bar of width 0 and
+     * the count "0" instead of an invalid width or raw text.
+     */
+    _winlossCount(value) {
+        const n = typeof value === 'number' ? value : Number(value);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+    },
+
+    /**
+     * Map a reason category to its label. A category the page does not
+     * know is shown as escaped text (issue #362); the known labels are
+     * static. hasOwnProperty keeps "__proto__" / "constructor" from
+     * resolving to inherited objects.
+     */
     _formatReasonLabel(reason) {
         const labels = {
             'budget': 'Budget / Pricing',
@@ -5514,7 +5561,10 @@ Thank you for your interest...">${template ? this.escapeHtml(template.body || ''
             'internal-issues': 'Internal Issues',
             'other': 'Other',
         };
-        return labels[reason] || reason || '—';
+        if (typeof reason === 'string' && Object.prototype.hasOwnProperty.call(labels, reason)) {
+            return labels[reason];
+        }
+        return reason ? this.escapeHtml(String(reason)) : '—';
     },
 
     formatDateTime(isoString) {
