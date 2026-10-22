@@ -74,7 +74,7 @@ This starts the three application services in the correct order:
 
 1. **PostgreSQL** — waits until the database is ready to accept connections
 2. **Backend** — waits for PostgreSQL, runs Alembic migrations, then starts the API on port 9000
-3. **Frontend** — serves the static SPA on port 8080, proxying `/api/*` requests to the backend
+3. **Frontend** — serves the static SPA on port 8080, proxying `/api/*` requests to the backend. Every page, script, stylesheet and image is sent with `Cache-Control: no-cache`, so a browser picks up a new deploy on its next request instead of running a cached old script
 
 `docker-compose.yml` also defines a fourth service, `test-db` (an ephemeral PostgreSQL on host port 5433 used by `backend/run_tests.sh`). It has no compose profile, so a plain `docker compose up` starts it as well.
 
@@ -112,7 +112,7 @@ docker run --name aicrm-postgres \
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements.txt -c constraints.txt
 export AUTH_MODE=development
 export AUTH_DEV_TOKEN=dev-secret-token
 
@@ -125,6 +125,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 9000
 
 The backend serves at `http://localhost:9000`. Migrations are applied via Alembic
 before the server starts (automatically in Docker, manually above).
+
+`constraints.txt` pins the exact version of every backend package, so a local install, the
+backend image and CI all get the same set. To take upgrades on purpose, run
+`scripts/refresh_constraints.sh` (needs Docker), review the diff of `backend/constraints.txt`,
+and open a pull request.
 
 ### 3. Open the Frontend
 
@@ -154,24 +159,24 @@ Key categories:
 | Category | Key Variables |
 |----------|---------------|
 | Database | `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT_HOST` (compose); `DB_HOST`, `DB_PORT` (backend) |
-| Backend | `BACKEND_PORT_HOST`, `LOG_LEVEL` |
+| Backend | `BACKEND_PORT_HOST`, `LOG_LEVEL`, `LOG_FORMAT` (`LOG_FORMAT` is not passed to the backend container by `docker-compose.yml`) |
 | Frontend | `FRONTEND_PORT_HOST` |
 | CORS | `CORS_ORIGINS` (comma-separated list) |
 | Auth (dev) | `AUTH_ENABLED`, `AUTH_MODE=development`, `AUTH_DEV_TOKEN`, `AUTH_DEV_ROLES` |
 | Auth (prod) | `AUTH_MODE=production`, `AUTH_ISSUER`, `AUTH_CLIENT_ID`, `AUTH_AUDIENCE`, `AUTH_JWKS_URL`, `AUTH_ALGORITHMS`, `AUTH_JWKS_CACHE_TTL`, `AUTH_ROLE_CLAIMS`, `AUTH_GROUP_CLAIMS` |
-| Version and build | `APP_VERSION`, `GIT_SHA`, `BUILD_TIMESTAMP` (not passed to the backend container by `docker-compose.yml`) |
+| Version and build | `APP_VERSION`, `GIT_SHA`, `BUILD_TIMESTAMP` (not passed to the backend container by `docker-compose.yml`; the container reads the version from the mounted `VERSION` file instead) |
 | Email (SMTP) | `AICRM_SMTP_HOST`, `AICRM_SMTP_PORT`, `AICRM_SMTP_TLS`, `AICRM_SMTP_FROM`, `AICRM_SMTP_USERNAME`, `AICRM_SMTP_PASSWORD`, `AICRM_SMTP_CA_FILE` (not passed to the backend container by `docker-compose.yml`; sending is disabled until `AICRM_SMTP_HOST` is set) |
 
 `DEBUG` and `ENVIRONMENT` are defined in `backend/app/config.py` but are not read anywhere else in the backend and are not passed through by `docker-compose.yml`.
 
-There are no hidden fallback paths — if an env var is not set, the documented default is used.
+There are no hidden fallback paths — if an env var is not set, the documented default is used. `AUTH_JWKS_URL` set to an empty or whitespace-only value counts as unset, so the backend derives it from the issuer (`<AUTH_ISSUER>/protocol/openid-connect/certs`); `docker-compose.yml` passes an empty value when `.env` does not set it.
 
 ## Database and Schema Versioning
 
 AICRM uses **Alembic** for versioned database schema management.
 
 - Schema changes are tracked in `backend/migrations/versions/` as individual migration files.
-- A baseline migration (`0001_baseline.py`) captures the initial schema (contacts, leads, activities, templates, settings, audit_log). Later migrations (`0002` through `0015`) add contact tags, deal outcomes, companies, contact consent, suppressions, and sales goals, and minimize stored audit details.
+- A baseline migration (`0001_baseline.py`) captures the initial schema (contacts, leads, activities, templates, settings, audit_log). Later migrations (`0002` through `0015`) add contact tags, deal outcomes, companies (with company links on contacts and leads, soft delete, and unique names), contact consent, suppressions, and sales goals, and minimize stored audit details.
 - On container startup, `start.sh` runs `alembic upgrade head` before starting the application, ensuring the database schema is always up to date.
 - Migration history is tracked in the `alembic_version` table inside PostgreSQL.
 - For local development (no Docker), run `alembic upgrade head` manually inside `backend/` before starting the server.
@@ -211,7 +216,9 @@ AICRM/
 │   │   ├── tokens.css            # Design tokens
 │   │   ├── shell.css             # Application shell layout
 │   │   ├── overview.css          # Dashboard page
-│   │   └── contacts.css          # Contacts split pane
+│   │   ├── contacts.css          # Contacts split pane
+│   │   └── companies.css, leads.css, activities.css, templates.css,
+│   │       salesgoals.css, winloss.css, analytics.css  # One stylesheet per page
 │   ├── js/
 │   │   ├── app.js                # Application entry point
 │   │   ├── api.js                # HTTP client (fetch wrapper)
@@ -225,7 +232,7 @@ AICRM/
 │   │   ├── settings-data-source.js
 │   │   ├── sales-goals-data-source.js
 │   │   └── version.js
-│   └── tests/                    # Playwright specs (@playwright/test)
+│   └── tests/                    # Playwright specs (@playwright/test) + playwright.config.js
 ├── backend/                      # Backend API (FastAPI)
 │   ├── Dockerfile                # Backend container
 │   ├── start.sh                  # Startup script (DB wait + migrations)
@@ -246,11 +253,13 @@ AICRM/
 │   │   ├── email/                # Outbound email (SMTP) transport
 │   │   └── observability/        # Logging & middleware
 │   ├── tests/                    # pytest suite
-│   ├── requirements.txt
+│   ├── requirements.txt          # Direct backend dependencies
+│   ├── constraints.txt           # Exact pinned versions (used by the image and CI)
 │   └── README.md                 # Detailed backend docs
 ├── scripts/
 │   ├── check_release_metadata.py # VERSION / CHANGELOG consistency check
 │   ├── export_openapi.py         # Regenerates backend/openapi.json
+│   ├── refresh_constraints.sh    # Regenerates backend/constraints.txt (upgrades on purpose)
 │   └── ca_gate/                  # Pull request contract gate tooling
 ├── tests/                        # ca_gate self-tests and ad hoc browser test scripts
 ├── config/                       # Product vision, deployment facts, compliance capabilities
@@ -259,7 +268,7 @@ AICRM/
     ├── applications/aicrm/       # Architecture, security, operations
     ├── enterprise/               # Enterprise standards and reference architectures
     ├── operations/               # Runbook, release process, support model
-    ├── design/, ux/, ui-specs/   # Design system and UI specifications
+    ├── design/, ux/, ui-specs/   # Design system (design/design-system.md) and UI specifications
     ├── product/, roadmap/        # Requirements and enhancement backlog
     └── testing/                  # Playwright verification scripts
 ```
@@ -277,8 +286,8 @@ AICRM/
 | Deal Outcomes | Win/loss reasons for leads   | GET/POST/PATCH/DELETE `/api/deal-outcomes`; GET `/api/deal-outcomes/analytics`, `/api/deal-outcomes/leads/{lead_id}` |
 | Sales Goals | Targets and progress           | GET/POST/PATCH/DELETE `/api/sales-goals`; GET `/api/sales-goals/progress`; POST `/api/sales-goals/recalculate` |
 | Suppressions | Email suppression list and send gate | GET/POST/DELETE `/api/suppressions`; POST `/api/suppressions/unsubscribe`; GET `/api/suppressions/may-send` |
-| Analytics   | Conversion funnel and activity trends | GET `/api/analytics/funnel`, `/api/analytics/activity-trends` |
-| Settings    | Application configuration      | GET/PUT `/api/settings`              |
+| Analytics   | Conversion funnel and activity trends (`range` of `7d`, `30d`, `90d` or `1y`) | GET `/api/analytics/funnel`, `/api/analytics/activity-trends` |
+| Settings    | Application configuration (`PUT` merges keys; `DELETE` resets to an empty payload) | GET/PUT/DELETE `/api/settings` |
 | Audit       | Audit log (admin only)         | GET `/api/audit`                     |
 | Auth        | Current user and public auth configuration | GET `/api/auth/me`, `/api/auth/config` |
 | Health      | Liveness, readiness, version   | GET `/api/health`, `/api/health/ready`, `/api/health/version` |
@@ -290,9 +299,11 @@ The committed OpenAPI artifact (`backend/openapi.json`) is the authoritative end
 - **PostgreSQL is the system of record.** No business data lives in browser storage.
 - **Frontend is a client.** It renders UI and delegates all data operations to the backend.
 - **Browser storage is session-only.** Auth tokens use `sessionStorage`; the theme preference is saved through the backend Settings API.
-- **Audit logging** records mutations (create, update, delete) for contacts, companies, leads, activities, templates, and settings, plus contact email sends and unsubscribes. Tags, deal outcomes, sales goals, and direct suppression-list edits are not audit-logged.
+- **Audit logging** records mutations (create, update, delete) for contacts, companies, leads, activities, templates, and settings (including a settings reset, which records the removed keys without their values), plus contact email sends and unsubscribes. Tags, deal outcomes, sales goals, and direct suppression-list edits are not audit-logged.
 - **Request correlation** via `X-Request-ID` headers for full-stack traceability.
-- **Role-based authorization** via `require_role()` and `require_any_role()` dependencies.
+- **Role-based authorization** via the `require_role()` dependency on admin-only routes and `require_authenticated_user` on routes open to any signed-in user. `require_any_role()` is also defined, but no route uses it yet.
+- **One design system for every page.** `docs/design/design-system.md` sets the layout rules; under its "No endless pages" rule each page fits the window and only designated panes (a list, a table body, a detail pane) scroll.
+- **Pinned dependencies.** `backend/constraints.txt` fixes every backend package version; `test_dependencies_pinned.py` checks that every requirement has an exact pin and that the image and CI install with the constraints file.
 - **Containerized local development** via Docker Compose for reproducible startup.
 
 ## Documentation
@@ -340,6 +351,7 @@ The test suite uses an isolated test database (`aicrm_test_db`) that is created 
 | API contract | `test_openapi_contract.py` | Generated OpenAPI schema is structurally sound and exposes the expected components (drift against `backend/openapi.json` is caught by the CI diff check) |
 | Pagination | `test_list_pagination_hardening.py` | List endpoint pagination defaults, caps, validation, and totals |
 | Container hardening | `test_container_hardening.py` | Dockerfile and compose hardening settings |
+| Dependency pins | `test_dependencies_pinned.py` | Every requirement has an exact pin in `constraints.txt`; the image and CI install with it |
 | Issue-specific proofs | `test_issue*_freeform.py`, `test_issue*_surgical.py` | Acceptance-criteria tests tied to individual issues |
 
 Frontend Playwright specs live in `app/tests/*.spec.js` (run with `@playwright/test`; the merge gate runs them for pull requests that change those specs), and standalone Playwright verification scripts live in `docs/testing/` (see [docs/README.md](docs/README.md)). Neither is part of the Backend CI workflow.
@@ -394,7 +406,7 @@ AICRM runs lightweight security checks in CI to catch common dependency and secr
 
 | Check | Tool | Purpose |
 |-------|------|---------|
-| Python dependency audit | [pip-audit](https://github.com/pypa/pip-audit) | Known-vulnerability scanning for backend dependencies |
+| Python dependency audit | [pip-audit](https://github.com/pypa/pip-audit) | Known-vulnerability scanning for the pinned backend dependencies (`backend/constraints.txt`) |
 | Secret-pattern scanning | [gitleaks](https://github.com/gitleaks/gitleaks) | Accidental committed API keys, tokens, and credentials |
 
 **Run locally before pushing:**
@@ -402,14 +414,14 @@ AICRM runs lightweight security checks in CI to catch common dependency and secr
 ```bash
 # Audit Python dependencies for known vulnerabilities
 pip install pip-audit
-pip-audit -r backend/requirements.txt
+pip-audit -r backend/constraints.txt --no-deps --disable-pip
 
 # Scan for accidentally committed secrets
 # (install gitleaks: https://github.com/gitleaks/gitleaks#installing)
 gitleaks detect --source="." --no-git --verbose -c .gitleaks.toml
 ```
 
-CI will reject PRs that introduce vulnerable dependencies or commit obvious secret patterns. The gitleaks configuration (`.gitleaks.toml`) excludes only `.env.example`, which holds placeholder values; documentation files such as this README are scanned.
+CI will reject PRs that introduce vulnerable dependencies or commit obvious secret patterns. Because the audit checks the pinned set, an advisory published after a pin was set also fails the check, on every pull request, until the pin moves. The gitleaks configuration (`.gitleaks.toml`) excludes only `.env.example`, which holds placeholder values; documentation files such as this README are scanned.
 
 ## Continuous Integration
 
@@ -445,7 +457,7 @@ Push or open PR
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| [`codeagent-merge-gate.yml`](.github/workflows/codeagent-merge-gate.yml) | Pull requests | Checks the pull request's acceptance-criteria contract against a test run (backend pytest proofs, or the Playwright specs in `app/tests/` when the pull request changes them) |
+| [`codeagent-merge-gate.yml`](.github/workflows/codeagent-merge-gate.yml) | Pull requests | Runs the contract gate's own tests (`tests/ca_gate/`, blocking), then checks the pull request's acceptance-criteria contract against a test run (backend pytest proofs, or the Playwright specs in `app/tests/` when the pull request changes them). The check fails if a linked issue cannot be fetched |
 | [`codeagent-gate-revalidate.yml`](.github/workflows/codeagent-gate-revalidate.yml) | Daily schedule, manual dispatch | Re-validates open contract-bearing pull requests against their linked issues |
 | [`markdownlint.yml`](.github/workflows/markdownlint.yml) | Pull requests that change Markdown files | Lints Markdown with markdownlint-cli2 |
 
@@ -470,7 +482,7 @@ The frontend and backend share one version because they are a single application
 ### Where Version Lives
 
 - **Source of truth:** `VERSION` file at repo root
-- **Backend:** uses the `APP_VERSION` env var if set, otherwise reads `VERSION` at startup, otherwise falls back to the in-code default `0.1.0`. The backend image is built from the `backend/` directory, which does not contain `VERSION`, and `docker-compose.yml` does not pass `APP_VERSION` to the container, so the containerized backend reports `0.1.0` unless `APP_VERSION` is added to its environment.
+- **Backend:** uses the `APP_VERSION` env var if set, otherwise reads `VERSION` at startup, otherwise falls back to the in-code default `0.1.0`. The backend image is built from the `backend/` directory, which does not contain `VERSION`, so `docker-compose.yml` mounts the repository's `VERSION` file read-only into the backend container (at `/VERSION`, the path the backend looks in). The containerized backend therefore reports the version in `VERSION`.
 - **Frontend:** fetches version from backend `/api/health` at runtime
 - **Release notes:** [`CHANGELOG.md`](CHANGELOG.md) at repo root
 
@@ -479,7 +491,7 @@ The frontend and backend share one version because they are a single application
 ```bash
 # Backend health endpoint
 curl http://localhost:9000/api/health
-# → {"status": "ok", "app_version": "0.1.0", "service": "aicrm-backend",
+# → {"status": "ok", "app_version": "0.2.3", "service": "aicrm-backend",
 #    "git_sha": null, "build_timestamp": null}
 ```
 
@@ -488,7 +500,7 @@ curl http://localhost:9000/api/health
 ```json
 {
   "status": "ok",
-  "app_version": "0.1.0",
+  "app_version": "0.2.3",
   "service": "aicrm-backend",
   "git_sha": "abc1234",
   "build_timestamp": "2025-01-15T10:30:00Z"
@@ -497,7 +509,7 @@ curl http://localhost:9000/api/health
 
 `GET /api/health/version` returns only `{"version": "<app_version>"}`, and `GET /api/health/ready` adds a `dependencies` list with database connectivity status.
 
-The frontend also displays the version in the sidebar footer and Settings page.
+The frontend also displays the version in the sidebar footer and on the Settings page (the sidebar stays empty and Settings reads "unavailable" if the backend cannot be reached). Beside it, the sidebar shows the signed-in user by the first non-empty value of `display_name`, `username`, `email` and `sub`.
 
 ### How to Bump the Version
 
