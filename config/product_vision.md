@@ -55,6 +55,13 @@ API-contract discipline — delivered incrementally, never speculatively.
   views); no SPA framework, no query/cache libraries. Paged fetching in capped 100-row chunks.
 - **Breaking changes land once, atomically**, with the frontend updated in the same PR, and
   are called out explicitly.
+- **Who does each step.** Every process AICRM supports lists its steps and marks each as done
+  by AICRM, proposed by AICRM for a person to approve, or done by a person. A step stays with a
+  person only for a stated reason (consent and compliance before communication is one), and it
+  names the evidence that would move it to AICRM: how AICRM's own answer measured against the
+  changes people made, and whether the step can be undone. A new capability starts with AICRM
+  doing the work; each suggestion shows what it was derived from, and AICRM counts how many
+  steps people still do.
 
 ## The benchmark method (operator-set policy)
 
