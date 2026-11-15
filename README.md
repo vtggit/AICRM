@@ -4,13 +4,27 @@
 This software has always been and is intended to be 100 percent AI coded. Its original and ongoing purpose is to test AI software development systems.
 However, in this role a full featured CRM has been created.
 
-## License
+## License — free to view and use, not for redistribution or modification
 
-This project is source-available proprietary software.
+AICRM is published under the **AICRM Evaluation and Reference License**. See
+[LICENSE](./LICENSE) for the full terms; the summary below does not replace them.
 
-You may view this repository and use the software for your own internal purposes, but you may not modify it, distribute it, sublicense it, sell it, or offer it as a hosted or managed service. It is development and demonstration software, is not intended for production use, and is provided without warranty or any support commitment.
+- ✅ **View and use** — you may view this repository and use the software for your own internal
+  purposes, free of charge.
+- ❌ **No redistribution** — do not distribute, publish, mirror, sublicense, sell, rent, lease, or
+  offer it as a hosted or managed service.
+- ❌ **No modification** — do not modify it or create derivative works.
+- ❌ **Keep the notices** — do not remove or alter the license or copyright notices.
+- ⚠️ **Use at your own risk** — the software is provided "as is", with no warranty and no
+  support, maintenance or service commitment. It is not meant for production use, and Virtual
+  Technology Group is not liable for any damage, data loss or business interruption it causes.
 
-See [LICENSE](./LICENSE) for the full license terms.
+This is a **proprietary** license, **not** an open-source license. All rights are reserved by
+Virtual Technology Group LLC.
+
+> Note on forks: GitHub lets users fork a public repository, and the License permits that only to
+> the extent the hosting platform's terms require it. A fork grants no further rights: the License
+> still does not permit redistribution or modification.
 
 ## Architecture
 
